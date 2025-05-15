@@ -3,4 +3,4 @@ Workshop project all of us should start building!
 # Tasks
 - Get good base
 - !Start building asap to undestand better
-- Group call to create some minmal order
+- Group call to create some minimal order
