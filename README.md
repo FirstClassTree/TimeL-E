@@ -1,5 +1,5 @@
 # E-commerce Workshop, Timel - E
-
+Workshop project all of us should start building!
 # Tasks
 - Get good base
 - !Start building asap to undestand better
