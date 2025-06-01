@@ -14,6 +14,7 @@
 ---
 
 ## 📦 Project Structure
+```
 timele-project/
 ├── backend/ # FastAPI server and Database Managing
 ├── frontend/ # UI (React or Streamlit)
@@ -21,6 +22,7 @@ timele-project/
 ├── data/ # Input and sample data
 ├── database/ # DB schema scripts
 └── README.md
+```
 
 
 ## ⚙️ Setup and Run
