@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  # Main Backend API Gateway
+  backend:
+    build: 
+      context: .
+      dockerfile: ./backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=true
+      - DB_SERVICE_URL=http://localhost:5001
+      - ML_SERVICE_URL=http://localhost:5002
+    networks:
+      - timele-network
+    restart: unless-stopped
+
+networks:
+  timele-network:
+    driver: bridge

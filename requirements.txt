@@ -1,6 +1,6 @@
 fastapi
-uvicorn
+uvicorn[standard]
 pydantic
-pandas
-scikit-learn
-joblib
+httpx
+python-multipart
+python-dotenv
