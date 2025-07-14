@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeLE - Shop For Products</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.8);
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-active {
+            background: #667eea;
+            color: white;
+        }
+
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            min-height: 70vh;
+        }
+
+        .search-container {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            background: rgba(255, 255, 255, 0.9);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            color: #999;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(45deg, #f8f9ff, #e8eaff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.1) 0%, transparent 70%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            50% { transform: translate(-50%, -50%) rotate(180deg); }
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .product-description {
+            color: #666;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .product-tags {
+            margin-bottom: 1rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .add-to-cart-btn {
+            width: 100%;
+            padding: 0.8rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .add-to-cart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .page-title {
+            margin-bottom: 1rem;
+            color: #667eea;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .search-results-info {
+            color: #666;
+            margin-bottom: 1rem;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-buttons {
+                justify-content: center;
+            }
+
+            .products-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">🛒 FreshMart</div>
+            <div class="nav-buttons">
+                <button class="btn btn-secondary">Home</button>
+                <button class="btn btn-secondary btn-active">Shop</button>
+                <button class="btn btn-secondary">Cart (3)</button>
+                <button class="btn btn-secondary">Delivery</button>
+                <button class="btn btn-secondary">Profile</button>
+                <button class="btn btn-secondary">Logout</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <h2 class="page-title">Shop Our Products</h2>
+            <div class="search-container">
+                <div class="search-icon">🔍</div>
+                <input type="text" class="search-input" placeholder="Search for products, brands, or categories..." value="">
+            </div>
+            <div class="search-results-info">Showing all 8 products</div>
+
+            <div class="products-grid">
+                <div class="product-card">
+                    <div class="product-image">🍎</div>
+                    <div class="product-info">
+                        <div class="product-name">Fresh Organic Apples</div>
+                        <div class="product-description">Crisp and sweet organic apples, perfect for snacking or baking.</div>
+                        <div class="product-tags">
+                            <span class="tag">fruit</span>
+                            <span class="tag">organic</span>
+                            <span class="tag">healthy</span>
+                            <span class="tag">fresh</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🍞</div>
+                    <div class="product-info">
+                        <div class="product-name">Whole Wheat Bread</div>
+                        <div class="product-description">Freshly baked whole wheat bread, rich in fiber and nutrients.</div>
+                        <div class="product-tags">
+                            <span class="tag">bread</span>
+                            <span class="tag">bakery</span>
+                            <span class="tag">whole wheat</span>
+                            <span class="tag">fresh</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🥛</div>
+                    <div class="product-info">
+                        <div class="product-name">Farm Fresh Milk</div>
+                        <div class="product-description">Pure and creamy milk from local dairy farms.</div>
+                        <div class="product-tags">
+                            <span class="tag">dairy</span>
+                            <span class="tag">milk</span>
+                            <span class="tag">fresh</span>
+                            <span class="tag">local</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🥬</div>
+                    <div class="product-info">
+                        <div class="product-name">Organic Spinach</div>
+                        <div class="product-description">Fresh organic spinach leaves, packed with iron and vitamins.</div>
+                        <div class="product-tags">
+                            <span class="tag">vegetables</span>
+                            <span class="tag">organic</span>
+                            <span class="tag">leafy greens</span>
+                            <span class="tag">healthy</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🍗</div>
+                    <div class="product-info">
+                        <div class="product-name">Premium Chicken Breast</div>
+                        <div class="product-description">High-quality chicken breast, perfect for grilling or roasting.</div>
+                        <div class="product-tags">
+                            <span class="tag">meat</span>
+                            <span class="tag">chicken</span>
+                            <span class="tag">protein</span>
+                            <span class="tag">fresh</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🧀</div>
+                    <div class="product-info">
+                        <div class="product-name">Artisan Cheese</div>
+                        <div class="product-description">Handcrafted artisan cheese with rich flavor and texture.</div>
+                        <div class="product-tags">
+                            <span class="tag">dairy</span>
+                            <span class="tag">cheese</span>
+                            <span class="tag">artisan</span>
+                            <span class="tag">gourmet</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🐟</div>
+                    <div class="product-info">
+                        <div class="product-name">Fresh Salmon Fillet</div>
+                        <div class="product-description">Wild-caught salmon fillet, rich in omega-3 fatty acids.</div>
+                        <div class="product-tags">
+                            <span class="tag">fish</span>
+                            <span class="tag">seafood</span>
+                            <span class="tag">healthy</span>
+                            <span class="tag">premium</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+
+                <div class="product-card">
+                    <div class="product-image">🍌</div>
+                    <div class="product-info">
+                        <div class="product-name">Organic Bananas</div>
+                        <div class="product-description">Sweet and ripe organic bananas, great for smoothies.</div>
+                        <div class="product-tags">
+                            <span class="tag">fruit</span>
+                            <span class="tag">organic</span>
+                            <span class="tag">tropical</span>
+                            <span class="tag">healthy</span>
+                        </div>
+                        <button class="add-to-cart-btn">Add to Cart</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo search functionality
+        const searchInput = document.querySelector('.search-input');
+        const resultsInfo = document.querySelector('.search-results-info');
+        const productCards = document.querySelectorAll('.product-card');
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            let visibleCount = 0;
+
+            productCards.forEach(card => {
+                const name = card.querySelector('.product-name').textContent.toLowerCase();
+                const description = card.querySelector('.product-description').textContent.toLowerCase();
+                const tags = Array.from(card.querySelectorAll('.tag')).map(tag => tag.textContent.toLowerCase());
+
+                const matches = name.includes(query) ||
+                               description.includes(query) ||
+                               tags.some(tag => tag.includes(query));
+
+                if (matches || query === '') {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            if (query === '') {
+                resultsInfo.textContent = 'Showing all 8 products';
+            } else {
+                resultsInfo.textContent = `Found ${visibleCount} product${visibleCount !== 1 ? 's' : ''} matching "${query}"`;
+            }
+        });
+
+        // Demo add to cart functionality
+        document.querySelectorAll('.add-to-cart-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const productName = this.closest('.product-card').querySelector('.product-name').textContent;
+
+                // Visual feedback
+                this.textContent = 'Added!';
+                this.style.background = '#2ecc71';
+
+                setTimeout(() => {
+                    this.textContent = 'Add to Cart';
+                    this.style.background = '';
+                }, 1500);
+
+                // Update cart count (demo)
+                const cartBtn = document.querySelector('.nav-buttons .btn:nth-child(3)');
+                const currentCount = parseInt(cartBtn.textContent.match(/\d+/)[0]);
+                cartBtn.textContent = `Cart (${currentCount + 1})`;
+            });
+        });
+    </script>
+</body>
+</html>
