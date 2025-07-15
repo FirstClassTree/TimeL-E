@@ -35,7 +35,7 @@ const Hero: React.FC = () => {
             
             <p className="text-xl text-gray-600 mb-8 max-w-2xl">
               Let AI learn your shopping patterns and automatically create your weekly grocery list. 
-              Save time, reduce waste, and never forget essentials again.
+              Save time, and never forget essentials again.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">

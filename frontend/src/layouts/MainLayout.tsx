@@ -304,18 +304,15 @@ const MainLayout: React.FC = () => {
       {/* Footer */}
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {/* Company Info */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
                   <ShoppingCart className="w-6 h-6 text-white" />
                 </div>
-                <span className="text-xl font-bold text-gray-900 dark:text-white">TimeL-E</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white">TimeL-E</span>
               </div>
-              <p className="text-gray-600 dark:text-gray-400">
-                Your AI-powered grocery shopping assistant. Save time, shop smarter.
-              </p>
             </div>
 
             {/* Quick Links */}

@@ -1,6 +1,4 @@
 // frontend/src/App.tsx
-// UPDATED: Added UserSeeding page routing and cleaned up imports
-
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from 'react-query';
