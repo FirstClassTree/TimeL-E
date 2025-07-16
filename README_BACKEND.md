@@ -184,54 +184,25 @@ backend/
 
 ## Quick Start
 
-### Using Docker Compose (Recommended)
+### Build and run all services:
+```bash
+docker-compose up --build
+```
 
-1. **Build and run backend only:**
-   ```bash
-   docker-compose up backend --build
-   ```
+### Build and run backend only:
+```bash
+docker-compose up backend --build
+```
 
-2. **Start all services:**
-   ```bash
-   docker-compose up --build
-   ```
+### Stop services:
+```bash
+docker-compose down
+```
 
-3. **Stop services:**
-   ```bash
-   docker-compose down
-   ```
-
-4. **Access the API:**
-   - API Gateway: http://localhost:8000
-   - API Documentation: http://localhost:8000/docs
-   - Health Check: http://localhost:8000/health
-
-### Using Docker Directly
-
-1. **Build backend image:**
-   ```bash
-   docker build -t timel-e-backend ./backend
-   ```
-
-2. **Run backend container:**
-   ```bash
-   docker run -p 8000:8000 timel-e-backend
-   ```
-
-### Local Development
-
-1. **Install dependencies:**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-2. **Run the application:**
-   ```bash
-   python -m app.main
-   # or
-   uvicorn app.main:app --reload
-   ```
+### Access the API:
+- **API Gateway**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
 
 ## Configuration
 
@@ -398,86 +369,13 @@ The API connects to a PostgreSQL database via the db-service microservice:
 - `orders.order_items` - Order line items with quantities
 - `users.users` - User accounts with delivery information
 
-## Frontend Integration
-
-### **Response Format**
-All endpoints return consistent responses:
-```json
-{
-  "success": true,
-  "message": "Operation description",
-  "data": { /* endpoint-specific data */ },
-  "timestamp": "2025-07-04T13:40:08.370054"
-}
-```
-
-### **Pagination Support**
-```json
-{
-  "products": [...],
-  "total": 1000,
-  "page": 1,
-  "per_page": 50,
-  "has_next": true,
-  "has_prev": false
-}
-```
-
-### **Error Handling**
-```json
-{
-  "detail": "Product 999 not found"
-}
-```
-
 ## Testing
-
-### **Run Comprehensive Tests**
-```bash
-python3 test_new_api.py
-```
 
 ### **Manual Testing**
 - **Health**: `curl http://localhost:8000/health`
 - **Products**: `curl http://localhost:8000/api/products/`
 - **Search**: `curl "http://localhost:8000/api/products/search?q=cookie"`
 - **Departments**: `curl http://localhost:8000/api/departments`
-
-## Development Workflow
-
-### **Current State: Database-Driven**
-The API serves real data from PostgreSQL database. Features include:
-- ✅ Production-ready database integration
-- ✅ Complete user account management
-- ✅ Advanced order lifecycle management
-- ✅ Cart persistence across sessions
-- ✅ ML-powered product recommendations
-- ✅ Enhanced filtering and search capabilities
-- ✅ Comprehensive error handling and validation
-
-### **Next Steps: Enhanced Features**
-Ready for additional enhancements:
-1. Advanced ML recommendation algorithms
-2. Real-time inventory management
-3. Payment processing integration
-4. Advanced analytics and reporting
-5. Product pricing and promotions
-6. Multi-language support
-
-### **Production Readiness**
-- ✅ Database-driven architecture
-- ✅ Proper error handling
-- ✅ Input validation and sanitization
-- ✅ UUID support for distributed systems
-- ✅ Comprehensive API documentation
-- ✅ Docker containerization
-- ✅ Environment-based configuration
-
-## Health Monitoring
-
-- **API Health**: `GET /health`
-- **System Info**: `GET /`
-- **Documentation**: `GET /docs`
 
 ## Architecture Benefits
 
@@ -492,19 +390,3 @@ Ready for additional enhancements:
 - **Maintainable**: Clear separation of concerns and modular design
 
 The TimeL-E Grocery API provides a complete, production-ready foundation for e-commerce platforms with advanced features including user management, cart persistence, order tracking, and ML-powered recommendations.
-
-## Breaking Changes from Previous Version
-
-- **UUID Migration**: Order and User IDs now use UUID format instead of integers
-- **Database Dependency**: All endpoints require the db-service to be running
-- **Enhanced Models**: Order models now include delivery and tracking information
-- **New Required Fields**: Some endpoints now require additional validation
-- **Response Format**: Enhanced pagination and metadata in API responses
-
-## Migration Guide
-
-1. **Update Frontend**: Change ID handling from integers to UUID strings
-2. **Database Setup**: Ensure db-service and PostgreSQL are running
-3. **Environment Variables**: Update configuration with DB_SERVICE_URL
-4. **API Calls**: Review new optional parameters and enhanced response formats
-5. **Error Handling**: Update to handle new validation and error responses
