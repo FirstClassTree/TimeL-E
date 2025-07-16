@@ -3,7 +3,8 @@
 # ============================================================================
 # BUILD STAGE - Compile dependencies and prepare environment
 # ============================================================================
-FROM python:3.9 as builder
+FROM python:3.9-slim as builder
+#FROM python:3.9 as builder
 
 # Set working directory
 WORKDIR /app
@@ -15,22 +16,25 @@ RUN apt-get update && apt-get install -y \
     g++ \
     libpq-dev \
     pkg-config \
-    python3-venv \
-    python3-pip \
+#    python3-venv \
+#    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better Docker layer caching
 COPY requirements.txt .
 
-# Upgrade pip globally before making the venv
-RUN pip install --upgrade pip==23.1.2
+## Upgrade pip globally before making the venv
+#RUN pip install --upgrade pip==23.1.2
 
 # Create virtual environment and install dependencies
-RUN python3 -m venv /opt/venv
+RUN python -m venv /opt/venv
+#RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Upgrade pip and install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+#RUN pip install --no-cache-dir -r requirements.txt
 
 # ============================================================================
 # PRODUCTION STAGE - Minimal runtime environment
