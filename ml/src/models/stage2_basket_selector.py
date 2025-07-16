@@ -1,5 +1,3 @@
-# ml-service/src/models/stage2_basket_selector.py
-
 import pandas as pd
 from sklearn.ensemble import GradientBoostingClassifier
 import joblib
