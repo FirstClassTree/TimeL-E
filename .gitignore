@@ -1,1 +1,7 @@
+<<<<<<< HEAD
+/data/
+data/
+./data/
+=======
 data/*.csv
+>>>>>>> main
