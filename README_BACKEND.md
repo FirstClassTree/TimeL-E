@@ -184,17 +184,39 @@ backend/
 
 ## Quick Start
 
-### Using Docker (Recommended)
+### Using Docker Compose (Recommended)
 
-1. **Start the API:**
+1. **Build and run backend only:**
+   ```bash
+   docker-compose up backend --build
+   ```
+
+2. **Start all services:**
    ```bash
    docker-compose up --build
    ```
 
-2. **Access the API:**
+3. **Stop services:**
+   ```bash
+   docker-compose down
+   ```
+
+4. **Access the API:**
    - API Gateway: http://localhost:8000
    - API Documentation: http://localhost:8000/docs
    - Health Check: http://localhost:8000/health
+
+### Using Docker Directly
+
+1. **Build backend image:**
+   ```bash
+   docker build -t timel-e-backend ./backend
+   ```
+
+2. **Run backend container:**
+   ```bash
+   docker run -p 8000:8000 timel-e-backend
+   ```
 
 ### Local Development
 
