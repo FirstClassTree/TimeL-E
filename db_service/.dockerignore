@@ -1,0 +1,51 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Environment files (not needed in image; mounted via compose)
+.env*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# IDE/editor config
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Docker-related
+#Dockerfile*
+.dockerignore
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Documentation
+#README.md
+docs/
+
+# Temporary
+*.tmp
+*.bak*

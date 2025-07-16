@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.egg-info/
+dist/
+build/
+
+# Environment / secrets
+.env
+*.env
+*.pem
+*.key
+*.crt
+
+# Virtual environments
+venv/
+env/
+.venv/
+.envrc
+
+# Git
+.git/
+.gitignore
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# === Logs and temp
+*.log
+*.tmp
+*.pid
+*.DS_Store
+
+# Docker-specific
+.dockerignore
+Dockerfile.dev
+
+# Optional: Dev tools not needed in container
+docker-compose.override.yml

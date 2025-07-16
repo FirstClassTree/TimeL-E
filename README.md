@@ -8,7 +8,7 @@
 - **Tal Weiss** – Backend Engineer  
 - **Inbar Reshilovsky** – Frontend Engineer  
 - **Ohad Libai** – ML Engineer  
-- **Anna Petrenko** – Data Engineer  
+- **Anna Petrenko** – Data Systems Engineer  
 
 ---
 
@@ -20,9 +20,27 @@ timele-project/
 ├── ml/ # Data processing and model training
 ├── data/ # Input and sample data
 ├── database/ # DB schema scripts
+├── db_service/ # RESTful API wrapper around PostgreSQL (used by backend)
+├── pgadmin/ # pgAdmin container
+├── .env # Environment configuration file
+├── docker-compose.yml # Base services definition
+├── docker-compose.override.yml # Development-only overrides (pgAdmin)
 └── README.md
 ```
 
+Multi-service architecture defined in:
+* docker-compose.yml (core services)
+* docker-compose.override.yml (local dev overrides)
+
+## Services Overview
+
+| Service    | Description                                  | URL (Dev)             | Port (Prod)                        |
+|------------|----------------------------------------------|-----------------------|------------------------------------|
+| frontend   | UI                                           | http://localhost:3000 | Exposed via reverse proxy (80/443) |
+| backend    | FastAPI app (w/ ervice client to db-service) | http://localhost:5000 | Exposed via reverse proxy (80/443) |
+| db-service | FastAPI-based internal DB gateway            | http://localhost:7000 | Not exposed                        |
+| postgres   | PostgreSQL database server                   | internal only         | Not exposed                        |
+| pgadmin    | Otional admin web UI for PostgreSQL          | http://localhost:5050 | Not exposed                        |
 
 ## ⚙️ Setup and Run
 
@@ -70,3 +88,12 @@ docker-compose up --build
 - 📖 Auto-generated API documentation
 
 > See [README_BACKEND.md](README_BACKEND.md) for detailed backend documentation.
+
+
+## ⚙️ Production Setup and Run
+
+```bash
+docker-compose -f docker-compose.yml up --build
+```
+
+This excludes pgadmin service.

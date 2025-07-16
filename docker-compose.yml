@@ -18,7 +18,9 @@ services:
 #      - ML_SERVICE_URL=${ML_SERVICE_URL}
       - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
-      - db-service
+#      - db-service
+      db-service:
+        condition: service_healthy
     networks:
       - timele-network
     restart: unless-stopped
@@ -62,51 +64,43 @@ services:
 
   db-service:
     build:
-      context: ./database-service
+      context: db_service
       dockerfile: Dockerfile
-    ports:
-      - "${DB_SERVICE_PORT}:${DB_SERVICE_PORT}"
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - DB_SERVICE_PORT=${DB_SERVICE_PORT}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      - postgres
+#      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - timele-network
     restart: unless-stopped
 
   postgres:
-    image: postgres
+    image: postgres:17
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-#    ports:
-#      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - timele-network
     restart: unless-stopped
 
-  pgadmin:
-    image: dpage/pgadmin4
-    ports:
-      - "127.0.0.1:${PGADMIN_PORT}:80"   # restricted to development on local machine
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@timele.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    depends_on:
-      - postgres
-    networks:
-      - timele-network
-    volumes:
-      - pgadmin-data:/var/lib/pgadmin
-    restart: unless-stopped
-
 volumes:
   postgres_data:
-  pgadmin-data:
 
 networks:
   timele-network:
