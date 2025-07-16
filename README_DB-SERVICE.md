@@ -27,6 +27,7 @@ db_service/
 │   ├── database_service.py     # Defines API endpoints for DB access
 │   ├── database.py             # SQLAlchemy engine/session setup
 │   ├── config.py               # Environment/config loading
+│   ├── populate_from_csv.py    # populate empty db with data from products.csv, aisles.csv, departments.csv
 │   ├── __init__.py
 │   └── models/                 # SQLAlchemy models
 │       ├── __init__.py
