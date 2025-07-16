@@ -2,22 +2,48 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from ..models.base import APIResponse
-from ..models.grocery import Product, ProductSearchResult
-from ..services.mock_data import mock_data
+from ..models.grocery import Product, ProductSearchResult, Department, Aisle
+from ..services.database_service import db_service
 
 router = APIRouter(prefix="/api/products", tags=["Products"])
 
 @router.get("/", response_model=APIResponse)
 async def get_products(
     limit: int = Query(50, description="Number of products to return", ge=1, le=100),
-    offset: int = Query(0, description="Number of products to skip", ge=0)
+    offset: int = Query(0, description="Number of products to skip", ge=0),
+    categories: Optional[List[str]] = Query(None, description="Filter by department categories")
 ) -> APIResponse:
-    """Get paginated list of products"""
+    """Get paginated list of products with optional filtering"""
     try:
-        products = mock_data.get_products(limit=limit, offset=offset)
-        total_products = len(mock_data.products)
+        # Get products from database
+        db_result = await db_service.get_products_with_filters(
+            limit=limit, 
+            offset=offset, 
+            categories=categories
+        )
         
-        has_next = (offset + limit) < total_products
+        if not db_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        products_data = db_result.get("data", [])
+        
+        # Convert to Product models
+        products = [
+            Product(
+                product_id=row["product_id"],
+                product_name=row["product_name"],
+                aisle_id=row["aisle_id"],
+                department_id=row["department_id"],
+                aisle_name=row.get("aisle_name"),
+                department_name=row.get("department_name")
+            )
+            for row in products_data
+        ]
+        
+        # Get total count for pagination (simplified - would need separate count query in production)
+        total_products = len(products_data)  # This is a limitation - we'd need a count query
+        
+        has_next = len(products) == limit  # Simplified check
         has_prev = offset > 0
         page = (offset // limit) + 1
         
@@ -34,6 +60,8 @@ async def get_products(
             message="Products retrieved successfully",
             data=result
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -47,7 +75,30 @@ async def search_products(
         if len(q.strip()) < 2:
             raise HTTPException(status_code=400, detail="Search query must be at least 2 characters")
         
-        products = mock_data.search_products(q, limit=limit)
+        # Get products from database with search
+        db_result = await db_service.get_products_with_filters(
+            limit=limit,
+            offset=0,
+            search_query=q
+        )
+        
+        if not db_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        products_data = db_result.get("data", [])
+        
+        # Convert to Product models
+        products = [
+            Product(
+                product_id=row["product_id"],
+                product_name=row["product_name"],
+                aisle_id=row["aisle_id"],
+                department_id=row["department_id"],
+                aisle_name=row.get("aisle_name"),
+                department_name=row.get("department_name")
+            )
+            for row in products_data
+        ]
         
         result = ProductSearchResult(
             products=products,
@@ -71,9 +122,27 @@ async def search_products(
 async def get_product(product_id: int) -> APIResponse:
     """Get specific product by ID"""
     try:
-        product = mock_data.get_product(product_id)
-        if not product:
+        # Get product from database
+        db_result = await db_service.get_product_by_id(product_id)
+        
+        if not db_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        products_data = db_result.get("data", [])
+        
+        if not products_data:
             raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        
+        # Convert to Product model
+        product_row = products_data[0]
+        product = Product(
+            product_id=product_row["product_id"],
+            product_name=product_row["product_name"],
+            aisle_id=product_row["aisle_id"],
+            department_id=product_row["department_id"],
+            aisle_name=product_row.get("aisle_name"),
+            department_name=product_row.get("department_name")
+        )
         
         return APIResponse(
             message="Product retrieved successfully",
@@ -89,11 +158,43 @@ async def get_products_by_department(department_id: int) -> APIResponse:
     """Get all products in a specific department"""
     try:
         # Verify department exists
-        department = mock_data.get_department(department_id)
-        if not department:
+        dept_result = await db_service.get_department_by_id(department_id)
+        
+        if not dept_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        dept_data = dept_result.get("data", [])
+        
+        if not dept_data:
             raise HTTPException(status_code=404, detail=f"Department {department_id} not found")
         
-        products = mock_data.get_products_by_department(department_id)
+        # Convert to Department model
+        dept_row = dept_data[0]
+        department = Department(
+            department_id=dept_row["department_id"],
+            department=dept_row["department"]
+        )
+        
+        # Get products in department
+        products_result = await db_service.get_products_by_department(department_id)
+        
+        if not products_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        products_data = products_result.get("data", [])
+        
+        # Convert to Product models
+        products = [
+            Product(
+                product_id=row["product_id"],
+                product_name=row["product_name"],
+                aisle_id=row["aisle_id"],
+                department_id=row["department_id"],
+                aisle_name=row.get("aisle_name"),
+                department_name=row.get("department_name")
+            )
+            for row in products_data
+        ]
         
         return APIResponse(
             message=f"Products in {department.department} department retrieved successfully",
@@ -113,11 +214,43 @@ async def get_products_by_aisle(aisle_id: int) -> APIResponse:
     """Get all products in a specific aisle"""
     try:
         # Verify aisle exists
-        aisle = mock_data.get_aisle(aisle_id)
-        if not aisle:
+        aisle_result = await db_service.get_aisle_by_id(aisle_id)
+        
+        if not aisle_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        aisle_data = aisle_result.get("data", [])
+        
+        if not aisle_data:
             raise HTTPException(status_code=404, detail=f"Aisle {aisle_id} not found")
         
-        products = mock_data.get_products_by_aisle(aisle_id)
+        # Convert to Aisle model
+        aisle_row = aisle_data[0]
+        aisle = Aisle(
+            aisle_id=aisle_row["aisle_id"],
+            aisle=aisle_row["aisle"]
+        )
+        
+        # Get products in aisle
+        products_result = await db_service.get_products_by_aisle(aisle_id)
+        
+        if not products_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        products_data = products_result.get("data", [])
+        
+        # Convert to Product models
+        products = [
+            Product(
+                product_id=row["product_id"],
+                product_name=row["product_name"],
+                aisle_id=row["aisle_id"],
+                department_id=row["department_id"],
+                aisle_name=row.get("aisle_name"),
+                department_name=row.get("department_name")
+            )
+            for row in products_data
+        ]
         
         return APIResponse(
             message=f"Products in {aisle.aisle} aisle retrieved successfully",
@@ -125,6 +258,68 @@ async def get_products_by_aisle(aisle_id: int) -> APIResponse:
                 "aisle": aisle,
                 "products": products,
                 "total": len(products)
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{product_id}/recommendations", response_model=APIResponse)
+async def get_product_recommendations(
+    product_id: int,
+    limit: int = Query(10, description="Number of recommendations to return", ge=1, le=50)
+) -> APIResponse:
+    """Get ML recommendations based on a specific product"""
+    try:
+        # Verify product exists
+        product_result = await db_service.get_product_by_id(product_id)
+        
+        if not product_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        product_data = product_result.get("data", [])
+        
+        if not product_data:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        
+        # TODO: Integrate with ML service for real recommendations
+        # For now, return products from the same department as a placeholder
+        product_row = product_data[0]
+        department_id = product_row["department_id"]
+        
+        recommendations_result = await db_service.get_products_by_department(department_id)
+        
+        if not recommendations_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Database query failed")
+        
+        recommendations_data = recommendations_result.get("data", [])
+        
+        # Filter out the original product and limit results
+        filtered_recommendations = [
+            row for row in recommendations_data 
+            if row["product_id"] != product_id
+        ][:limit]
+        
+        # Convert to Product models
+        recommendations = [
+            Product(
+                product_id=row["product_id"],
+                product_name=row["product_name"],
+                aisle_id=row["aisle_id"],
+                department_id=row["department_id"],
+                aisle_name=row.get("aisle_name"),
+                department_name=row.get("department_name")
+            )
+            for row in filtered_recommendations
+        ]
+        
+        return APIResponse(
+            message=f"Found {len(recommendations)} recommendations for product {product_id}",
+            data={
+                "product_id": product_id,
+                "recommendations": recommendations,
+                "total": len(recommendations)
             }
         )
     except HTTPException:

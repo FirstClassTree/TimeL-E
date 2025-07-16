@@ -25,8 +25,8 @@ class Aisle(BaseModel):
 
 class Order(BaseModel):
     """Order model matching CSV structure"""
-    order_id: int
-    user_id: int
+    order_id: str  # Changed to str to match UUID
+    user_id: str  # Changed to str to match UUID
     eval_set: str
     order_number: int
     order_dow: int  # day of week (0-6)
@@ -35,28 +35,39 @@ class Order(BaseModel):
 
 class OrderItem(BaseModel):
     """Order item model matching CSV structure"""
-    order_id: int
+    order_id: str  # Changed to str to match UUID
     product_id: int
     add_to_cart_order: int  # sequence in cart
     reordered: int  # 0 or 1
+    quantity: int = 1  # Added quantity field
     # Joined data for frontend convenience
     product_name: Optional[str] = None
 
 class OrderWithItems(BaseModel):
     """Order with its items for detailed view"""
-    order_id: int
-    user_id: int
+    order_id: str  # Changed to str to match UUID
+    user_id: str  # Changed to str to match UUID
     eval_set: str
     order_number: int
     order_dow: int
     order_hour_of_day: int
     days_since_prior_order: Optional[float] = None
-    items: List[OrderItem] = []
     total_items: int = 0
+    status: Optional[str] = None
+    # Delivery/tracking fields
+    phone_number: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    tracking_number: Optional[str] = None
+    shipping_carrier: Optional[str] = None
+    tracking_url: Optional[str] = None
+    items: List[OrderItem] = []
 
 class CreateOrderRequest(BaseModel):
     """Request model for creating new orders"""
-    user_id: int
+    user_id: str  # Changed to str to match UUID
     items: List[dict]  # [{"product_id": 123, "quantity": 2}, ...]
 
 class ProductSearchResult(BaseModel):
@@ -76,6 +87,6 @@ class PredictionItem(BaseModel):
 
 class UserPredictions(BaseModel):
     """User prediction response"""
-    user_id: int
+    user_id: str  # Changed to str to match UUID
     predictions: List[PredictionItem]
     total: int

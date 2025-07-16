@@ -2,8 +2,8 @@ services:
   # Main Backend API Gateway
   backend:
     build: 
-      context: .
-      dockerfile: ./backend/Dockerfile
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     environment:
