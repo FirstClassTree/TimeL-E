@@ -2,7 +2,7 @@
 services:
   backend:
     volumes:
-      - ./backend/data:/app/data
+      - ./data:/app/data
 
   db-service:
     ports:

@@ -79,7 +79,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./backend/data:/app/csv_data
+      - ./data:/app/csv_data
     networks:
       - timele-network
     restart: unless-stopped
