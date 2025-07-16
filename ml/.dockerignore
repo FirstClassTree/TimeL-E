@@ -34,8 +34,8 @@ models/*.h5
 .ipynb_checkpoints/
 
 # Documentation
-README.md
-*.md
+#README.md
+#*.md
 docs/
 
 # IDE and editor files
@@ -99,4 +99,3 @@ mlruns/
 
 # Temporary files
 *.tmp
-.tmp/

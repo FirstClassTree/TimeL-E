@@ -11,5 +11,7 @@ def create_schemas():
         conn.commit()
 
 def init_db():
+    # create the schemas users, products, and orders
     create_schemas()
+    # generate the tables defined in the SQLAlchemy models under those schemas
     Base.metadata.create_all(bind=engine)

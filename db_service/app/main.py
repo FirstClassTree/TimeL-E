@@ -3,10 +3,14 @@ from contextlib import asynccontextmanager
 from .init_db import init_db
 from .database_service import router
 import os
+from .populate_from_csv import populate_tables
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()   # Runs once at startup
+    # Runs once at startup
+    init_db()
+    # load data from departments.csv, aisles.csv, and products.csv into their respective tables
+    populate_tables()
     yield       # App runs
     # Optionally add shutdown logic after yield
 
