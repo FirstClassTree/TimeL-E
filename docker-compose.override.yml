@@ -1,0 +1,32 @@
+
+services:
+  backend:
+    volumes:
+      - ./backend/data:/app/data
+
+  db-service:
+    ports:
+      - "${DB_SERVICE_PORT}:${DB_SERVICE_PORT}"
+
+#  postgres:
+#    ports:
+#      - "127.0.0.1:5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "127.0.0.1:${PGADMIN_PORT}:80"   # restricted to development on local machine
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    depends_on:
+      postgres:
+          condition: service_healthy
+    networks:
+      - timele-network
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    restart: unless-stopped
+
+volumes:
+  pgadmin-data:

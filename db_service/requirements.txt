@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+psycopg2-binary
+sqlalchemy>=2.0
+uuid-utils>=0.11.0  # provides uuid7() support until native uuid.UUIDv7 is available in Python 3.14+

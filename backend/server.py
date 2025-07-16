@@ -4,6 +4,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from db import initialize_db, insert_cart_item, get_all_cart_data
 from ml_predictor import load_model, predict_next_cart  # <- Import ML model utils
+from api import Item, User
 
 app = FastAPI()
 
@@ -26,7 +27,7 @@ def startup_event():
 def add_cart_item(item: CartItem):
     try:
         insert_cart_item(item.user_id, item.item_id, item.quantity)
-        return {"message": "Item added to cart"}
+        return {"success": True, "message": "Item added to cart"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -34,7 +35,7 @@ def add_cart_item(item: CartItem):
 def fetch_cart_data():
     try:
         data = get_all_cart_data()
-        return {"data": data}
+        return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -42,6 +43,6 @@ def fetch_cart_data():
 def predict_cart(request: PredictRequest):
     try:
         prediction = predict_next_cart(request.user_id)
-        return {"predicted_cart": prediction}
+        return {"success": True, "predicted_cart": prediction}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
