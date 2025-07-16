@@ -19,6 +19,29 @@ This backend serves as a **Database-Driven API Gateway** that:
 Frontend → Backend (API Gateway) → DB-Service → PostgreSQL
 ```
 
+## Quick Start
+
+### Build and run all services:
+```bash
+docker-compose up --build
+```
+
+### Build and run backend only:
+```bash
+docker-compose up backend --build
+```
+
+### Stop services:
+```bash
+docker-compose down
+```
+
+### Access the API:
+- **API Gateway**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+
 ## Project Structure
 
 ```
@@ -182,27 +205,6 @@ backend/
 - `GET /docs` - Interactive API documentation
 - `GET /redoc` - Alternative API documentation
 
-## Quick Start
-
-### Build and run all services:
-```bash
-docker-compose up --build
-```
-
-### Build and run backend only:
-```bash
-docker-compose up backend --build
-```
-
-### Stop services:
-```bash
-docker-compose down
-```
-
-### Access the API:
-- **API Gateway**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
 
 ## Configuration
 
