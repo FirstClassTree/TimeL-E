@@ -3,10 +3,9 @@
 from fastapi import APIRouter, HTTPException, Request
 import psycopg2
 import os
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
-from app.database import SessionLocal
-from psycopg2.extras import RealDictCursor
+# from sqlalchemy.exc import SQLAlchemyError
+# from sqlalchemy import text
+import asyncpg
 
 router = APIRouter()
 
@@ -56,15 +55,19 @@ async def run_query(request: Request):
 
     try:
         validate_params(params) # protects against malformed inputs or strange usage
-
-        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-        cur = conn.cursor()
-        cur.execute(sql, params)    # psycopg2 automatically escapes and binds the parameters securely
-        rows = cur.fetchall() if cur.description else []
-        cur.close()
-        conn.close()
-        return {"status": "ok", "results": rows}
-    except SQLAlchemyError as e:
-        print("Query error:", e)
-        raise HTTPException(status_code=400, detail=f"Query failed: {str(e)}")
+        # asyncpg expects $1/$2, but parameters should be passed as *args
+        conn = await asyncpg.connect(DATABASE_URL)
+        try:
+            rows = await conn.fetch(sql, *params)
+            # Convert Record objects to dicts for JSON serialization
+            results = [dict(row) for row in rows]
+        except Exception as query_exc:
+            print(f"Query failed: {query_exc}")   # print goes to container logs
+            raise HTTPException(status_code=400, detail=f"Database query failed.")
+        finally:
+            await conn.close()
+        return {"status": "ok", "results": results}
+    except Exception as e:
+        print(f"Request failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Request failed.")
 
