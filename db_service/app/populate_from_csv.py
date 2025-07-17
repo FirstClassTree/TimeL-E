@@ -1,5 +1,7 @@
 import os
 import csv
+import traceback
+
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import Product, Department, Aisle
@@ -50,6 +52,7 @@ def populate_tables():
         print("CSV data loaded into DB.")
     except Exception as e:
         db.rollback()
-        print("Error populating tables:", e)
+        # print("Error populating tables:", e)
+        traceback.print_exc()
     finally:
         db.close()
