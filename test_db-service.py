@@ -94,6 +94,61 @@ def test_orders_order_id_items():
     print(resp.status_code)
     print(resp.json())
 
+class UserApiTests:
+    BASE = "http://localhost:7000/users"
+
+    def __init__(self):
+        self.user_id = None
+        self.password = "Password123"
+        self.new_password = "NewPass123"
+
+    def create_user(self):
+        data = {
+            "name": "alice",
+            "email_address": "alice@example.com",
+            "password": self.password,
+            "phone_number": "123-456-7890",
+            "street_address": "1 Main St",
+            "city": "Townsville",
+            "postal_code": "00001",
+            "country": "Wonderland"
+        }
+        resp = requests.post(f"{self.BASE}/", json=data)
+        assert resp.status_code == 201, resp.text
+        self.user_id = resp.json()["user_id"]
+        print("User created:", resp.json())
+
+    def get_user(self):
+        resp = requests.get(f"{self.BASE}/{self.user_id}")
+        assert resp.status_code == 200, resp.text
+        print("User details:", resp.json())
+
+    def update_user(self):
+        data = {"city": "Newville", "phone_number": "555-4321"}
+        resp = requests.patch(f"{self.BASE}/{self.user_id}", json=data)
+        assert resp.status_code == 200, resp.text
+        print("User updated:", resp.json())
+
+    def update_password(self):
+        data = {"current_password": self.password, "new_password": self.new_password}
+        resp = requests.post(f"{self.BASE}/{self.user_id}/password", json=data)
+        assert resp.status_code == 200, resp.text
+        print("Password updated:", resp.json())
+        self.password = self.new_password  # Update for later deletion
+
+    def delete_user(self):
+        data = {"password": self.password}
+        resp = requests.delete(f"{self.BASE}/{self.user_id}", json=data)
+        assert resp.status_code in (200, 204), resp.text
+        print("User deleted.")
+
+    def run_all(self):
+        self.create_user()
+        self.get_user()
+        self.update_user()
+        self.update_password()
+        self.delete_user()
+
 
 if __name__ == "__main__":
     test_query()
@@ -104,4 +159,6 @@ if __name__ == "__main__":
     print()
     test_orders_order_id_items()
     print()
+    tester = UserApiTests()
+    tester.run_all()
 

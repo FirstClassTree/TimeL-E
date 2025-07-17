@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from .init_db import init_db
 from .database_service import router
+from .users_routers import router as users_router
+from .orders_routers import router as orders_router
 import os
 from .populate_from_csv import populate_tables
 
@@ -19,6 +21,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 app.include_router(router)
+app.include_router(users_router)
+app.include_router(orders_router)
 
 @app.get("/health")
 def health():

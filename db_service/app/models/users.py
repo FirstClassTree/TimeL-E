@@ -25,4 +25,3 @@ class User(Base):
 
     # Enables accessing all orders by this user
     orders = relationship("Order", back_populates="user")
-
