@@ -46,17 +46,82 @@ The backend service sends requests to this service.
 
 These are handled by db-service's internal router and routed to the appropriate model.
 
+## Running the Service
+
+Run the following command to start all services, including db-service:
+
+```bash
+docker-compose up --build
+```
+
+Make sure .env is configured correctly with DB credentials.
+
+### Healthcheck
+
+Docker Compose healthcheck is defined as:
+
+```
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+```
+
+## Testing the API (Example)
+
+Once the `db-service` is running via Docker and port `7000` is mapped,
+
+one can test if specific endpoints are exposed using curl.
+
+### Example Request (`POST /users`)
+
+Note: If the `/users` endpoint is not implemented yet in the FastAPI router,
+this request will return `{"detail":"Not Found"}`.
+
+Run from the **host machine**.
+
+#### Windows CMD (Escape double quotes)
+
+```bash
+curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"username\":\"alice\", \"email\":\"alice@example.com\"}"
+```
+#### Linux / macOS / Git Bash
+
+```
+curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d '{"username":"alice", "email":"alice@example.com"}'
+```
+
+Once the `POST /users` route is implemented in db-service, this command should return a successful response
+(e.g. the created user record or a confirmation message).
+
+
+#### More Windows CMD Examples
+
+```bash
+curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products LIMIT 1\", \"params\": []}"
+```
+
+```bash
+curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products WHERE department_id = $1 LIMIT $2\", \"params\": [19, 10]}"
+```
+
+also see test_db-service.py
+
 ## API Endpoints
 
 ```/query```
 
 Accepts parameterized SQL queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
+
 Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+
 Later should be restricted to select queries only.  
 
 ```/products```
 
 Returns a paginated list of products from the database with department and aisle names,
+
 optionally filtered by department (categories).
 
 Full address for other containers:
@@ -72,7 +137,9 @@ Has the following query parameters:
 * categories (optional, can repeat) — Filter by one or more department names (case-insensitive)
 
 Example for host in development environment:
+
 `http://localhost:7000/products?categories=Bakery&categories=Dairy`
+
 `http://localhost:7000/products?limit=50&offset=100`
 
 Backend example, with params:
@@ -146,62 +213,81 @@ order_request = {
 order_result = await db_service.create_order(order_request)
 ```
 
-## Running the Service
+```/orders/{order_id}/items```
 
-Run the following command to start all services, including db-service:
+Adds new products to an existing order.
 
+If the order already contains the product, its quantity will be increased;
+otherwise, a new item row is created.
+
+Full address for other containers:
+
+'http://db-service:7000/orders/{order_id}/items'
+
+### Request Body (JSON):
+
+```json
+[
+  {
+    "product_id": 103,
+    "quantity": 2,
+    "add_to_cart_order": 3,
+    "reordered": 0
+  },
+  {
+    "product_id": 104,
+    "quantity": 1
+  }
+]
+```
+
+Response:
+
+```json
+{
+  "message": "Added 2 items to order f9de...53f8",
+  "order_id": "f9de...53f8",
+  "added_items": [
+    {
+      "order_id": "f9de...53f8",
+      "product_id": 103,
+      "quantity": 2,
+      "add_to_cart_order": 3,
+      "reordered": 0,
+      "updated": false
+    },
+    {
+      "order_id": "f9de...53f8",
+      "product_id": 104,
+      "quantity": 1,
+      "add_to_cart_order": 4,
+      "reordered": 0,
+      "updated": false
+    }
+  ],
+  "total_added": 2
+}
+```
+### Example Request (Backend usage):
 ```bash
-docker-compose up --build
+order_id = "b2acaa2e-22d6-11ef-803b-63d8b24f7e8b"  # Example order UUID
+items_to_add = [
+    {"product_id": 101, "quantity": 2},
+    {"product_id": 105, "quantity": 1, "reordered": 1}
+]
+
+result = await db_service.create_entity(
+    entity_type=f"orders/{order_id}/items",
+    data=items_to_add  # NOTE: Items are sent as a list, not wrapped in a dict
+)
 ```
 
-Make sure .env is configured correctly with DB credentials.
+Note:
 
-### Healthcheck
+* Use create_entity(entity_type=..., data=...) for POST.
 
-Docker Compose healthcheck is defined as:
+* entity_type should be "orders/{order_id}/items", no leading slash.
 
-```
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-```
+* data is a list of items, not a dict.
 
-## Testing the API (Example)
-
-Once the `db-service` is running via Docker and port `7000` is mapped, one can test if specific endpoints are exposed using curl.
-
-### Example Request (`POST /users`)
-
-Note: If the `/users` endpoint is not implemented yet in the FastAPI router,
-this request will return `{"detail":"Not Found"}`.
-
-Run from the **host machine**.
-
-#### Windows CMD (Escape double quotes)
-
-```bash
-curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"username\":\"alice\", \"email\":\"alice@example.com\"}"
-```
-#### Linux / macOS / Git Bash
-
-```
-curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d '{"username":"alice", "email":"alice@example.com"}'
-```
-
-Once the `POST /users` route is implemented in db-service, this command should return a successful response
-(e.g. the created user record or a confirmation message).
-
-
-#### More Windows CMD Examples
-
-```bash
-curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products LIMIT 1\", \"params\": []}"
-```
-
-```bash
-curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products WHERE department_id = $1 LIMIT $2\", \"params\": [19, 10]}"
-```
-
-also see test_db-service.py
+* This method is fully async; call with await.

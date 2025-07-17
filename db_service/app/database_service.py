@@ -1,19 +1,19 @@
 # app/database_service.py
 
-from fastapi import APIRouter, Query, HTTPException, Request, status
+from fastapi import APIRouter, Query, HTTPException, Request, status, Body, Path
 from fastapi.responses import JSONResponse
 import psycopg2
 import os
 from sqlalchemy.exc import SQLAlchemyError
-# from sqlalchemy import text
 from sqlalchemy.orm import joinedload
 from app.database import SessionLocal
 import asyncpg
-from app.models import Order, OrderItem, Product, Department, Aisle, User
+from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from uuid_utils import uuid7
 # from uuid import uuid7   # native uuid7 in python 3.14
+import uuid
 
 router = APIRouter()
 
@@ -153,7 +153,7 @@ class OrderItemRequest(BaseModel):
 
 
 class CreateOrderRequest(BaseModel):
-    user_id: int
+    user_id: str
     eval_set: Optional[str] = "new"
     order_dow: int = None
     order_hour_of_day: int = None
@@ -192,15 +192,23 @@ def create_order(order_request: CreateOrderRequest):
                                 detail=f"Products not found: {', '.join(map(str, missing_product_ids))}")
 
         # Create the order
+        last_order = (
+            session.query(Order)
+            .filter_by(user_id=order_request.user_id)
+            .order_by(Order.order_number.desc())
+            .first()
+        )
+        next_order_number = (last_order.order_number if last_order else 0) + 1
         order = Order(
             user_id=order_request.user_id,
+            order_id=uuid.UUID(str(uuid7())),
             eval_set=order_request.eval_set,
-            order_number=uuid7(),
+            order_number=next_order_number,
             order_dow=order_request.order_dow,
             order_hour_of_day=order_request.order_hour_of_day,
             days_since_prior_order=order_request.days_since_prior_order,
             total_items=len(order_request.items),
-            status=order_request.status,
+            status=OrderStatus(order_request.status) if order_request.status else OrderStatus.PENDING,
             phone_number=order_request.phone_number,
             street_address=order_request.street_address,
             city=order_request.city,
@@ -265,6 +273,100 @@ def create_order(order_request: CreateOrderRequest):
     except Exception as e:
         session.rollback()
         print(f"Error creating order: {e}")
-        raise HTTPException(status_code=500, detail=f"Error creating order: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating order")
+    finally:
+        session.close()
+
+
+class AddOrderItemRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+    add_to_cart_order: Optional[int] = None
+    reordered: int = 0
+
+
+@router.post("/orders/{order_id}/items", status_code=201)
+def add_order_items(
+    order_id: str = Path(...),
+    items: List[AddOrderItemRequest] = Body(...)
+):
+    session = SessionLocal()
+    try:
+        # Check order exists
+        order = session.query(Order).filter_by(order_id=order_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+        if not items:
+            raise HTTPException(status_code=400, detail="Must provide at least one item")
+
+        # Validate product IDs exist
+        product_ids = [item.product_id for item in items]
+        existing_products = session.query(Product.product_id).filter(Product.product_id.in_(product_ids)).all()
+        existing_product_ids = {p[0] for p in existing_products}
+        missing_product_ids = [pid for pid in product_ids if pid not in existing_product_ids]
+        if missing_product_ids:
+            raise HTTPException(status_code=400, detail=f"Products not found: {', '.join(map(str, missing_product_ids))}")
+
+        # Determine next add_to_cart_order
+        current_count = session.query(OrderItem).filter_by(order_id=order_id).count()
+        next_cart_order = current_count + 1
+
+        # Add new order items
+        added_items = []
+
+        existing_items = session.query(OrderItem).filter_by(order_id=order_id).all()
+        existing_map = {oi.product_id: oi for oi in existing_items}
+
+        for item in items:
+            if item.product_id in existing_map:
+                existing = existing_map[item.product_id]
+                # Update existing row
+                existing.quantity += item.quantity
+                # Optionally update add_to_cart_order, reordered, etc.
+                added_items.append({
+                    "order_id": order_id,
+                    "product_id": item.product_id,
+                    "quantity": existing.quantity,
+                    "add_to_cart_order": existing.add_to_cart_order,
+                    "reordered": existing.reordered,
+                    "updated": True
+                })
+            else:
+                new_item = OrderItem(
+                    order_id=order_id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    add_to_cart_order=item.add_to_cart_order or next_cart_order,
+                    reordered=item.reordered or 0
+            )
+                session.add(new_item)
+                added_items.append({
+                    "order_id": order_id,
+                    "product_id": new_item.product_id,
+                    "quantity": new_item.quantity,
+                    "add_to_cart_order": new_item.add_to_cart_order,
+                    "reordered": new_item.reordered,
+                    "updated": False
+                })
+                next_cart_order += 1
+
+        session.commit()
+        return {
+            "message": f"Added {len(added_items)} items to order {order_id}",
+            "order_id": order_id,
+            "added_items": added_items,
+            "total_added": len(added_items)
+        }
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        print(f"Error adding order items: {e}")
+        raise HTTPException(status_code=500, detail=f"Error adding order items")
     finally:
         session.close()
