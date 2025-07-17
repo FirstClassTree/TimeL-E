@@ -9,6 +9,7 @@ RUN pip install --upgrade pip setuptools wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+COPY data/ ./data/csv_data/
 
 #CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7000"]
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${DB_SERVICE_PORT}"]
