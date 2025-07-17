@@ -43,7 +43,7 @@ export default defineConfig(({ command, mode }) => {
       // Proxy API requests to backend
       proxy: {
         '/api': {
-          target: env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000',
+          target: env.VITE_API_URL?.replace('/api', '') || 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           timeout: 30000,

@@ -37,7 +37,7 @@ Multi-service architecture defined in:
 | Service    | Description                                  | URL (Dev)             | Port (Prod)                        |
 |------------|----------------------------------------------|-----------------------|------------------------------------|
 | frontend   | UI                                           | http://localhost:3000 | Exposed via reverse proxy (80/443) |
-| backend    | FastAPI app (w/ ervice client to db-service) | http://localhost:5000 | Exposed via reverse proxy (80/443) |
+| backend    | FastAPI app (w/ ervice client to db-service) | http://localhost:8000 | Exposed via reverse proxy (80/443) |
 | db-service | FastAPI-based internal DB gateway            | http://localhost:7000 | Not exposed                        |
 | postgres   | PostgreSQL database server                   | internal only         | Not exposed                        |
 | pgadmin    | Otional admin web UI for PostgreSQL          | http://localhost:5050 | Not exposed                        |

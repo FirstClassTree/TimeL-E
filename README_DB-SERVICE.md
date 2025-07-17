@@ -96,3 +96,16 @@ curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d 
 
 Once the `POST /users` route is implemented in db-service, this command should return a successful response
 (e.g. the created user record or a confirmation message).
+
+
+#### More Windows CMD Examples
+
+```bash
+curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products LIMIT 1\", \"params\": []}"
+```
+
+```bash
+curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products WHERE department_id = $1 LIMIT $2\", \"params\": [19, 10]}"
+```
+
+also see test_db-service.py
