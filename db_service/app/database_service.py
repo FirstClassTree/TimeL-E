@@ -1,12 +1,28 @@
 # app/database_service.py
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Request
 import psycopg2
 import os
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
+from app.database import SessionLocal
+from psycopg2.extras import RealDictCursor
 
 router = APIRouter()
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def validate_params(params):
+    """Reject malformed inputs or strange usage."""
+    if not isinstance(params, list):
+        raise ValueError("Params must be a list")
+    for p in params:
+        if isinstance(p, (dict, list, set, tuple, bytes, bytearray)):
+            raise ValueError(f"Disallowed param type: {type(p)}")
+        if callable(p):
+            raise ValueError("Function values not allowed in params")
+        if isinstance(p, str) and len(p) > 10000:
+            raise ValueError("String parameter too long")
 
 @router.get("/health")
 def health_check():
@@ -16,3 +32,39 @@ def health_check():
         return {"status": "ok", "database": "reachable"}
     except Exception as e:
         return {"status": "error", "database": str(e)}
+
+@router.post("/query")
+async def run_query(request: Request):
+    """
+    Accepts parameterized SQL queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
+    Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+    """
+    # """
+    # Accepts parameterized SQL SELECT queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
+    # Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+    # Only SELECT queries are allowed.
+    # """
+    body = await request.json()
+    sql = body.get("sql")
+    params = body.get("params", [])
+
+    if not sql:
+        raise HTTPException(status_code=400, detail="Missing 'sql' in request body")
+
+    # if not sql.strip().lower().startswith("select"):
+    #     raise HTTPException(status_code=403, detail="Only SELECT queries are allowed")
+
+    try:
+        validate_params(params) # protects against malformed inputs or strange usage
+
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+        cur = conn.cursor()
+        cur.execute(sql, params)    # psycopg2 automatically escapes and binds the parameters securely
+        rows = cur.fetchall() if cur.description else []
+        cur.close()
+        conn.close()
+        return {"status": "ok", "results": rows}
+    except SQLAlchemyError as e:
+        print("Query error:", e)
+        raise HTTPException(status_code=400, detail=f"Query failed: {str(e)}")
+
