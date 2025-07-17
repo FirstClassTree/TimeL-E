@@ -1,0 +1,102 @@
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Environment files (handled by docker-compose)
+.env*
+!.env.example
+
+# Data and model artifacts (handled by volumes)
+data/processed/
+data/raw/
+models/*.pkl
+models/*.joblib
+models/*.h5
+
+# Jupyter Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Documentation
+README.md
+*.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+
+# Git and version control
+.git/
+.gitignore
+.gitattributes
+
+# Docker files (avoid recursive copying)
+Dockerfile*
+.dockerignore
+
+# Package management
+pip-log.txt
+pip-delete-this-directory.txt
+.pip/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Logs
+*.log
+logs/
+
+# ML experiment tracking
+mlruns/
+.mlflow/
+
+# Temporary files
+*.tmp
+.tmp/

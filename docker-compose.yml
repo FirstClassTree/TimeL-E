@@ -42,27 +42,27 @@ services:
       - timele-network
     restart: unless-stopped
 
-#  ml:
-#    build:
-#      context: ./ml
-#      dockerfile: Dockerfile
-#    environment:
-#      - DATABASE_URL=${DATABASE_URL}
-#      - PYTHONPATH=/app
-#    ports:
-#      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
-#    depends_on:
-#      db-service:
-#        condition: service_healthy
-#      pgadmin:
-#        condition: service_healthy
-#      postgres:
-#        condition: service_healthy
-#    volumes:
-#      - ./ml:/app
-#    networks:
-#      - timele-network
-#    restart: unless-stopped
+  ml:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - PYTHONPATH=/app
+    ports:
+      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
+    depends_on:
+      db-service:
+        condition: service_healthy
+      pgadmin:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./ml:/app
+    networks:
+      - timele-network
+    restart: unless-stopped
 
   db-service:
     build:
