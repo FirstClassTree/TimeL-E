@@ -42,7 +42,7 @@ services:
       - timele-network
     restart: unless-stopped
 
-  ml:
+  ml-service:
     build:
       context: ./ml-service
       dockerfile: Dockerfile
@@ -59,7 +59,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./ml:/app
+      - ./ml-service:/app
     networks:
       - timele-network
     restart: unless-stopped
