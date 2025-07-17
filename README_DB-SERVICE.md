@@ -48,7 +48,103 @@ These are handled by db-service's internal router and routed to the appropriate 
 
 ## API Endpoints
 
-TBD
+```/query```
+
+Accepts parameterized SQL queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
+Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+Later should be restricted to select queries only.  
+
+```/products```
+
+Returns a paginated list of products from the database with department and aisle names,
+optionally filtered by department (categories).
+
+Full address for other containers:
+
+`http://db-service:7000/products`
+
+Has the following query parameters:
+
+* limit (default: 25, min: 1, max: 100) — How many products to return
+
+* offset (default: 0, min: 0) — Where to start (for pagination)
+
+* categories (optional, can repeat) — Filter by one or more department names (case-insensitive)
+
+Example for host in development environment:
+`http://localhost:7000/products?categories=Bakery&categories=Dairy`
+`http://localhost:7000/products?limit=50&offset=100`
+
+Backend example, with params:
+```bash
+products_result = await db_service.list_entities(
+    "products",
+    {"limit": 25, "offset": 0, "categories": ["Bakery", "Dairy"]}
+)
+```
+
+```/orders```
+
+Creates a new order in the database.
+
+Full address for other containers:
+
+`http://db-service:7000/orders`
+
+### Request Body (JSON):
+
+```json
+{
+    "user_id": 1,
+    "eval_set": "new",
+    "order_dow": 1,
+    "order_hour_of_day": 14,
+    "days_since_prior_order": 7,
+    "total_items": 3,
+    "status": "pending",
+    "phone_number": "123-456-7890",
+    "street_address": "123 Main St",
+    "city": "Springfield",
+    "postal_code": "62701",
+    "country": "USA",
+    "tracking_number": "TRACK12345",
+    "shipping_carrier": "UPS",
+    "tracking_url": "http://example.com/track",
+    "items": [
+        {
+            "product_id": 101,
+            "quantity": 2,
+            "add_to_cart_order": 1,
+            "reordered": 0
+        },
+        {
+            "product_id": 102,
+            "quantity": 1,
+            "add_to_cart_order": 2,
+            "reordered": 0
+        }
+    ]
+}
+```
+
+Example Request (Backend usage):
+
+```bash
+order_request = {
+    "user_id": 1,
+    "eval_set": "new",
+    "order_dow": 1,
+    "order_hour_of_day": 14,
+    "days_since_prior_order": 7,
+    "total_items": 3,
+    "status": "pending",
+    "items": [
+        {"product_id": 101, "quantity": 2},
+        {"product_id": 102, "quantity": 1}
+    ]
+}
+order_result = await db_service.create_order(order_request)
+```
 
 ## Running the Service
 

@@ -1,11 +1,19 @@
 # app/database_service.py
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Query, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 import psycopg2
 import os
-# from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError
 # from sqlalchemy import text
+from sqlalchemy.orm import joinedload
+from app.database import SessionLocal
 import asyncpg
+from app.models import Order, OrderItem, Product, Department, Aisle, User
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from uuid_utils import uuid7
+# from uuid import uuid7   # native uuid7 in python 3.14
 
 router = APIRouter()
 
@@ -71,3 +79,192 @@ async def run_query(request: Request):
         print(f"Request failed: {e}")
         raise HTTPException(status_code=400, detail=f"Request failed.")
 
+@router.get("/products")
+def get_products(
+    limit: int = Query(25, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    categories: list[str] = Query(default=None)
+) -> JSONResponse:
+    """Return a paginated list of products from the database with department and aisle names,
+    optionally filtered by department (categories)."""
+    session = SessionLocal()
+    try:
+        # Start building base query with eager loading
+        query = (
+            session.query(Product)
+            .options(
+                joinedload(Product.department),
+                joinedload(Product.aisle)
+            )
+        )
+
+        # Filter by department name if categories param provided
+        if categories:
+            query = query.join(Product.department).filter(
+                Department.department.in_([c.lower() for c in categories])
+            )
+
+        # Count all products after filtering (for pagination UI)
+        total = query.count()
+
+        products = (
+            query.order_by(Product.product_id)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        results = [
+            {
+                "product_id": p.product_id,
+                "product_name": p.product_name,
+                "department_id": p.department_id,
+                "department_name": p.department.department if p.department else None,
+                "aisle_id": p.aisle_id,
+                "aisle_name": p.aisle.aisle if p.aisle else None,
+            }
+            for p in products
+        ]
+        return JSONResponse(
+            content={
+                "products": results,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_next": offset + limit < total,
+                "has_prev": offset > 0,
+            }
+        )
+    except Exception as e:
+        print(f"Error fetching products: {e}")
+        raise HTTPException(status_code=500, detail="Error fetching products")
+    finally:
+        session.close()
+
+
+class OrderItemRequest(BaseModel):
+    product_id: int
+    quantity: int = 1
+
+    # The order in which the item was added to the cart (useful for UI reordering, analytics, etc.)
+    add_to_cart_order: int = None
+
+    # The order in which the item was added to the cart (useful for UI reordering, analytics, etc.)
+    reordered: int = 0
+
+
+class CreateOrderRequest(BaseModel):
+    user_id: int
+    eval_set: Optional[str] = "new"
+    order_dow: int = None
+    order_hour_of_day: int = None
+    days_since_prior_order: Optional[int] = None
+    total_items: int = None
+    status: Optional[str] = "pending"
+    phone_number: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    tracking_number: Optional[str] = None
+    shipping_carrier: Optional[str] = None
+    tracking_url: Optional[str] = None
+    items: List[OrderItemRequest]
+
+
+@router.post("/orders", status_code=status.HTTP_201_CREATED)
+def create_order(order_request: CreateOrderRequest):
+    session = SessionLocal()
+    try:
+        # Optionally validate user exists
+        user = session.query(User).filter_by(user_id=order_request.user_id).first()
+        if not user:
+            raise HTTPException(status_code=400, detail=f"User {order_request.user_id} not found")
+        if not order_request.items:
+            raise HTTPException(status_code=400, detail="Order must contain at least one item")
+
+        # Optionally validate all products exist
+        product_ids = [item.product_id for item in order_request.items]
+        existing_products = session.query(Product.product_id).filter(Product.product_id.in_(product_ids)).all()
+        existing_product_ids = {p[0] for p in existing_products}
+        missing_product_ids = [pid for pid in product_ids if pid not in existing_product_ids]
+        if missing_product_ids:
+            raise HTTPException(status_code=400,
+                                detail=f"Products not found: {', '.join(map(str, missing_product_ids))}")
+
+        # Create the order
+        order = Order(
+            user_id=order_request.user_id,
+            eval_set=order_request.eval_set,
+            order_number=uuid7(),
+            order_dow=order_request.order_dow,
+            order_hour_of_day=order_request.order_hour_of_day,
+            days_since_prior_order=order_request.days_since_prior_order,
+            total_items=len(order_request.items),
+            status=order_request.status,
+            phone_number=order_request.phone_number,
+            street_address=order_request.street_address,
+            city=order_request.city,
+            postal_code=order_request.postal_code,
+            country=order_request.country,
+            tracking_number=order_request.tracking_number,
+            shipping_carrier=order_request.shipping_carrier,
+            tracking_url=order_request.tracking_url
+        )
+        session.add(order)
+        # session.flush()  # To get order_id
+
+        # Create order items
+        for i, item in enumerate(order_request.items):
+            order_item = OrderItem(
+                order_id=order.order_id,
+                product_id=item.product_id,
+                quantity=item.quantity,
+                add_to_cart_order=item.add_to_cart_order or (i + 1),
+                reordered=item.reordered or 0
+            )
+            session.add(order_item)
+
+        session.commit()
+
+        # Prepare response with order and items
+        created_items = session.query(OrderItem).filter_by(order_id=order.order_id).all()
+        return {
+            "order_id": order.order_id,
+            "user_id": order.user_id,
+            "eval_set": order.eval_set,
+            "order_number": order.order_number,
+            "order_dow": order.order_dow,
+            "order_hour_of_day": order.order_hour_of_day,
+            "days_since_prior_order": order.days_since_prior_order,
+            "total_items": order.total_items,
+            "status": order.status,
+            "phone_number": order.phone_number,
+            "street_address": order.street_address,
+            "city": order.city,
+            "postal_code": order.postal_code,
+            "country": order.country,
+            "tracking_number": order.tracking_number,
+            "shipping_carrier": order.shipping_carrier,
+            "tracking_url": order.tracking_url,
+            "items": [
+                {
+                    "product_id": item.product_id,
+                    "quantity": item.quantity,
+                    "add_to_cart_order": item.add_to_cart_order,
+                    "reordered": item.reordered,
+                } for item in created_items
+            ]
+        }
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        print(f"Error creating order: {e}")
+        raise HTTPException(status_code=500, detail=f"Error creating order: {e}")
+    finally:
+        session.close()
