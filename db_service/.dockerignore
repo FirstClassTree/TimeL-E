@@ -1,4 +1,4 @@
-data/*.csv
+data/order*.csv
 
 # Python cache and bytecode
 __pycache__/

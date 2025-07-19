@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import Product, Department, Aisle
 
-CSV_DIR = "/app/csv_data"
+CSV_DIR = "/data"
 
 def populate_tables():
     db: Session = SessionLocal()
