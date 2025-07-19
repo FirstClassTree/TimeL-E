@@ -7,12 +7,10 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from app.database import SessionLocal
 import asyncpg
-from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
+from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
 from pydantic import BaseModel
 from typing import List, Optional
-from uuid_utils import uuid7
-# from uuid import uuid7   # native uuid7 in python 3.14
-import uuid
+# Removed UUID imports since we're using integer user_ids and order_ids
 
 router = APIRouter()
 
@@ -33,6 +31,7 @@ def validate_params(params):
 @router.get("/health")
 def health_check():
     try:
+        import psycopg2
         conn = psycopg2.connect(DATABASE_URL)
         conn.close()
         return {"status": "ok", "database": "reachable"}
@@ -88,18 +87,17 @@ def get_products(
     optionally filtered by department (categories)."""
     session = SessionLocal()
     try:
-        # Start building base query with eager loading
+        # Start building base query with eager loading including ProductEnriched
         query = (
-            session.query(Product)
-            .options(
-                joinedload(Product.department),
-                joinedload(Product.aisle)
-            )
+            session.query(Product, ProductEnriched)
+            .outerjoin(ProductEnriched, Product.product_id == ProductEnriched.product_id)
+            .join(Product.department)
+            .join(Product.aisle)
         )
 
         # Filter by department name if categories param provided
         if categories:
-            query = query.join(Product.department).filter(
+            query = query.filter(
                 func.lower(Department.department).in_([c.lower() for c in categories])
             )
 
@@ -120,8 +118,11 @@ def get_products(
                 "department_name": p.department.department if p.department else None,
                 "aisle_id": p.aisle_id,
                 "aisle_name": p.aisle.aisle if p.aisle else None,
+                "description": pe.description if pe else None,
+                "price": float(pe.price) if pe and pe.price else None,
+                "image_url": pe.image_url if pe else None,
             }
-            for p in products
+            for p, pe in products
         ]
         return {
             "products": results,
@@ -136,4 +137,3 @@ def get_products(
         raise HTTPException(status_code=500, detail="Error fetching products")
     finally:
         session.close()
-

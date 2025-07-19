@@ -8,9 +8,7 @@ from app.database import SessionLocal
 from app.models import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from uuid_utils import uuid7
-# from uuid import uuid7   # native uuid7 in python 3.14
-import uuid
+# Removed UUID imports since we're using integer user_ids
 # import hashlib
 import bcrypt
 
@@ -54,8 +52,12 @@ def create_user(user_request: CreateUserRequest):
             raise HTTPException(status_code=409, detail="Username already exists")
 
         hashed_pw = hash_password(user_request.password)
+        # Get next available user_id (auto-increment would be better but this works)
+        max_id = session.query(func.max(User.user_id)).scalar() or 0
+        next_id = max_id + 1
+        
         db_user = User(
-            user_id=uuid.UUID(str(uuid7())),
+            user_id=next_id,
             name=user_request.name,
             email_address=user_request.email_address,
             hashed_password=hashed_pw,
@@ -95,7 +97,7 @@ class UpdatePasswordRequest(BaseModel):
 
 @router.post("/{user_id}/password", status_code=status.HTTP_200_OK)
 def update_user_password(
-        user_id: str,
+        user_id: int,
         payload: UpdatePasswordRequest
 ):
     session = SessionLocal()
@@ -129,7 +131,7 @@ def update_user_password(
         session.close()
 
 @router.get("/{user_id}")
-def get_user(user_id: str):
+def get_user(user_id: int):
     session = SessionLocal()
     try:
         user = session.query(User).filter_by(user_id=user_id).first()
@@ -170,7 +172,7 @@ class UpdateUserRequest(BaseModel):
 
 
 @router.patch("/{user_id}")
-def update_user(user_id: str, payload: UpdateUserRequest):
+def update_user(user_id: int, payload: UpdateUserRequest):
     session = SessionLocal()
     try:
         user = session.query(User).filter_by(user_id=user_id).first()
@@ -200,7 +202,7 @@ class DeleteUserRequest(BaseModel):
 
 
 @router.delete("/{user_id}", status_code=204)
-def delete_user(user_id: str, payload: DeleteUserRequest):
+def delete_user(user_id: int, payload: DeleteUserRequest):
     session = SessionLocal()
     try:
         user = session.query(User).filter_by(user_id=user_id).first()
@@ -224,4 +226,3 @@ def delete_user(user_id: str, payload: DeleteUserRequest):
         raise HTTPException(status_code=500, detail=f"Error deleting user")
     finally:
         session.close()
-

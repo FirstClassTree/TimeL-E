@@ -4,6 +4,7 @@ from typing import Dict, Any
 from ..models.base import APIResponse
 from ..models.grocery import UserPredictions, PredictionItem
 from ..services.database_service import db_service
+from ..services.ml_service import ml_service
 
 router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 
@@ -11,7 +12,8 @@ router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
 async def get_user_predictions(
     user_id: str,
     limit: int = Query(10, description="Number of predictions to return", ge=1, le=50),
-    offset: int = Query(0, description="Number of predictions to skip", ge=0)
+    offset: int = Query(0, description="Number of predictions to skip", ge=0),
+    use_ml: bool = Query(True, description="Use ML service for predictions")
 ) -> APIResponse:
     """Get ML predictions for a specific user with pagination"""
     try:
@@ -20,19 +22,61 @@ async def get_user_predictions(
         if not user_result.get("success", True) or not user_result.get("data", []):
             raise HTTPException(status_code=404, detail=f"User {user_id} not found")
         
-        # Get user's order history to generate predictions
+        if use_ml:
+            # Try ML service first
+            try:
+                ml_result = await ml_service.predict_for_user(user_id)
+                
+                if ml_result and "predicted_products" in ml_result:
+                    # Convert product IDs to detailed predictions
+                    predictions_data = await _convert_ml_predictions(
+                        ml_result["predicted_products"], 
+                        limit, 
+                        offset
+                    )
+                    
+                    predictions = [
+                        PredictionItem(
+                            product_id=p["product_id"],
+                            product_name=p["product_name"], 
+                            score=round(p["score"], 3)
+                        )
+                        for p in predictions_data
+                    ]
+                    
+                    result = UserPredictions(
+                        user_id=user_id,
+                        predictions=predictions,
+                        total=len(predictions)
+                    )
+                    
+                    return APIResponse(
+                        message=f"Generated {len(predictions)} ML predictions for user {user_id}",
+                        data={
+                            **result.dict(),
+                            "source": ml_result.get("source", "ml"),
+                            "ml_timestamp": ml_result.get("timestamp"),
+                            "page": (offset // limit) + 1,
+                            "per_page": limit,
+                            "has_next": len(predictions) == limit,
+                            "has_prev": offset > 0
+                        }
+                    )
+                    
+            except Exception as ml_error:
+                # Fall back to rule-based if ML fails
+                print(f"ML service failed, falling back to rule-based: {ml_error}")
+        
+        # Fallback to rule-based predictions
         orders_result = await db_service.get_user_orders_with_filters(
             user_id=user_id,
-            limit=100,  # Get recent orders for ML analysis
+            limit=100,
             offset=0
         )
         
         orders_data = orders_result.get("data", []) if orders_result.get("success", True) else []
-        
-        # Generate predictions based on order history
         predictions_data = await _generate_user_predictions(user_id, orders_data, limit, offset)
         
-        # Convert to Pydantic models
         predictions = [
             PredictionItem(
                 product_id=p["product_id"],
@@ -49,9 +93,10 @@ async def get_user_predictions(
         )
         
         return APIResponse(
-            message=f"Generated {len(predictions)} predictions for user {user_id}",
+            message=f"Generated {len(predictions)} rule-based predictions for user {user_id}",
             data={
                 **result.dict(),
+                "source": "rule_based",
                 "page": (offset // limit) + 1,
                 "per_page": limit,
                 "has_next": len(predictions) == limit,
@@ -64,8 +109,124 @@ async def get_user_predictions(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating predictions: {str(e)}")
 
+@router.get("/ml/health", response_model=APIResponse)
+async def get_ml_service_health() -> APIResponse:
+    """Get ML service health status"""
+    try:
+        health_result = await ml_service.get_health()
+        return APIResponse(
+            message="ML service health check completed",
+            data=health_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"ML service unavailable: {str(e)}")
+
+@router.get("/demo/users", response_model=APIResponse)
+async def get_demo_users(limit: int = Query(20, ge=1, le=100)) -> APIResponse:
+    """Get list of available demo users for ML testing"""
+    try:
+        demo_result = await ml_service.get_available_demo_users(limit=limit)
+        return APIResponse(
+            message=f"Retrieved {len(demo_result.get('available_users', []))} demo users",
+            data=demo_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Demo users unavailable: {str(e)}")
+
+@router.get("/demo/user/{user_id}/history", response_model=APIResponse)
+async def get_demo_user_history(user_id: int) -> APIResponse:
+    """Get order history for a demo user"""
+    try:
+        history_result = await ml_service.get_demo_user_order_history(user_id)
+        return APIResponse(
+            message=f"Retrieved order history for demo user {user_id}",
+            data=history_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Demo user history unavailable: {str(e)}")
+
+@router.get("/demo/user/{user_id}/stats", response_model=APIResponse)
+async def get_demo_user_stats(user_id: int) -> APIResponse:
+    """Get detailed statistics for a demo user"""
+    try:
+        stats_result = await ml_service.get_demo_user_stats(user_id)
+        return APIResponse(
+            message=f"Retrieved statistics for demo user {user_id}",
+            data=stats_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Demo user stats unavailable: {str(e)}")
+
+@router.post("/demo/user/{user_id}/comparison", response_model=APIResponse)
+async def get_demo_prediction_comparison(user_id: int) -> APIResponse:
+    """Get ML prediction comparison with ground truth for demo user"""
+    try:
+        comparison_result = await ml_service.get_demo_prediction_comparison(user_id)
+        return APIResponse(
+            message=f"Generated prediction comparison for demo user {user_id}",
+            data=comparison_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Demo prediction comparison failed: {str(e)}")
+
+@router.post("/ml/evaluate", response_model=APIResponse)
+async def evaluate_ml_model(sample_size: int = Query(None, ge=1, le=1000)) -> APIResponse:
+    """Trigger ML model evaluation"""
+    try:
+        evaluation_result = await ml_service.evaluate_model(sample_size=sample_size)
+        return APIResponse(
+            message="ML model evaluation completed",
+            data=evaluation_result
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Model evaluation failed: {str(e)}")
+
+async def _convert_ml_predictions(product_ids: list, limit: int, offset: int) -> list:
+    """Convert ML product IDs to detailed predictions with product info"""
+    try:
+        # Apply pagination to product IDs first
+        paginated_ids = product_ids[offset:offset + limit]
+        
+        predictions = []
+        for i, product_id in enumerate(paginated_ids):
+            # Get product details
+            product_result = await db_service.get_product_by_id(str(product_id))
+            
+            if product_result.get("success", True) and product_result.get("data", []):
+                product = product_result["data"][0]
+                
+                # Calculate score based on ranking (higher rank = higher score)
+                # Score decreases from 0.9 to 0.1 based on position
+                max_score = 0.9
+                min_score = 0.1
+                total_predictions = len(product_ids)
+                
+                if total_predictions > 1:
+                    score = max_score - ((offset + i) / (total_predictions - 1)) * (max_score - min_score)
+                else:
+                    score = max_score
+                
+                predictions.append({
+                    "product_id": product_id,
+                    "product_name": product["product_name"],
+                    "score": max(min_score, min(max_score, score))
+                })
+            else:
+                # Fallback if product not found
+                predictions.append({
+                    "product_id": product_id,
+                    "product_name": f"Product {product_id}",
+                    "score": 0.5  # Medium confidence for unknown products
+                })
+        
+        return predictions
+        
+    except Exception as e:
+        print(f"Error converting ML predictions: {e}")
+        return []
+
 async def _generate_user_predictions(user_id: str, orders_data: list, limit: int, offset: int) -> list:
-    """Generate ML predictions for user based on order history"""
+    """Generate rule-based predictions for user based on order history (fallback)"""
     try:
         # Analyze user's purchase history
         purchased_products = set()

@@ -36,10 +36,11 @@ FROM python:3.9-slim as production
 # Set working directory
 WORKDIR /app
 
-# Install only runtime dependencies
+# Install only runtime dependencies including libgomp1 for LightGBM
 RUN apt-get update && apt-get install -y \
     libpq5 \
     curl \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -70,7 +71,7 @@ COPY --chown=mluser:mluser <<EOF /app/healthcheck.py
 import sys
 import requests
 try:
-    response = requests.get('http://localhost:8000/health', timeout=10)
+    response = requests.get('http://localhost:8001/health', timeout=10)
     if response.status_code == 200 and response.json().get('status') == 'healthy':
         sys.exit(0)
     else:
@@ -85,14 +86,14 @@ RUN chmod +x /app/healthcheck.py
 USER mluser
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8001
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python /app/healthcheck.py
 
 # Start command with proper signal handling
-CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]
 
 # ============================================================================
 # PRODUCTION OPTIMIZATIONS:

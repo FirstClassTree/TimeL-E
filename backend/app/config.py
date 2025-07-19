@@ -5,7 +5,7 @@ from typing import Optional
 class Settings:
     # Service URLs - can be overridden by environment variables
     DB_SERVICE_URL: str = os.getenv("DB_SERVICE_URL", "http://localhost:5001")
-    ML_SERVICE_URL: str = os.getenv("ML_SERVICE_URL", "http://localhost:5002")
+    ML_SERVICE_URL: str = os.getenv("ML_SERVICE_URL", "http://localhost:8001")
     
     # API Configuration
     API_V1_PREFIX: str = "/api"
