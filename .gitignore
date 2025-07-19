@@ -1,4 +1,5 @@
-/data/
-data/
-./data/
+# Ignore all CSVs in data
 data/*.csv
+
+# Unignore the specific file
+!data/enriched_products_dept1.csv

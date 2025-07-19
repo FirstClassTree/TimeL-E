@@ -56,11 +56,24 @@ class DatabaseService:
     async def query(self, query_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute custom query"""
         async with ServiceClient() as client:
-            return await client.request(
+            response = await client.request(
                 method="POST",
                 url=f"{self.base_url}/query",
                 data=query_data
             )
+            
+            # Convert db-service response format to expected backend format
+            if response.get("status") == "ok":
+                return {
+                    "success": True,
+                    "data": response.get("results", [])
+                }
+            else:
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": response.get("detail", "Query failed")
+                }
 
     # Product-specific methods
     async def get_products_with_filters(
