@@ -89,10 +89,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE 1=1
             """,
             "params": []
@@ -132,10 +134,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.product_id = $1
             """,
             "params": [product_id]
@@ -147,10 +151,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.department_id = $1
                 ORDER BY p.product_name
             """,
@@ -163,10 +169,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.aisle_id = $1
                 ORDER BY p.product_name
             """,

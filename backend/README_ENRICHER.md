@@ -16,12 +16,12 @@ This standalone Python script enriches product data from `products.csv` by calli
 ### 1. Install Dependencies
 ```bash
 cd backend
-pip install -r enricher_requirements.txt
+pip3 install -r enricher_requirements.txt
 ```
 
 ### 2. Run the Script
 ```bash
-python product_enricher.py
+python3 product_enricher.py
 ```
 
 ### 3. Check Results

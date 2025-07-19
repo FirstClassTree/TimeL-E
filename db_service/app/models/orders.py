@@ -4,10 +4,7 @@ from sqlalchemy import Integer, String, Float, ForeignKey, LargeBinary
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
 from app.models.base import Base
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-# from uuid import uuid7   # native uuid7 in python 3.14
-from uuid_utils import uuid7
 import enum
 
 class OrderStatus(enum.Enum):
@@ -27,8 +24,8 @@ class Order(Base):
     __tablename__ = 'orders'
     __table_args__ = {"schema": "orders"}
 
-    order_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
-    user_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('users.users.user_id'), index=True)
+    order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.users.user_id'), index=True)
     eval_set: Mapped[str] = mapped_column(String())
     order_number: Mapped[int] = mapped_column(Integer)
     order_dow: Mapped[int] = mapped_column(Integer)
@@ -65,7 +62,7 @@ class OrderItem(Base):
     __tablename__ = 'order_items'
     __table_args__ = {"schema": "orders"}
 
-    order_id: Mapped[UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('orders.orders.order_id'), primary_key=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey('orders.orders.order_id'), primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.products.product_id'), primary_key=True, index=True)
     add_to_cart_order: Mapped[int] = mapped_column(Integer)
     reordered: Mapped[int] = mapped_column(Integer)

@@ -6,13 +6,27 @@ from .users_routers import router as users_router
 from .orders_routers import router as orders_router
 import os
 from .populate_from_csv import populate_tables
+from .populate_enriched_data import populate_enriched_data
+from .reset_database import reset_database
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once at startup
-    init_db()
-    # load data from departments.csv, aisles.csv, and products.csv into their respective tables
+    print("🚀 Starting Database Service...")
+    
+    # Reset database to ensure clean integer schema
+    if reset_database():
+        print("✅ Database reset successful")
+    else:
+        print("⚠️ Database reset failed, trying with existing schema...")
+        init_db()
+    
+    # load data from departments.csv, aisles.csv, products.csv, and users.csv into their respective tables
     populate_tables()
+    # load enriched product data from enriched_products_dept1.csv
+    populate_enriched_data()
+    
+    print("✅ Database Service ready!")
     yield       # App runs
     # Optionally add shutdown logic after yield
 

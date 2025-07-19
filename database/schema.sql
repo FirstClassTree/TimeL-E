@@ -195,11 +195,11 @@ ALTER SEQUENCE products.products_product_id_seq OWNED BY products.products.produ
 --
 
 CREATE TABLE users.users (
-    user_id uuid NOT NULL,
+    user_id integer NOT NULL,
     name character varying NOT NULL,
     hashed_password character varying(128) NOT NULL,
     email_address character varying NOT NULL,
-    phone_number character varying(20) NOT NULL,
+    phone_number character varying(50) NOT NULL,
     street_address character varying(255) NOT NULL,
     city character varying(100) NOT NULL,
     postal_code character varying(20) NOT NULL,
@@ -362,4 +362,3 @@ ALTER TABLE ONLY products.products
 --
 -- PostgreSQL database dump complete
 --
-

@@ -12,9 +12,12 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional
 
 from ..models.stacked_basket_model import StackedBasketModel
+import sys
+sys.path.append('/app')
+from simple_model_wrapper import SimpleStackedBasketModel
 from ..services.prediction import EnhancedPredictionService
 from ..features.engineering import UnifiedFeatureEngineer as DatabaseFeatureEngineer
-from ..core.evaluator import BasketPredictionEvaluator
+# from ..core.evaluator import BasketPredictionEvaluator  # Commented out for now
 from ..core.logger import setup_logger
 from ..data.connection import test_database_connection, get_db_session
 from ..data.models import User
@@ -30,7 +33,7 @@ PROCESSED_DATA_PATH = os.getenv("PROCESSED_DATA_PATH", "/app/training-data/proce
 RAW_DATA_PATH = os.getenv("RAW_DATA_PATH", "/app/training-data")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://timely_user:timely_password@postgres:5432/timely_db")
 SERVICE_HOST = os.getenv("SERVICE_HOST", "0.0.0.0")
-SERVICE_PORT = int(os.getenv("SERVICE_PORT", "8000"))
+SERVICE_PORT = int(os.getenv("ML_SERVICE_PORT", "8001"))
 DEBUG_MODE = os.getenv("DEBUG_MODE", "false").lower() == "true"
 EVALUATION_SAMPLE_SIZE = int(os.getenv("EVALUATION_SAMPLE_SIZE", "100"))
 
@@ -68,16 +71,23 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("⚠️ Database connection failed - demo mode only")
     
-    # Load and initialize model
-    app.state.model = StackedBasketModel()
+    # Load and initialize model - try simple wrapper first
     try:
+        app.state.model = SimpleStackedBasketModel()
         app.state.model.load_models(MODEL_PATH_BASE)
-        logger.info(f"✅ StackedBasketModel loaded from {MODEL_PATH_BASE}")
+        logger.info(f"✅ SimpleStackedBasketModel loaded from {MODEL_PATH_BASE}")
         app.state.model_loaded = True
     except Exception as e:
-        logger.error(f"🚨 ML model loading failed: {e}")
-        app.state.model = None
-        app.state.model_loaded = False
+        logger.warning(f"Simple model loading failed: {e}, trying complex model...")
+        try:
+            app.state.model = StackedBasketModel()
+            app.state.model.load_models(MODEL_PATH_BASE)
+            logger.info(f"✅ StackedBasketModel loaded from {MODEL_PATH_BASE}")
+            app.state.model_loaded = True
+        except Exception as e2:
+            logger.error(f"🚨 All ML model loading failed: {e2}")
+            app.state.model = None
+            app.state.model_loaded = False
     
     # Initialize prediction service for database-driven predictions
     if app.state.model and app.state.database_available:
@@ -151,13 +161,18 @@ app.add_middleware(
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health():
     """Consolidated health check endpoint."""
+    # Handle case where data_loaded contains error
+    data_loaded = app.state.data_loaded
+    if isinstance(data_loaded, dict) and "error" in data_loaded:
+        data_loaded = {"error_count": 1}
+    
     return HealthResponse(
         status="healthy" if app.state.model_loaded else "degraded",
         model_loaded=app.state.model_loaded,
         database_available=app.state.database_available,
         architecture="direct_database_access",
         feature_engineering="unified",
-        data_loaded=app.state.data_loaded
+        data_loaded=data_loaded
     )
 
 # ============================================================================
@@ -184,8 +199,8 @@ async def predict_from_database(request: PredictionRequest):
             
             # Check if user has metadata with original Instacart ID
             instacart_user_id = None
-            if user.metadata and isinstance(user.metadata, dict):
-                instacart_user_id = user.metadata.get('instacart_user_id')
+            if user.user_metadata and isinstance(user.user_metadata, dict):
+                instacart_user_id = user.user_metadata.get('instacart_user_id')
             
             if instacart_user_id:
                 # This is a demo user - use CSV data for prediction
@@ -346,31 +361,8 @@ async def evaluate_model(sample_size: Optional[int] = Query(None, description="N
     DEMAND 2: Trigger model evaluation across test set.
     Returns performance metrics for the ML model.
     """
-    if not app.state.model:
-        raise HTTPException(status_code=503, detail="Model not available for evaluation")
-    
-    try:
-        effective_sample_size = sample_size or EVALUATION_SAMPLE_SIZE
-        logger.info(f"Starting model evaluation with sample size: {effective_sample_size}")
-        
-        evaluator = BasketPredictionEvaluator(
-            model=app.state.model,
-            feature_engineer=app.state.demo_feature_engineer,
-            processed_data_path=PROCESSED_DATA_PATH
-        )
-        
-        metrics = evaluator.evaluate_model(app.state.orders_df, app.state.order_products_prior_df)
-        
-        return {
-            "status": "completed",
-            "metrics": metrics,
-            "sample_size": effective_sample_size,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-    except Exception as e:
-        logger.error(f"Model evaluation failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
+    # Temporarily disabled until evaluator dependencies are resolved
+    raise HTTPException(status_code=503, detail="Model evaluation temporarily disabled")
 
 # ============================================================================
 # DEMO DATA ENDPOINTS

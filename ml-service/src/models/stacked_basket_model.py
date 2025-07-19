@@ -41,13 +41,14 @@ class StackedBasketModel:
         # Save both models
         self.save_models()
 
-    def predict(self, features_df: pd.DataFrame) -> List[int]:
+    def predict(self, features_df: pd.DataFrame, user_id: int = None) -> List[int]:
         """
         The main prediction function to be called by the API. It performs the
         full two-stage prediction.
 
         Args:
             features_df: The fully engineered feature DataFrame for a single user.
+            user_id: Optional user ID (for compatibility with API calls)
 
         Returns:
             A list of predicted product IDs.

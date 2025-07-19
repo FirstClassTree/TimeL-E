@@ -12,6 +12,10 @@ class Product(BaseModel):
     # Joined data for frontend convenience
     aisle_name: Optional[str] = None
     department_name: Optional[str] = None
+    # Enriched data from product_enriched table
+    description: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
 
 class Department(BaseModel):
     """Department model"""
