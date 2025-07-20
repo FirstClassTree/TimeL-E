@@ -18,9 +18,12 @@ class Product(BaseModel):
     image_url: Optional[str] = None
 
 class Department(BaseModel):
-    """Department model"""
-    department_id: int
-    department: str
+    """Department model matching frontend TypeScript interface"""
+    id: str
+    name: str
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+    parentId: Optional[str] = None
 
 class Aisle(BaseModel):
     """Aisle model"""

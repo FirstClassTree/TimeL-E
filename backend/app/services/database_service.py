@@ -182,19 +182,28 @@ class DatabaseService:
         }
         return await self.query(query)
 
-    async def get_department_by_id(self, department_id: int) -> Dict[str, Any]:
-        """Get department by ID"""
-        query = {
-            "sql": "SELECT * FROM products.departments WHERE department_id = $1",
-            "params": [department_id]
-        }
-        return await self.query(query)
-
     async def get_aisle_by_id(self, aisle_id: int) -> Dict[str, Any]:
         """Get aisle by ID"""
         query = {
             "sql": "SELECT * FROM products.aisles WHERE aisle_id = $1",
             "params": [aisle_id]
+        }
+        return await self.query(query)
+
+    # Department-specific methods
+    async def get_all_departments(self) -> Dict[str, Any]:
+        """Get all departments"""
+        query = {
+            "sql": "SELECT department_id, department FROM products.departments ORDER BY department",
+            "params": []
+        }
+        return await self.query(query)
+
+    async def get_department_by_id(self, department_id: int) -> Dict[str, Any]:
+        """Get department by ID"""
+        query = {
+            "sql": "SELECT department_id, department FROM products.departments WHERE department_id = $1",
+            "params": [department_id]
         }
         return await self.query(query)
 
@@ -316,7 +325,7 @@ class DatabaseService:
                        street_address, city, postal_code, country
                 FROM users.users WHERE user_id = $1
             """,
-            "params": [user_id]
+            "params": [int(user_id)]
         }
         return await self.query(query)
 
@@ -346,7 +355,7 @@ class DatabaseService:
         """Update user details"""
         # Build dynamic update query based on provided fields
         set_clauses = []
-        params = [user_id]
+        params = [int(user_id)]
         param_count = 2
         
         for field in ["name", "email_address", "phone_number", "street_address", "city", "postal_code", "country"]:
@@ -373,7 +382,7 @@ class DatabaseService:
         """Delete user"""
         query = {
             "sql": "DELETE FROM users.users WHERE user_id = $1 RETURNING user_id",
-            "params": [user_id]
+            "params": [int(user_id)]
         }
         return await self.query(query)
 
@@ -386,7 +395,7 @@ class DatabaseService:
                 WHERE user_id = $1
                 RETURNING user_id
             """,
-            "params": [user_id, hashed_password]
+            "params": [int(user_id), hashed_password]
         }
         return await self.query(query)
 
