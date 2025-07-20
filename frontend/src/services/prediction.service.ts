@@ -1,6 +1,3 @@
-// frontend/src/services/prediction.service.ts
-// FIXED: Use backend proxy only - removed direct ML service communication
-
 import { api } from '@/services/api.client'; // REMOVED: mlApi import - use backend gateway only
 import { Product } from '@/services/product.service';
 
@@ -61,13 +58,7 @@ export interface PredictionFeedback {
 }
 
 class PredictionService {
-  // ============================================================================
-  // CORE PREDICTION METHODS - Via Backend Gateway Only
-  // ============================================================================
 
-  /**
-   * Get current predicted basket for user
-   */
   async getCurrentPredictedBasket(): Promise<PredictedBasket | null> {
     try {
       return await api.get<PredictedBasket>('/predictions/current-basket');
@@ -242,21 +233,3 @@ class PredictionService {
 }
 
 export const predictionService = new PredictionService();
-
-// ============================================================================
-// ARCHITECTURE CLEANUP:
-// 
-// REMOVED:
-// - Direct ML service calls via mlApi
-// - ML service URL configuration
-// - Direct prediction endpoint calls
-// 
-// ALL COMMUNICATION NOW GOES THROUGH BACKEND GATEWAY:
-// - /api/predictions/* endpoints
-// - Backend handles ML service communication
-// - Centralized error handling and authentication
-// - Consistent API patterns
-// 
-// This maintains proper microservices architecture where the frontend
-// only knows about the backend API gateway, not internal services.
-// ============================================================================

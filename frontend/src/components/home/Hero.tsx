@@ -5,7 +5,7 @@ import { ShoppingCart, Sparkles } from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
-    <section className="relative bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-100 overflow-hidden">
       <div className="absolute inset-0 bg-grid-pattern opacity-5" />
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
@@ -26,7 +26,7 @@ const Hero: React.FC = () => {
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
               Your Weekly
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
                 {" "}Grocery List
               </span>
               <br />
@@ -64,10 +64,10 @@ const Hero: React.FC = () => {
             className="relative"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-500 rounded-3xl transform rotate-6 opacity-10" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400 blue-600 rounded-3xl transform rotate-6 opacity-10" />
               <div className="relative bg-white rounded-3xl shadow-2xl p-8">
                 <div className="text-center">
-                  <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full mx-auto mb-6 flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-blue-800 rounded-full mx-auto mb-6 flex items-center justify-center">
                     <ShoppingCart className="h-12 w-12 text-white" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4">Smart Predictions</h3>

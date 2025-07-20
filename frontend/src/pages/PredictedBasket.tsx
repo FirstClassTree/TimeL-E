@@ -1,5 +1,4 @@
-// frontend/src/pages/PredictedBasket.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { 
@@ -99,7 +98,7 @@ const PredictedBasket: React.FC = () => {
     totalItems: basket.items.filter(item => item.isAccepted).length,
     totalValue: basket.items
       .filter(item => item.isAccepted)
-      .reduce((sum, item) => sum + (item.product.salePrice * item.quantity), 0),
+      .reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
     avgConfidence: basket.items.length > 0
       ? basket.items.reduce((sum, item) => sum + item.confidenceScore, 0) / basket.items.length
       : 0,
@@ -163,7 +162,7 @@ const PredictedBasket: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg">
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -243,7 +242,7 @@ const PredictedBasket: React.FC = () => {
                     {((stats?.avgConfidence || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
-                <Sparkles className="w-8 h-8 text-purple-500" />
+                <Sparkles className="w-8 h-8 text-blue-500" />
               </div>
             </motion.div>
 
@@ -260,7 +259,7 @@ const PredictedBasket: React.FC = () => {
                     {stats?.acceptanceRate.toFixed(0) || 0}%
                   </p>
                 </div>
-                <Brain className="w-8 h-8 text-pink-500" />
+                <Brain className="w-8 h-8 text-green-500" />
               </div>
             </motion.div>
           </div>
@@ -312,11 +311,6 @@ const PredictedBasket: React.FC = () => {
                         alt={item.product.name}
                         className="w-24 h-24 object-cover rounded-lg"
                       />
-                      {item.product.isOnSale && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                          -{item.product.salePercentage}%
-                        </span>
-                      )}
                     </div>
 
                     {/* Product Details */}
@@ -345,7 +339,7 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ${item.product.salePrice.toFixed(2)}
+                            ${item.product.price.toFixed(2)}
                             {item.product.compareAtPrice && (
                               <span className="ml-2 text-sm text-gray-500 line-through">
                                 ${item.product.compareAtPrice.toFixed(2)}
@@ -411,7 +405,7 @@ const PredictedBasket: React.FC = () => {
           <button
             onClick={() => acceptBasketMutation.mutate()}
             disabled={acceptBasketMutation.isLoading || stats?.totalItems === 0}
-            className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-full hover:from-cyan-700 hover:to-blue-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {acceptBasketMutation.isLoading ? (
               <>

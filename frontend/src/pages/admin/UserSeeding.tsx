@@ -107,7 +107,7 @@ const UserSeeding: React.FC = () => {
         {/* Header */}
         <div className="text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+            <div className="p-3 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
               <UserPlus className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

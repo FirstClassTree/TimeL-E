@@ -155,7 +155,7 @@ const DemoPredictionPage: React.FC = () => {
                 {/* Header */}
                 <div className="text-center">
                     <div className="flex items-center justify-center gap-3 mb-4">
-                        <div className="p-3 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg">
+                        <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg">
                             <Brain className="w-8 h-8 text-white" />
                         </div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">

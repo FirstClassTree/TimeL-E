@@ -64,7 +64,7 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
                   {product.name}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {product.brand} • {product.category?.name}
+                  {product.brand} • {product.department?.name}
                 </p>
                 {product.description && (
                   <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
@@ -90,25 +90,6 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
                     </>
                   )}
                 </div>
-
-                {/* Stock Status */}
-                {product.trackInventory && (
-                  <div className="mt-1">
-                    {product.stock === 0 ? (
-                      <span className="text-xs text-red-600 dark:text-red-400">
-                        Out of stock
-                      </span>
-                    ) : product.stock <= 5 ? (
-                      <span className="text-xs text-orange-600 dark:text-orange-400">
-                        Only {product.stock} left
-                      </span>
-                    ) : (
-                      <span className="text-xs text-green-600 dark:text-green-400">
-                        In stock
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
               
               {/* Actions */}

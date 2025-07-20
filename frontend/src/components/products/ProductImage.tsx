@@ -33,7 +33,7 @@ const ProductImage: React.FC<ProductImageProps> = ({
   };
 
   // ✅ FIXED: Use external placeholder instead of deleted local file
-  const placeholderImage = 'https://images.pexels.com/photos/264537/pexels-photo-264537.jpeg?auto=compress&cs=tinysrgb&w=400';
+  const placeholderImage = './app/storage/image_not_available.png';
   const imageSrc = src || placeholderImage;
 
   // ✅ FIXED: Removed reference to deleted '/images/products/default.jpg'

@@ -74,7 +74,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${explanation.confidence * 100}%` }}
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
                   />
                 </div>
                 <span className="font-medium text-gray-900 dark:text-white">

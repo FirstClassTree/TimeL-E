@@ -100,7 +100,7 @@ const AdminDashboard: React.FC = () => {
             value={stats.totalOrders.toLocaleString()}
             change={stats.orderGrowth}
             icon={ShoppingCart}
-            color="purple"
+            color="blue"
           />
           <MetricCard
             title="Active Users"
@@ -127,7 +127,7 @@ const AdminDashboard: React.FC = () => {
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Brain className="w-6 h-6 text-purple-500" />
+              <Brain className="w-6 h-6 text-blue-500" />
               ML Model Performance
             </h2>
             <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -143,7 +143,7 @@ const AdminDashboard: React.FC = () => {
               <div className="text-sm text-gray-600 dark:text-gray-400">Precision@10</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-purple-600">
+              <div className="text-3xl font-bold text-blue-600">
                 {((modelMetrics?.recallAt10 || 0) * 100).toFixed(1)}%
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">Recall@10</div>
@@ -360,7 +360,7 @@ const AdminDashboard: React.FC = () => {
                   <div className={`p-2 rounded-lg ${
                     activity.type === 'order' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600' :
                     activity.type === 'user' ? 'bg-green-100 dark:bg-green-900/30 text-green-600' :
-                    'bg-purple-100 dark:bg-purple-900/30 text-purple-600'
+                    'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
                   }`}>
                     {activity.type === 'order' ? <ShoppingCart size={20} /> :
                      activity.type === 'user' ? <Users size={20} /> :

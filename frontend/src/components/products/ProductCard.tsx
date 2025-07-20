@@ -66,7 +66,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
               </span>
             )}
             {product.isFeatured && (
-              <span className="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full">
+              <span className="px-2 py-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-xs font-bold rounded-full">
                 Featured
               </span>
             )}

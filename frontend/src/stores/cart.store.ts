@@ -1,10 +1,11 @@
-// frontend/src/stores/cart.store.ts
-// FIXED: Removed window.confirm from store to properly separate concerns
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { cartService, Cart, CartItem } from '@/services/cart.service';
 import { Product } from '@/services/product.service';
+import { useUser } from '@/components/auth/UserProvider';
 import toast from 'react-hot-toast';
+
+const { userId } = useUser();
 
 interface CartState {
   cart: Cart | null;
@@ -22,7 +23,6 @@ interface CartState {
   // Computed values
   getItemCount: () => number;
   getSubtotal: () => number;
-  getSavings: () => number;
   isProductInCart: (productId: string) => boolean;
   getCartItem: (productId: string) => CartItem | undefined;
 }
@@ -37,7 +37,7 @@ export const useCartStore = create<CartState>()(
       fetchCart: async () => {
         set({ isLoading: true });
         try {
-          const cart = await cartService.getCart();
+          const cart = await cartService.getCart(userId);
           set({ cart, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
@@ -48,7 +48,7 @@ export const useCartStore = create<CartState>()(
       addToCart: async (productId, quantity = 1) => {
         set({ isUpdating: true });
         try {
-          const cart = await cartService.addToCart({ productId, quantity });
+          const cart = await cartService.addToCart(userId, { productId, quantity });
           set({ cart, isUpdating: false });
           
           const addedItem = cart.items.find(item => item.productId === productId);
@@ -71,7 +71,7 @@ export const useCartStore = create<CartState>()(
 
         set({ isUpdating: true });
         try {
-          const cart = await cartService.updateCartItem(itemId, { quantity });
+          const cart = await cartService.updateCartItem(userId, itemId, { quantity });
           set({ cart, isUpdating: false });
         } catch (error) {
           set({ isUpdating: false });
@@ -102,7 +102,7 @@ export const useCartStore = create<CartState>()(
         }
 
         try {
-          const cart = await cartService.removeFromCart(itemId);
+          const cart = await cartService.removeFromCart(userId, itemId);
           set({ cart, isUpdating: false });
         } catch (error) {
           // Revert optimistic update on error
@@ -115,11 +115,11 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      // FIXED: Removed window.confirm from store - UI logic moved to component
+     //Not supported in backend yet
       clearCart: async () => {
         set({ isUpdating: true });
         try {
-          const cart = await cartService.clearCart();
+          const cart = await cartService.clearCart(useUser().userId);
           set({ cart, isUpdating: false });
           toast.success('Cart cleared');
         } catch (error) {
@@ -132,7 +132,7 @@ export const useCartStore = create<CartState>()(
       syncWithPredictedBasket: async (basketId) => {
         set({ isUpdating: true });
         try {
-          const cart = await cartService.syncWithPredictedBasket(basketId);
+          const cart = await cartService.syncWithPredictedBasket(userId, basketId);
           set({ cart, isUpdating: false });
           toast.success('Cart updated with predicted items');
         } catch (error) {
@@ -153,12 +153,6 @@ export const useCartStore = create<CartState>()(
         return cart?.subtotal || 0;
       },
 
-      getSavings: () => {
-        const { cart } = get();
-        if (!cart) return 0;
-        return cartService.calculateSavings(cart);
-      },
-
       isProductInCart: (productId) => {
         const { cart } = get();
         if (!cart) return false;
@@ -168,7 +162,7 @@ export const useCartStore = create<CartState>()(
       getCartItem: (productId) => {
         const { cart } = get();
         if (!cart) return undefined;
-        return cartService.getCartItem(cart, productId);
+        return cartService.getCartItem(userId, cart, productId);
       }
     })),
     {

@@ -1,6 +1,6 @@
 // frontend/src/components/search/SearchModal.tsx
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Search, X, Clock, TrendingUp, Package, ArrowRight } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { productService } from '@/services/product.service';
@@ -16,12 +16,6 @@ interface SearchResult {
   price: number;
   image: string;
   category: string;
-}
-
-interface SearchSuggestion {
-  id: string;
-  text: string;
-  type: 'recent' | 'popular' | 'category';
 }
 
 const SearchModal: React.FC<SearchModalProps> = ({ onClose }) => {

@@ -51,7 +51,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, navLinks }) =>
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold">
                   {user.firstName[0]?.toUpperCase()}{user.lastName[0]?.toUpperCase()}
                 </span>

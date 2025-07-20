@@ -1,8 +1,8 @@
-// frontend/src/stores/auth.store.ts
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { authService, User } from '@/services/auth.service';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 interface AuthState {
   user: User | null;
@@ -41,7 +41,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false
             });
-            toast.success(`Welcome back, ${response.user.firstName}!`);
+            toast.success(`Welcome back, ${response.user.name}!`);
           } catch (error: any) {
             set({ isLoading: false });
             throw error;

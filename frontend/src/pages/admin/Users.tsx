@@ -147,7 +147,7 @@ const AdminUsers: React.FC = () => {
                 {adminUsers}
               </p>
             </div>
-            <Users className="h-8 w-8 text-purple-600" />
+            <Users className="h-8 w-8 text-blue-600" />
           </div>
         </div>
 
@@ -288,7 +288,7 @@ const AdminUsers: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                         user.role === 'admin'
-                          ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
                       }`}>
                         {user.role === 'admin' ? 'Admin' : 'User'}

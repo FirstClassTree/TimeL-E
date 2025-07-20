@@ -163,7 +163,7 @@ const AdminMetrics: React.FC = () => {
             <button
               onClick={handleEvaluateModel}
               disabled={evaluateModelMutation.isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {evaluateModelMutation.isLoading ? (
                 <RefreshCw size={16} className="animate-spin" />
@@ -209,8 +209,8 @@ const AdminMetrics: React.FC = () => {
             {
               label: 'Recall@10',
               value: activeMetrics ? (activeMetrics.recall_at_k?.['10'] || activeMetrics.recallAt10 || 0) * 100 : 0,
-              color: 'from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20',
-              textColor: 'text-purple-600 dark:text-purple-400',
+              color: 'from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20',
+              textColor: 'text-blue-600 dark:text-blue-400',
               description: 'How many actual items we found'
             },
             {

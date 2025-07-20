@@ -1,13 +1,9 @@
-// frontend/src/pages/Checkout.tsx
-// FIXED: Simplified CheckoutFormData interface to match actual usage - removed unused fields
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import {
-  CreditCard, MapPin, Package, CheckCircle, 
-  ArrowLeft, User, Mail, Phone, Lock, Calendar
+  CreditCard, Package, CheckCircle, ArrowLeft, User, Mail
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -15,21 +11,20 @@ import { orderService } from '@/services/order.service';
 import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
+import userService from "@/services/user.service.ts";
 
-// FIXED: Simplified form data interface - removed unused fields to match actual usage
 interface CheckoutFormData {
   // Contact Information
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
-  phone: string;
   
   // Shipping Address
-  address: string;
+  street: string;
   city: string;
-  state: string;
   zipCode: string;
-  
+  country: string;
+
   // Payment Information (for UI display only - not submitted to backend)
   cardNumber: string;
   expiryDate: string;
@@ -38,7 +33,8 @@ interface CheckoutFormData {
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { cart, getSubtotal, getSavings, clearCart } = useCartStore();
+  const { userId} = useUser();
+  const { cart, getSubtotal, clearCart } = useCartStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -52,11 +48,17 @@ const Checkout: React.FC = () => {
 
   // Pre-fill user information
   useEffect(() => {
-    if (user) {
-      setValue('firstName', user.firstName || '');
-      setValue('lastName', user.lastName || '');
+      const fetchUser = async () => {
+        if (user) {
+      setValue('name', user.name || '');
       setValue('email', user.email || '');
-    }
+      } else {
+      const currentUser = await userService.getProfile(userId);
+      setValue('name', currentUser.name);
+      setValue('email', currentUser.email);
+      }
+    };
+  fetchUser();
   }, [user, setValue]);
 
   // Redirect if cart is empty
@@ -71,12 +73,10 @@ const Checkout: React.FC = () => {
   }
 
   const subtotal = getSubtotal();
-  const savings = getSavings();
   const estimatedTax = subtotal * 0.08;
   const deliveryFee = subtotal > 50 ? 0 : 5.99;
-  const total = subtotal + estimatedTax + deliveryFee - savings;
+  const total = subtotal + estimatedTax + deliveryFee;
 
-  // FIXED: Simplified onSubmit - only using fields the backend actually expects
   const onSubmit = async (data: CheckoutFormData) => {
     setIsProcessing(true);
     
@@ -86,16 +86,14 @@ const Checkout: React.FC = () => {
       
       const orderData = {
         cartId: cart.id,
-        paymentMethod: 'credit_card',
         deliveryAddress: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          address: data.address,
+          street: data.street,
           city: data.city,
-          state: data.state,
+          country: data.country,
           zipCode: data.zipCode,
-          phone: data.phone
+          email: data.email
         },
+        paymentMethod: 'credit_card',
         notes: 'Demo order from TimeL-E checkout'
       };
 
@@ -190,25 +188,11 @@ const Checkout: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        {...register('firstName', { required: 'First name is required' })}
+                        {...register('name', { required: 'Name is required' })}
                         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       />
-                      {errors.firstName && (
-                        <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Last Name *
-                      </label>
-                      <input
-                        type="text"
-                        {...register('lastName', { required: 'Last name is required' })}
-                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                      {errors.lastName && (
-                        <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>
+                      {errors.name && (
+                        <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
                       )}
                     </div>
                   </div>
@@ -233,21 +217,6 @@ const Checkout: React.FC = () => {
                         <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
                       )}
                     </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Phone *
-                      </label>
-                      <input
-                        type="tel"
-                        {...register('phone', { required: 'Phone number is required' })}
-                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="(555) 123-4567"
-                      />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-                      )}
-                    </div>
                   </div>
 
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -261,12 +230,12 @@ const Checkout: React.FC = () => {
                       </label>
                       <input
                         type="text"
-                        {...register('address', { required: 'Address is required' })}
+                        {...register('street', { required: 'Street is required' })}
                         className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="123 Main Street"
                       />
-                      {errors.address && (
-                        <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>
+                      {errors.street && (
+                        <p className="text-red-500 text-sm mt-1">{errors.street.message}</p>
                       )}
                     </div>
 
@@ -287,16 +256,16 @@ const Checkout: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          State *
+                          Country *
                         </label>
                         <input
                           type="text"
-                          {...register('state', { required: 'State is required' })}
+                          {...register('country', { required: 'Country is required' })}
                           className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           placeholder="CA"
                         />
-                        {errors.state && (
-                          <p className="text-red-500 text-sm mt-1">{errors.state.message}</p>
+                        {errors.country && (
+                          <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>
                         )}
                       </div>
 
@@ -409,9 +378,7 @@ const Checkout: React.FC = () => {
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white mb-2">Contact Information</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {watch('firstName')} {watch('lastName')}<br />
-                        {watch('email')}<br />
-                        {watch('phone')}
+                        {watch('name')}<br />{watch('email')}
                       </p>
                     </div>
 
@@ -419,8 +386,8 @@ const Checkout: React.FC = () => {
                     <div>
                       <h3 className="font-medium text-gray-900 dark:text-white mb-2">Shipping Address</h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {watch('address')}<br />
-                        {watch('city')}, {watch('state')} {watch('zipCode')}
+                        {watch('street')}<br />
+                        {watch('city')}, {watch('country')} {watch('zipCode')}
                       </p>
                     </div>
 
@@ -504,13 +471,6 @@ const Checkout: React.FC = () => {
                   <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
                   <span className="text-gray-900 dark:text-white">${subtotal.toFixed(2)}</span>
                 </div>
-                
-                {savings > 0 && (
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
-                    <span>Savings</span>
-                    <span>-${savings.toFixed(2)}</span>
-                  </div>
-                )}
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Tax</span>
