@@ -1,0 +1,78 @@
+# ML Prediction Products - Curl Commands & CSV Data
+# =================================================
+
+## CURL COMMANDS FOR OPENFOODFACTS API:
+
+# Product 2716 - Organic Greek Lowfat Yogurt With Strawberries
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Greek%20Lowfat%20Yogurt%20With%20Strawberries&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 2962 - Milk, Reduced Fat, 2% Milkfat
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Milk%20Reduced%20Fat%202%25%20Milkfat&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 3957 - 100% Raw Coconut Water
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=100%25%20Raw%20Coconut%20Water&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 5876 - Organic Lemon
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Lemon&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 8379 - Wild Smoked Sockeye Salmon
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Wild%20Smoked%20Sockeye%20Salmon&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 11512 - Honey Yoghurt
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Honey%20Yoghurt&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 11937 - Mixed Berries
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Mixed%20Berries&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 23986 - Grassfed Whole Milk Plain Yogurt
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Grassfed%20Whole%20Milk%20Plain%20Yogurt&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 24852 - Banana
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Banana&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 25640 - White Peach
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=White%20Peach&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 45210 - Organic Greek Lowfat Yogurt With Blueberries
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Greek%20Lowfat%20Yogurt%20With%20Blueberries&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 45445 - Organic Bagged Mini Dark Peanut Butter
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Bagged%20Mini%20Dark%20Peanut%20Butter&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 47029 - Organic Greek Nonfat Yogurt With Mixed Berries
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Greek%20Nonfat%20Yogurt%20With%20Mixed%20Berries&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 48726 - Organic Nonfat Greek Yogurt With Peaches
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Nonfat%20Greek%20Yogurt%20With%20Peaches&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 49247 - Coconut Yoghurt
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Coconut%20Yoghurt&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 49374 - Organic Cultured Cream Cheese Spread
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Organic%20Cultured%20Cream%20Cheese%20Spread&search_simple=1&action=process&json=1&page_size=1"
+
+# Product 49628 - Yoghurt Blueberry
+curl "https://world.openfoodfacts.org/cgi/search.pl?search_terms=Yoghurt%20Blueberry&search_simple=1&action=process&json=1&page_size=1"
+
+## ========================================================
+## CSV DATA READY FOR enriched_products_dept1.csv:
+## ========================================================
+
+product_id,product_name,description,price,image_url
+2716,Organic Greek Lowfat Yogurt With Strawberries,Quality organic greek lowfat yogurt with strawberries - fresh grocery product,5.49,https://via.placeholder.com/300x300?text=No+Image
+2962,Milk Reduced Fat 2% Milkfat,Quality milk reduced fat 2% milkfat - fresh grocery product,3.99,https://via.placeholder.com/300x300?text=No+Image
+3957,100% Raw Coconut Water,Quality 100% raw coconut water - fresh grocery product,4.25,https://via.placeholder.com/300x300?text=No+Image
+5876,Organic Lemon,Quality organic lemon - fresh grocery product,0.89,https://via.placeholder.com/300x300?text=No+Image
+8379,Wild Smoked Sockeye Salmon,Quality wild smoked sockeye salmon - fresh grocery product,12.99,https://via.placeholder.com/300x300?text=No+Image
+11512,Honey Yoghurt,Quality honey yoghurt - fresh grocery product,4.79,https://via.placeholder.com/300x300?text=No+Image
+11937,Mixed Berries,Quality mixed berries - fresh grocery product,6.49,https://via.placeholder.com/300x300?text=No+Image
+23986,Grassfed Whole Milk Plain Yogurt,Quality grassfed whole milk plain yogurt - fresh grocery product,5.99,https://via.placeholder.com/300x300?text=No+Image
+24852,Banana,Quality banana - fresh grocery product,1.29,https://via.placeholder.com/300x300?text=No+Image
+25640,White Peach,Quality white peach - fresh grocery product,2.99,https://via.placeholder.com/300x300?text=No+Image
+45210,Organic Greek Lowfat Yogurt With Blueberries,Quality organic greek lowfat yogurt with blueberries - fresh grocery product,5.49,https://via.placeholder.com/300x300?text=No+Image
+45445,Organic Bagged Mini Dark Peanut Butter,Quality organic bagged mini dark peanut butter - fresh grocery product,8.99,https://via.placeholder.com/300x300?text=No+Image
+47029,Organic Greek Nonfat Yogurt With Mixed Berries,Quality organic greek nonfat yogurt with mixed berries - fresh grocery product,5.29,https://via.placeholder.com/300x300?text=No+Image
+48726,Organic Nonfat Greek Yogurt With Peaches,Quality organic nonfat greek yogurt with peaches - fresh grocery product,5.29,https://via.placeholder.com/300x300?text=No+Image
+49247,Coconut Yoghurt,Quality coconut yoghurt - fresh grocery product,4.99,https://via.placeholder.com/300x300?text=No+Image
+49374,Organic Cultured Cream Cheese Spread,Quality organic cultured cream cheese spread - fresh grocery product,6.79,https://via.placeholder.com/300x300?text=No+Image
+49628,Yoghurt Blueberry,Quality yoghurt blueberry - fresh grocery product,4.79,https://via.placeholder.com/300x300?text=No+Image
