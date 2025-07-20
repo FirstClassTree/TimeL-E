@@ -3,24 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { 
   Brain, ShoppingCart, TrendingUp, Info, Check, X, 
-  RefreshCw, Calendar, Clock, Sparkles, AlertCircle,
-  ChevronRight, Plus, Minus, Trash2
+  RefreshCw, Calendar, Clock, Sparkles, AlertCircle, Plus, Minus
 } from 'lucide-react';
 import { predictionService } from '@/services/prediction.service';
-import { cartService } from '@/services/cart.service';
-import { useCartStore } from '@/stores/cart.store';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ProductImage from '@/components/products/ProductImage';
 import ConfidenceIndicator from '@/components/predictions/ConfidenceIndicator';
 import PredictionExplanation from '@/components/predictions/PredictionExplanation';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import {useUser} from "@/components/auth/UserProvider.tsx";
 
 const PredictedBasket: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { syncWithPredictedBasket } = useCartStore();
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExplanations, setShowExplanations] = useState(false);
 
   // Fetch current predicted basket
@@ -44,7 +40,7 @@ const PredictedBasket: React.FC = () => {
 
   // Generate new prediction mutation
   const generateMutation = useMutation(
-    () => predictionService.generatePrediction({ forceRegenerate: true }),
+    () => predictionService.getUserPredictedBaskets(useUser().userId),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('predicted-basket');
@@ -63,32 +59,6 @@ const PredictedBasket: React.FC = () => {
     {
       onSuccess: () => {
         queryClient.invalidateQueries('predicted-basket');
-      }
-    }
-  );
-
-  // Remove item mutation
-  const removeItemMutation = useMutation(
-    (itemId: string) => predictionService.removeBasketItem(basket!.id, itemId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('predicted-basket');
-        toast.success('Item removed from prediction');
-      }
-    }
-  );
-
-  // Accept basket mutation
-  const acceptBasketMutation = useMutation(
-    () => predictionService.acceptBasket(basket!.id),
-    {
-      onSuccess: async (data) => {
-        await syncWithPredictedBasket(basket!.id);
-        toast.success('Basket accepted! Redirecting to cart...');
-        setTimeout(() => navigate('/cart'), 1500);
-      },
-      onError: () => {
-        toast.error('Failed to accept basket');
       }
     }
   );
@@ -368,12 +338,6 @@ const PredictedBasket: React.FC = () => {
                           >
                             <Plus size={16} />
                           </button>
-                          <button
-                            onClick={() => removeItemMutation.mutate(item.id)}
-                            className="ml-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                          >
-                            <Trash2 size={16} />
-                          </button>
                         </div>
                       </div>
 
@@ -402,24 +366,6 @@ const PredictedBasket: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={() => acceptBasketMutation.mutate()}
-            disabled={acceptBasketMutation.isLoading || stats?.totalItems === 0}
-            className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold rounded-full hover:from-cyan-700 hover:to-blue-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {acceptBasketMutation.isLoading ? (
-              <>
-                <LoadingSpinner size="small" className="text-white" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <ShoppingCart size={20} />
-                Accept & Add to Cart
-                <ChevronRight size={20} />
-              </>
-            )}
-          </button>
 
           <button
             onClick={() => navigate('/products')}

@@ -71,31 +71,15 @@ class PredictionService {
   }
 
   /**
-   * Get predicted basket by ID
-   */
-  async getPredictedBasket(id: string): Promise<PredictedBasket> {
-    return api.get<PredictedBasket>(`/predictions/baskets/${id}`);
-  }
-
-  /**
    * Get all predicted baskets for user
    */
-  async getUserPredictedBaskets(filters?: {
-    page?: number;
-    limit?: number;
-    status?: string;
-  }): Promise<{
+  async getUserPredictedBaskets(userId : string): Promise<{
     baskets: PredictedBasket[];
     total: number;
     page: number;
     totalPages: number;
   }> {
-    const params = new URLSearchParams();
-    if (filters?.page) params.append('page', filters.page.toString());
-    if (filters?.limit) params.append('limit', filters.limit.toString());
-    if (filters?.status) params.append('status', filters.status);
-
-    return api.get(`/predictions/baskets?${params.toString()}`);
+    return api.get(`/predictions/user/${userId}`);
   }
 
   /**
@@ -150,32 +134,9 @@ class PredictionService {
 
   /**
    * Get model performance metrics via backend
-   * FIXED: No longer directly calls ML service
    */
   async getModelMetrics(): Promise<ModelMetrics> {
     return api.get<ModelMetrics>('/predictions/metrics/model-performance');
-  }
-
-  /**
-   * Get online prediction metrics via backend
-   */
-  async getOnlineMetrics(): Promise<OnlineMetrics> {
-    return api.get<OnlineMetrics>('/predictions/metrics/online');
-  }
-
-  /**
-   * Get prediction statistics
-   */
-  async getPredictionStats(period: string = 'month'): Promise<{
-    totalPredictions: number;
-    acceptanceRate: number;
-    averageConfidence: number;
-    topPredictedCategories: Array<{
-      category: string;
-      count: number;
-    }>;
-  }> {
-    return api.get(`/predictions/stats?period=${period}`);
   }
 
   // ============================================================================
@@ -192,28 +153,6 @@ class PredictionService {
     } catch {
       return false;
     }
-  }
-
-  /**
-   * Get next basket recommendation
-   * This triggers the main ML prediction pipeline
-   */
-  async getNextBasketRecommendation(): Promise<PredictedBasket> {
-    return api.post<PredictedBasket>('/predictions/next-basket');
-  }
-
-  /**
-   * Auto-generate weekly basket
-   */
-  async autoGenerateWeeklyBasket(): Promise<PredictedBasket> {
-    return api.post<PredictedBasket>('/predictions/auto-generate');
-  }
-
-  /**
-   * Schedule prediction for specific date
-   */
-  async schedulePrediction(weekOf: string): Promise<void> {
-    return api.post('/predictions/schedule', { weekOf });
   }
 
   /**
