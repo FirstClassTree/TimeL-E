@@ -18,28 +18,34 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: orders; Type: SCHEMA; Schema: -; Owner: -
+-- Name: orders; Type: SCHEMA; Schema: -; Owner: timele_user
 --
 
 CREATE SCHEMA orders;
 
 
+ALTER SCHEMA orders OWNER TO timele_user;
+
 --
--- Name: products; Type: SCHEMA; Schema: -; Owner: -
+-- Name: products; Type: SCHEMA; Schema: -; Owner: timele_user
 --
 
 CREATE SCHEMA products;
 
 
+ALTER SCHEMA products OWNER TO timele_user;
+
 --
--- Name: users; Type: SCHEMA; Schema: -; Owner: -
+-- Name: users; Type: SCHEMA; Schema: -; Owner: timele_user
 --
 
 CREATE SCHEMA users;
 
 
+ALTER SCHEMA users OWNER TO timele_user;
+
 --
--- Name: order_status_enum; Type: TYPE; Schema: public; Owner: -
+-- Name: order_status_enum; Type: TYPE; Schema: public; Owner: timele_user
 --
 
 CREATE TYPE public.order_status_enum AS ENUM (
@@ -55,16 +61,18 @@ CREATE TYPE public.order_status_enum AS ENUM (
 );
 
 
+ALTER TYPE public.order_status_enum OWNER TO timele_user;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: order_items; Type: TABLE; Schema: orders; Owner: -
+-- Name: order_items; Type: TABLE; Schema: orders; Owner: timele_user
 --
 
 CREATE TABLE orders.order_items (
-    order_id uuid NOT NULL,
+    order_id integer NOT NULL,
     product_id integer NOT NULL,
     add_to_cart_order integer NOT NULL,
     reordered integer NOT NULL,
@@ -72,13 +80,15 @@ CREATE TABLE orders.order_items (
 );
 
 
+ALTER TABLE orders.order_items OWNER TO timele_user;
+
 --
--- Name: orders; Type: TABLE; Schema: orders; Owner: -
+-- Name: orders; Type: TABLE; Schema: orders; Owner: timele_user
 --
 
 CREATE TABLE orders.orders (
-    order_id uuid NOT NULL,
-    user_id uuid NOT NULL,
+    order_id integer NOT NULL,
+    user_id integer NOT NULL,
     eval_set character varying NOT NULL,
     order_number integer NOT NULL,
     order_dow integer NOT NULL,
@@ -98,8 +108,32 @@ CREATE TABLE orders.orders (
 );
 
 
+ALTER TABLE orders.orders OWNER TO timele_user;
+
 --
--- Name: aisles; Type: TABLE; Schema: products; Owner: -
+-- Name: orders_order_id_seq; Type: SEQUENCE; Schema: orders; Owner: timele_user
+--
+
+CREATE SEQUENCE orders.orders_order_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE orders.orders_order_id_seq OWNER TO timele_user;
+
+--
+-- Name: orders_order_id_seq; Type: SEQUENCE OWNED BY; Schema: orders; Owner: timele_user
+--
+
+ALTER SEQUENCE orders.orders_order_id_seq OWNED BY orders.orders.order_id;
+
+
+--
+-- Name: aisles; Type: TABLE; Schema: products; Owner: timele_user
 --
 
 CREATE TABLE products.aisles (
@@ -108,8 +142,10 @@ CREATE TABLE products.aisles (
 );
 
 
+ALTER TABLE products.aisles OWNER TO timele_user;
+
 --
--- Name: aisles_aisle_id_seq; Type: SEQUENCE; Schema: products; Owner: -
+-- Name: aisles_aisle_id_seq; Type: SEQUENCE; Schema: products; Owner: timele_user
 --
 
 CREATE SEQUENCE products.aisles_aisle_id_seq
@@ -121,15 +157,17 @@ CREATE SEQUENCE products.aisles_aisle_id_seq
     CACHE 1;
 
 
+ALTER SEQUENCE products.aisles_aisle_id_seq OWNER TO timele_user;
+
 --
--- Name: aisles_aisle_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: -
+-- Name: aisles_aisle_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: timele_user
 --
 
 ALTER SEQUENCE products.aisles_aisle_id_seq OWNED BY products.aisles.aisle_id;
 
 
 --
--- Name: departments; Type: TABLE; Schema: products; Owner: -
+-- Name: departments; Type: TABLE; Schema: products; Owner: timele_user
 --
 
 CREATE TABLE products.departments (
@@ -138,8 +176,10 @@ CREATE TABLE products.departments (
 );
 
 
+ALTER TABLE products.departments OWNER TO timele_user;
+
 --
--- Name: departments_department_id_seq; Type: SEQUENCE; Schema: products; Owner: -
+-- Name: departments_department_id_seq; Type: SEQUENCE; Schema: products; Owner: timele_user
 --
 
 CREATE SEQUENCE products.departments_department_id_seq
@@ -151,15 +191,31 @@ CREATE SEQUENCE products.departments_department_id_seq
     CACHE 1;
 
 
+ALTER SEQUENCE products.departments_department_id_seq OWNER TO timele_user;
+
 --
--- Name: departments_department_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: -
+-- Name: departments_department_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: timele_user
 --
 
 ALTER SEQUENCE products.departments_department_id_seq OWNED BY products.departments.department_id;
 
 
 --
--- Name: products; Type: TABLE; Schema: products; Owner: -
+-- Name: product_enriched; Type: TABLE; Schema: products; Owner: timele_user
+--
+
+CREATE TABLE products.product_enriched (
+    product_id integer NOT NULL,
+    description text,
+    price numeric(10,2),
+    image_url text
+);
+
+
+ALTER TABLE products.product_enriched OWNER TO timele_user;
+
+--
+-- Name: products; Type: TABLE; Schema: products; Owner: timele_user
 --
 
 CREATE TABLE products.products (
@@ -170,8 +226,10 @@ CREATE TABLE products.products (
 );
 
 
+ALTER TABLE products.products OWNER TO timele_user;
+
 --
--- Name: products_product_id_seq; Type: SEQUENCE; Schema: products; Owner: -
+-- Name: products_product_id_seq; Type: SEQUENCE; Schema: products; Owner: timele_user
 --
 
 CREATE SEQUENCE products.products_product_id_seq
@@ -183,15 +241,17 @@ CREATE SEQUENCE products.products_product_id_seq
     CACHE 1;
 
 
+ALTER SEQUENCE products.products_product_id_seq OWNER TO timele_user;
+
 --
--- Name: products_product_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: -
+-- Name: products_product_id_seq; Type: SEQUENCE OWNED BY; Schema: products; Owner: timele_user
 --
 
 ALTER SEQUENCE products.products_product_id_seq OWNED BY products.products.product_id;
 
 
 --
--- Name: users; Type: TABLE; Schema: users; Owner: -
+-- Name: users; Type: TABLE; Schema: users; Owner: timele_user
 --
 
 CREATE TABLE users.users (
@@ -207,29 +267,67 @@ CREATE TABLE users.users (
 );
 
 
+ALTER TABLE users.users OWNER TO timele_user;
+
 --
--- Name: aisles aisle_id; Type: DEFAULT; Schema: products; Owner: -
+-- Name: users_user_id_seq; Type: SEQUENCE; Schema: users; Owner: timele_user
+--
+
+CREATE SEQUENCE users.users_user_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE users.users_user_id_seq OWNER TO timele_user;
+
+--
+-- Name: users_user_id_seq; Type: SEQUENCE OWNED BY; Schema: users; Owner: timele_user
+--
+
+ALTER SEQUENCE users.users_user_id_seq OWNED BY users.users.user_id;
+
+
+--
+-- Name: orders order_id; Type: DEFAULT; Schema: orders; Owner: timele_user
+--
+
+ALTER TABLE ONLY orders.orders ALTER COLUMN order_id SET DEFAULT nextval('orders.orders_order_id_seq'::regclass);
+
+
+--
+-- Name: aisles aisle_id; Type: DEFAULT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.aisles ALTER COLUMN aisle_id SET DEFAULT nextval('products.aisles_aisle_id_seq'::regclass);
 
 
 --
--- Name: departments department_id; Type: DEFAULT; Schema: products; Owner: -
+-- Name: departments department_id; Type: DEFAULT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.departments ALTER COLUMN department_id SET DEFAULT nextval('products.departments_department_id_seq'::regclass);
 
 
 --
--- Name: products product_id; Type: DEFAULT; Schema: products; Owner: -
+-- Name: products product_id; Type: DEFAULT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.products ALTER COLUMN product_id SET DEFAULT nextval('products.products_product_id_seq'::regclass);
 
 
 --
--- Name: order_items order_items_pkey; Type: CONSTRAINT; Schema: orders; Owner: -
+-- Name: users user_id; Type: DEFAULT; Schema: users; Owner: timele_user
+--
+
+ALTER TABLE ONLY users.users ALTER COLUMN user_id SET DEFAULT nextval('users.users_user_id_seq'::regclass);
+
+
+--
+-- Name: order_items order_items_pkey; Type: CONSTRAINT; Schema: orders; Owner: timele_user
 --
 
 ALTER TABLE ONLY orders.order_items
@@ -237,7 +335,7 @@ ALTER TABLE ONLY orders.order_items
 
 
 --
--- Name: orders orders_pkey; Type: CONSTRAINT; Schema: orders; Owner: -
+-- Name: orders orders_pkey; Type: CONSTRAINT; Schema: orders; Owner: timele_user
 --
 
 ALTER TABLE ONLY orders.orders
@@ -245,7 +343,7 @@ ALTER TABLE ONLY orders.orders
 
 
 --
--- Name: aisles aisles_pkey; Type: CONSTRAINT; Schema: products; Owner: -
+-- Name: aisles aisles_pkey; Type: CONSTRAINT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.aisles
@@ -253,7 +351,7 @@ ALTER TABLE ONLY products.aisles
 
 
 --
--- Name: departments departments_pkey; Type: CONSTRAINT; Schema: products; Owner: -
+-- Name: departments departments_pkey; Type: CONSTRAINT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.departments
@@ -261,7 +359,15 @@ ALTER TABLE ONLY products.departments
 
 
 --
--- Name: products products_pkey; Type: CONSTRAINT; Schema: products; Owner: -
+-- Name: product_enriched product_enriched_pkey; Type: CONSTRAINT; Schema: products; Owner: timele_user
+--
+
+ALTER TABLE ONLY products.product_enriched
+    ADD CONSTRAINT product_enriched_pkey PRIMARY KEY (product_id);
+
+
+--
+-- Name: products products_pkey; Type: CONSTRAINT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.products
@@ -269,7 +375,7 @@ ALTER TABLE ONLY products.products
 
 
 --
--- Name: users users_name_key; Type: CONSTRAINT; Schema: users; Owner: -
+-- Name: users users_name_key; Type: CONSTRAINT; Schema: users; Owner: timele_user
 --
 
 ALTER TABLE ONLY users.users
@@ -277,7 +383,7 @@ ALTER TABLE ONLY users.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: users; Owner: -
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: users; Owner: timele_user
 --
 
 ALTER TABLE ONLY users.users
@@ -285,42 +391,42 @@ ALTER TABLE ONLY users.users
 
 
 --
--- Name: ix_orders_order_items_product_id; Type: INDEX; Schema: orders; Owner: -
+-- Name: ix_orders_order_items_product_id; Type: INDEX; Schema: orders; Owner: timele_user
 --
 
 CREATE INDEX ix_orders_order_items_product_id ON orders.order_items USING btree (product_id);
 
 
 --
--- Name: ix_orders_orders_user_id; Type: INDEX; Schema: orders; Owner: -
+-- Name: ix_orders_orders_user_id; Type: INDEX; Schema: orders; Owner: timele_user
 --
 
 CREATE INDEX ix_orders_orders_user_id ON orders.orders USING btree (user_id);
 
 
 --
--- Name: ix_products_products_aisle_id; Type: INDEX; Schema: products; Owner: -
+-- Name: ix_products_products_aisle_id; Type: INDEX; Schema: products; Owner: timele_user
 --
 
 CREATE INDEX ix_products_products_aisle_id ON products.products USING btree (aisle_id);
 
 
 --
--- Name: ix_products_products_department_id; Type: INDEX; Schema: products; Owner: -
+-- Name: ix_products_products_department_id; Type: INDEX; Schema: products; Owner: timele_user
 --
 
 CREATE INDEX ix_products_products_department_id ON products.products USING btree (department_id);
 
 
 --
--- Name: ix_users_users_email_address; Type: INDEX; Schema: users; Owner: -
+-- Name: ix_users_users_email_address; Type: INDEX; Schema: users; Owner: timele_user
 --
 
 CREATE UNIQUE INDEX ix_users_users_email_address ON users.users USING btree (email_address);
 
 
 --
--- Name: order_items order_items_order_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: -
+-- Name: order_items order_items_order_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: timele_user
 --
 
 ALTER TABLE ONLY orders.order_items
@@ -328,7 +434,7 @@ ALTER TABLE ONLY orders.order_items
 
 
 --
--- Name: order_items order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: -
+-- Name: order_items order_items_product_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: timele_user
 --
 
 ALTER TABLE ONLY orders.order_items
@@ -336,7 +442,7 @@ ALTER TABLE ONLY orders.order_items
 
 
 --
--- Name: orders orders_user_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: -
+-- Name: orders orders_user_id_fkey; Type: FK CONSTRAINT; Schema: orders; Owner: timele_user
 --
 
 ALTER TABLE ONLY orders.orders
@@ -344,7 +450,15 @@ ALTER TABLE ONLY orders.orders
 
 
 --
--- Name: products products_aisle_id_fkey; Type: FK CONSTRAINT; Schema: products; Owner: -
+-- Name: product_enriched product_enriched_product_id_fkey; Type: FK CONSTRAINT; Schema: products; Owner: timele_user
+--
+
+ALTER TABLE ONLY products.product_enriched
+    ADD CONSTRAINT product_enriched_product_id_fkey FOREIGN KEY (product_id) REFERENCES products.products(product_id);
+
+
+--
+-- Name: products products_aisle_id_fkey; Type: FK CONSTRAINT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.products
@@ -352,7 +466,7 @@ ALTER TABLE ONLY products.products
 
 
 --
--- Name: products products_department_id_fkey; Type: FK CONSTRAINT; Schema: products; Owner: -
+-- Name: products products_department_id_fkey; Type: FK CONSTRAINT; Schema: products; Owner: timele_user
 --
 
 ALTER TABLE ONLY products.products
@@ -362,3 +476,4 @@ ALTER TABLE ONLY products.products
 --
 -- PostgreSQL database dump complete
 --
+

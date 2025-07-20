@@ -179,333 +179,57 @@ async def health():
 # CORE PREDICTION ENDPOINTS
 # ============================================================================
 
-@app.post("/predict/from-database", tags=["Prediction"])
-async def predict_from_database(request: PredictionRequest):
+@app.post("/predict/{user_id}", tags=["Prediction"])
+async def predict_next_cart(user_id: int):
     """
-    DEMAND 1: Main prediction endpoint using user's history from the database.
-    FIXED: Now properly handles UUID-based users and checks for demo users.
+    Simple prediction endpoint - just give a user ID, get their predicted next cart.
+    Works with demo users from CSV data.
     """
-    if not app.state.prediction_service:
-        raise HTTPException(status_code=503, detail="Prediction service not available")
+    if not app.state.model_loaded:
+        raise HTTPException(status_code=503, detail="ML models not loaded")
     
     try:
-        logger.info(f"Database prediction request for user: {request.user_id}")
+        logger.info(f"Generating prediction for user {user_id}")
         
-        # CRITICAL FIX: Check if this is a demo user with Instacart data
-        with get_db_session() as session:
-            user = session.query(User).filter(User.id == request.user_id).first()
-            if not user:
-                raise HTTPException(status_code=404, detail=f"User {request.user_id} not found")
-            
-            # Check if user has metadata with original Instacart ID
-            instacart_user_id = None
-            if user.user_metadata and isinstance(user.user_metadata, dict):
-                instacart_user_id = user.user_metadata.get('instacart_user_id')
-            
-            if instacart_user_id:
-                # This is a demo user - use CSV data for prediction
-                logger.info(f"Demo user detected with Instacart ID: {instacart_user_id}")
-                
-                # Use the demo feature engineer with CSV data
-                features_df = app.state.demo_feature_engineer.generate_features_from_csv_data(
-                    str(instacart_user_id), 
-                    app.state.orders_df, 
-                    app.state.order_products_prior_df
-                )
-                
-                if features_df.empty:
-                    logger.warning(f"No features generated for demo user {request.user_id}")
-                    return {
-                        "user_id": request.user_id,
-                        "predicted_products": [],
-                        "source": "demo_csv",
-                        "feature_engineering": "unified",
-                        "timestamp": datetime.utcnow().isoformat(),
-                        "message": "No order history found in demo data"
-                    }
-                
-                # Generate prediction
-                predicted_product_ids = app.state.model.predict(features_df, int(instacart_user_id))
-                
-                return {
-                    "user_id": request.user_id,
-                    "predicted_products": predicted_product_ids,
-                    "source": "demo_csv",
-                    "feature_engineering": "unified",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-            else:
-                # Regular user - use database prediction
-                predictions = app.state.prediction_service.predict_next_basket(request.user_id)
-                
-                return {
-                    "user_id": request.user_id,
-                    "predicted_products": predictions,
-                    "source": "database",
-                    "feature_engineering": "unified",
-                    "timestamp": datetime.utcnow().isoformat()
-                }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Database prediction failed for user {request.user_id}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
-
-# ============================================================================
-# DEMAND 3: CONSOLIDATED PREDICTION COMPARISON ENDPOINT
-# ============================================================================
-
-@app.post("/demo/prediction-comparison/{user_id_str}", tags=["Demo"])
-async def get_demo_prediction_comparison(user_id_str: str):
-    """
-    DEMAND 3: Consolidated endpoint - prediction + ground truth + metrics in single call.
-    Uses CSV data only, no database interaction.
-    """
-    try:
-        user_id = int(user_id_str)
-        
-        # Validate model and data availability
-        if not app.state.model:
-            raise HTTPException(status_code=503, detail="Model not loaded")
-        
-        if app.state.data_loaded.get("orders", 0) == 0:
-            raise HTTPException(status_code=503, detail="CSV data not available")
-        
-        logger.info(f"Generating consolidated prediction comparison for user {user_id}")
-        
-        # STEP 1: Generate prediction from CSV data
-        order_history = _generate_order_history_from_csv(user_id)
-        if not order_history:
-            raise HTTPException(
-                status_code=404, 
-                detail=f"No order history found for user {user_id} in CSV data. Try user IDs: 1, 7, 13, 25, 31, 42, 55, 60, 78, 92"
-            )
-        
-        # Use DatabaseFeatureEngineer's CSV-compatible method
+        # Generate features from CSV data (since we trained on CSV data)
         features_df = app.state.demo_feature_engineer.generate_features_from_csv_data(
-            str(user_id), app.state.orders_df, app.state.order_products_prior_df
+            str(user_id), 
+            app.state.orders_df, 
+            app.state.order_products_prior_df
         )
         
         if features_df.empty:
-            raise HTTPException(status_code=404, detail=f"No features could be generated for demo user {user_id}")
+            return {
+                "user_id": user_id,
+                "predicted_cart": [],
+                "message": "No order history found for this user",
+                "success": False
+            }
         
-        # Generate prediction using the model
+        # Generate prediction using our trained models
         predicted_product_ids = app.state.model.predict(features_df, user_id)
         
-        # STEP 2: Get ground truth basket from processed CSV
-        user_future = app.state.instacart_future_df[app.state.instacart_future_df['user_id'] == user_id]
+        # Get product details
+        predicted_products = []
+        for product_id in predicted_product_ids:
+            product_info = app.state.products_df[app.state.products_df['product_id'] == product_id]
+            if not product_info.empty:
+                predicted_products.append({
+                    "product_id": int(product_id),
+                    "product_name": product_info.iloc[0]['product_name']
+                })
         
-        if user_future.empty:
-            raise HTTPException(status_code=404, detail=f"No ground truth future basket found for user {user_id}")
-        
-        # Extract ground truth product IDs
-        true_product_ids = []
-        for _, row in user_future.iterrows():
-            if pd.notna(row['products']) and row['products']:
-                # Handle both string and list formats
-                if isinstance(row['products'], str):
-                    try:
-                        products = eval(row['products']) if row['products'].startswith('[') else [int(row['products'])]
-                    except:
-                        products = [int(row['products'])]
-                else:
-                    products = row['products'] if isinstance(row['products'], list) else [row['products']]
-                true_product_ids.extend(products)
-        
-        # STEP 3: Calculate comparison metrics
-        predicted_set = set(predicted_product_ids)
-        true_set = set(true_product_ids)
-        common_items = predicted_set & true_set
-        
-        # Enrich with product details
-        predicted_products = _get_product_details(list(predicted_set))
-        true_products = _get_product_details(list(true_set))
-        
-        # Return consolidated response
         return {
             "user_id": user_id,
-            "predicted_basket": predicted_products,
-            "true_future_basket": true_products,
-            "comparison_metrics": {
-                "predicted_count": len(predicted_set),
-                "actual_count": len(true_set),
-                "common_items": len(common_items),
-                "precision": len(common_items) / len(predicted_set) if predicted_set else 0,
-                "recall": len(common_items) / len(true_set) if true_set else 0,
-                "f1_score": 2 * len(common_items) / (len(predicted_set) + len(true_set)) if (predicted_set or true_set) else 0
-            },
-            "order_history_summary": {
-                "total_orders": len(order_history),
-                "unique_products": len(set(p for order in order_history for p in order['products'])),
-                "last_order_date": order_history[-1]['order_date'] if order_history else None
-            },
+            "predicted_cart": predicted_products,
+            "success": True,
             "timestamp": datetime.utcnow().isoformat()
         }
         
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format")
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Demo prediction comparison failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Comparison failed: {str(e)}")
+        logger.error(f"Prediction failed for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
-# ============================================================================
-# DEMAND 2: MODEL EVALUATION ENDPOINT
-# ============================================================================
-
-@app.post("/evaluate-model", tags=["Evaluation"])
-async def evaluate_model(sample_size: Optional[int] = Query(None, description="Number of users to evaluate")):
-    """
-    DEMAND 2: Trigger model evaluation across test set.
-    Returns performance metrics for the ML model.
-    """
-    # Temporarily disabled until evaluator dependencies are resolved
-    raise HTTPException(status_code=503, detail="Model evaluation temporarily disabled")
-
-# ============================================================================
-# DEMO DATA ENDPOINTS
-# ============================================================================
-
-@app.get("/demo-data/available-users", tags=["Demo"])
-async def get_available_demo_users(limit: int = 100):
-    """Get list of available demo user IDs from CSV data."""
-    if app.state.data_loaded.get("orders", 0) == 0:
-        raise HTTPException(status_code=503, detail="CSV data not loaded")
-    
-    user_ids = app.state.orders_df['user_id'].unique()[:limit].tolist()
-    return {
-        "available_users": user_ids,
-        "total_count": len(app.state.orders_df['user_id'].unique()),
-        "sample_users": [1, 7, 13, 25, 31, 42, 55, 60, 78, 92]  # Known good examples
-    }
-
-@app.get("/demo-data/instacart-user-order-history/{user_id}", tags=["Demo"])
-async def get_instacart_user_order_history(user_id: int):
-    """
-    Get order history for a specific Instacart user from CSV data.
-    Used by backend to seed demo users.
-    """
-    if app.state.data_loaded.get("orders", 0) == 0:
-        raise HTTPException(status_code=503, detail="CSV data not loaded")
-    
-    order_history = _generate_order_history_from_csv(user_id)
-    
-    if not order_history:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No order history found for user {user_id}. Try: 1, 7, 13, 25, 31, 42, 55, 60, 78, 92"
-        )
-    
-    return {
-        "user_id": user_id,
-        "orders": order_history,
-        "summary": {
-            "total_orders": len(order_history),
-            "unique_products": len(set(p for order in order_history for p in order['products'])),
-            "date_range": {
-                "first_order": order_history[0]['order_date'] if order_history else None,
-                "last_order": order_history[-1]['order_date'] if order_history else None
-            }
-        }
-    }
-
-@app.get("/demo-data/user-stats/{user_id}", tags=["Demo"])
-async def get_user_stats(user_id: int):
-    """Get detailed statistics for a demo user."""
-    if app.state.data_loaded.get("orders", 0) == 0:
-        raise HTTPException(status_code=503, detail="CSV data not loaded")
-    
-    user_orders = app.state.orders_df[app.state.orders_df['user_id'] == user_id]
-    
-    if user_orders.empty:
-        raise HTTPException(status_code=404, detail=f"User {user_id} not found in demo data")
-    
-    # Get order products
-    order_ids = user_orders['order_id'].tolist()
-    user_products = app.state.order_products_prior_df[
-        app.state.order_products_prior_df['order_id'].isin(order_ids)
-    ]
-    
-    # Calculate statistics
-    product_counts = user_products['product_id'].value_counts()
-    
-    return {
-        "user_id": user_id,
-        "total_orders": len(user_orders),
-        "total_products_ordered": len(user_products),
-        "unique_products": len(product_counts),
-        "avg_products_per_order": len(user_products) / len(user_orders) if len(user_orders) > 0 else 0,
-        "top_products": product_counts.head(10).to_dict(),
-        "order_frequency": {
-            "avg_days_between_orders": user_orders['days_since_prior_order'].mean() if 'days_since_prior_order' in user_orders else None,
-            "favorite_day_of_week": int(user_orders['order_dow'].mode()[0]) if not user_orders['order_dow'].empty else None,
-            "favorite_hour": int(user_orders['order_hour_of_day'].mode()[0]) if not user_orders['order_hour_of_day'].empty else None
-        }
-    }
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def _generate_order_history_from_csv(user_id: int) -> List[Dict]:
-    """Generate order history from CSV data for a specific user."""
-    user_orders = app.state.orders_df[app.state.orders_df['user_id'] == user_id].sort_values('order_number')
-    
-    if user_orders.empty:
-        return []
-    
-    order_history = []
-    for _, order in user_orders.iterrows():
-        # Get products for this order
-        order_products = app.state.order_products_prior_df[
-            app.state.order_products_prior_df['order_id'] == order['order_id']
-        ]
-        
-        if not order_products.empty:
-            products = order_products['product_id'].tolist()
-            
-            # Create synthetic date based on order number
-            days_offset = int(order['order_number']) * 7
-            order_date = datetime.utcnow() - pd.Timedelta(days=180 - days_offset)
-            
-            order_data = {
-                'order_id': str(order['order_id']),
-                'order_number': int(order['order_number']),
-                'order_date': order_date.isoformat(),
-                'order_dow': int(order['order_dow']),
-                'order_hour': int(order['order_hour_of_day']),
-                'products': products,
-                'product_count': len(products)
-            }
-            order_history.append(order_data)
-    
-    return order_history
-
-def _get_product_details(product_ids: List[int]) -> List[Dict]:
-    """Get product details from CSV data."""
-    product_details = []
-    
-    for pid in product_ids:
-        product = app.state.products_df[app.state.products_df['product_id'] == pid]
-        if not product.empty:
-            product_row = product.iloc[0]
-            product_details.append({
-                'product_id': int(pid),
-                'product_name': product_row['product_name'],
-                'aisle_id': int(product_row['aisle_id']) if pd.notna(product_row['aisle_id']) else None,
-                'department_id': int(product_row['department_id']) if pd.notna(product_row['department_id']) else None
-            })
-        else:
-            product_details.append({
-                'product_id': int(pid),
-                'product_name': f'Product {pid}',
-                'aisle_id': None,
-                'department_id': None
-            })
-    
-    return product_details
 
 # ============================================================================
 # RUN THE SERVICE
