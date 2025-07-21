@@ -66,7 +66,7 @@ services:
 
   db-service:
     build:
-      context: ./db_service
+      context: db_service
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=${DATABASE_URL}
@@ -81,7 +81,7 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - ./data:/data
+      - ./db_service/data:/app/csv_data
     networks:
       - timele-network
     restart: unless-stopped
