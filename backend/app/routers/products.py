@@ -35,7 +35,10 @@ async def get_products(
                 aisle_id=row["aisle_id"],
                 department_id=row["department_id"],
                 aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name")
+                department_name=row.get("department_name"),
+                description=row.get("description"),
+                price=row.get("price"),
+                image_url=row.get("image_url")
             )
             for row in products_data
         ]
@@ -95,7 +98,10 @@ async def search_products(
                 aisle_id=row["aisle_id"],
                 department_id=row["department_id"],
                 aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name")
+                department_name=row.get("department_name"),
+                description=row.get("description"),
+                price=row.get("price"),
+                image_url=row.get("image_url")
             )
             for row in products_data
         ]
@@ -141,7 +147,10 @@ async def get_product(product_id: int) -> APIResponse:
             aisle_id=product_row["aisle_id"],
             department_id=product_row["department_id"],
             aisle_name=product_row.get("aisle_name"),
-            department_name=product_row.get("department_name")
+            department_name=product_row.get("department_name"),
+            description=product_row.get("description"),
+            price=product_row.get("price"),
+            image_url=product_row.get("image_url")
         )
         
         return APIResponse(
@@ -191,7 +200,10 @@ async def get_products_by_department(department_id: int) -> APIResponse:
                 aisle_id=row["aisle_id"],
                 department_id=row["department_id"],
                 aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name")
+                department_name=row.get("department_name"),
+                description=row.get("description"),
+                price=row.get("price"),
+                image_url=row.get("image_url")
             )
             for row in products_data
         ]
@@ -247,7 +259,10 @@ async def get_products_by_aisle(aisle_id: int) -> APIResponse:
                 aisle_id=row["aisle_id"],
                 department_id=row["department_id"],
                 aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name")
+                department_name=row.get("department_name"),
+                description=row.get("description"),
+                price=row.get("price"),
+                image_url=row.get("image_url")
             )
             for row in products_data
         ]
@@ -309,7 +324,10 @@ async def get_product_recommendations(
                 aisle_id=row["aisle_id"],
                 department_id=row["department_id"],
                 aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name")
+                department_name=row.get("department_name"),
+                description=row.get("description"),
+                price=row.get("price"),
+                image_url=row.get("image_url")
             )
             for row in filtered_recommendations
         ]

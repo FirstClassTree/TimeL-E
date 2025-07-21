@@ -9,13 +9,12 @@ services:
     environment:
       - DEBUG=true
       - DB_SERVICE_URL=${DB_SERVICE_URL}
-#      - ML_SERVICE_URL=http://localhost:5002
+      - ML_SERVICE_URL=http://ml-service:${ML_SERVICE_PORT}
       - NODE_ENV=${NODE_ENV}
       - PORT=${BACKEND_PORT}
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-#      - ML_SERVICE_URL=${ML_SERVICE_URL}
       - FRONTEND_URL=${FRONTEND_URL}
     depends_on:
 #      - db-service
@@ -49,17 +48,20 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - PYTHONPATH=/app
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
+      - MODEL_PATH_BASE=/app/models
+      - PROCESSED_DATA_PATH=/app/training-data/processed
+      - RAW_DATA_PATH=/app/training-data
     ports:
       - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
     depends_on:
       db-service:
         condition: service_healthy
-      pgadmin:
-        condition: service_healthy
       postgres:
         condition: service_healthy
     volumes:
-      - ./ml-service:/app
+      - ./data:/app/training-data
+      - ml_models:/app/models
     networks:
       - timele-network
     restart: unless-stopped
@@ -105,6 +107,7 @@ services:
 
 volumes:
   postgres_data:
+  ml_models:
 
 networks:
   timele-network:

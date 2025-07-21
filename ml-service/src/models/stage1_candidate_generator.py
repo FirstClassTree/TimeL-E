@@ -1,6 +1,7 @@
 # ml-service/src/models/stage1_candidate_generator.py
 
 import pandas as pd
+import numpy as np
 import lightgbm as lgb
 import joblib
 import os

@@ -9,9 +9,7 @@ import asyncpg
 from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
 from pydantic import BaseModel
 from typing import List, Optional
-from uuid_utils import uuid7
-# from uuid import uuid7   # native uuid7 in python 3.14
-import uuid
+# Removed UUID imports since we're using integer user_ids and order_ids
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -26,7 +24,7 @@ class OrderItemRequest(BaseModel):
     reordered: int = 0
 
 class CreateOrderRequest(BaseModel):
-    user_id: str
+    user_id: int
     eval_set: Optional[str] = "new"
     order_dow: int = None
     order_hour_of_day: int = None
@@ -71,9 +69,13 @@ def create_order(order_request: CreateOrderRequest):
             .first()
         )
         next_order_number = (last_order.order_number if last_order else 0) + 1
+        # Get next available order_id (auto-increment would be better but this works)
+        max_order_id = session.query(func.max(Order.order_id)).scalar() or 0
+        next_order_id = max_order_id + 1
+        
         order = Order(
             user_id=order_request.user_id,
-            order_id=uuid.UUID(str(uuid7())),
+            order_id=next_order_id,
             eval_set=order_request.eval_set,
             order_number=next_order_number,
             order_dow=order_request.order_dow,
@@ -157,7 +159,7 @@ class AddOrderItemRequest(BaseModel):
 
 @router.post("/{order_id}/items", status_code=201)
 def add_order_items(
-    order_id: str = Path(...),
+    order_id: int = Path(...),
     items: List[AddOrderItemRequest] = Body(...)
 ):
     session = SessionLocal()
@@ -240,4 +242,3 @@ def add_order_items(
         raise HTTPException(status_code=500, detail=f"Error adding order items")
     finally:
         session.close()
-

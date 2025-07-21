@@ -49,6 +49,38 @@ def hash_password(password: str) -> str:
     """Simple password hashing (use proper hashing in production)"""
     return hashlib.sha256(password.encode()).hexdigest()
 
+@router.get("/login", response_model=APIResponse)
+async def demo_login() -> APIResponse:
+    """Demo login endpoint - returns random demo user with ML predictions"""
+    import random
+    
+    # Working demo users with ML predictions
+    demo_users = [
+        {"user_id": 688, "name": "Demo User 688", "email": "user688@timele-demo.com"},
+        {"user_id": 82420, "name": "Demo User 82420", "email": "user82420@timele-demo.com"},
+        {"user_id": 43682, "name": "Demo User 43682", "email": "user43682@timele-demo.com"},
+        {"user_id": 39993, "name": "Demo User 39993", "email": "user39993@timele-demo.com"}
+    ]
+    
+    # Select random demo user
+    selected_user = random.choice(demo_users)
+    
+    return APIResponse(
+        message="Demo login successful",
+        data={
+            "user_id": str(selected_user["user_id"]),
+            "name": selected_user["name"],
+            "email_address": selected_user["email"],
+            "phone_number": f"+1-555-0{selected_user['user_id']}",
+            "street_address": f"{selected_user['user_id']} Demo Street",
+            "city": "Demo City",
+            "postal_code": str(selected_user['user_id']),
+            "country": "US",
+            "demo_user": True,
+            "ml_predictions_available": True
+        }
+    )
+
 @router.get("/{user_id}", response_model=APIResponse)
 async def get_user_profile(user_id: str) -> APIResponse:
     """Get user profile by ID"""

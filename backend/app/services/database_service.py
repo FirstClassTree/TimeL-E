@@ -89,10 +89,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE 1=1
             """,
             "params": []
@@ -132,10 +134,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.product_id = $1
             """,
             "params": [product_id]
@@ -147,10 +151,12 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.department_id = $1
                 ORDER BY p.product_name
             """,
@@ -163,22 +169,16 @@ class DatabaseService:
         query = {
             "sql": """
                 SELECT p.product_id, p.product_name, p.aisle_id, p.department_id,
-                       d.department as department_name, a.aisle as aisle_name
+                       d.department as department_name, a.aisle as aisle_name,
+                       pe.description, pe.price, pe.image_url
                 FROM products.products p
                 JOIN products.departments d ON p.department_id = d.department_id
                 JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
                 WHERE p.aisle_id = $1
                 ORDER BY p.product_name
             """,
             "params": [aisle_id]
-        }
-        return await self.query(query)
-
-    async def get_department_by_id(self, department_id: int) -> Dict[str, Any]:
-        """Get department by ID"""
-        query = {
-            "sql": "SELECT * FROM products.departments WHERE department_id = $1",
-            "params": [department_id]
         }
         return await self.query(query)
 
@@ -187,6 +187,23 @@ class DatabaseService:
         query = {
             "sql": "SELECT * FROM products.aisles WHERE aisle_id = $1",
             "params": [aisle_id]
+        }
+        return await self.query(query)
+
+    # Department-specific methods
+    async def get_all_departments(self) -> Dict[str, Any]:
+        """Get all departments"""
+        query = {
+            "sql": "SELECT department_id, department FROM products.departments ORDER BY department",
+            "params": []
+        }
+        return await self.query(query)
+
+    async def get_department_by_id(self, department_id: int) -> Dict[str, Any]:
+        """Get department by ID"""
+        query = {
+            "sql": "SELECT department_id, department FROM products.departments WHERE department_id = $1",
+            "params": [department_id]
         }
         return await self.query(query)
 
@@ -308,7 +325,7 @@ class DatabaseService:
                        street_address, city, postal_code, country
                 FROM users.users WHERE user_id = $1
             """,
-            "params": [user_id]
+            "params": [int(user_id)]
         }
         return await self.query(query)
 
@@ -338,7 +355,7 @@ class DatabaseService:
         """Update user details"""
         # Build dynamic update query based on provided fields
         set_clauses = []
-        params = [user_id]
+        params = [int(user_id)]
         param_count = 2
         
         for field in ["name", "email_address", "phone_number", "street_address", "city", "postal_code", "country"]:
@@ -365,7 +382,7 @@ class DatabaseService:
         """Delete user"""
         query = {
             "sql": "DELETE FROM users.users WHERE user_id = $1 RETURNING user_id",
-            "params": [user_id]
+            "params": [int(user_id)]
         }
         return await self.query(query)
 
@@ -378,7 +395,7 @@ class DatabaseService:
                 WHERE user_id = $1
                 RETURNING user_id
             """,
-            "params": [user_id, hashed_password]
+            "params": [int(user_id), hashed_password]
         }
         return await self.query(query)
 
