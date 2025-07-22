@@ -12,13 +12,13 @@ from .reset_database import reset_database
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once at startup
-    print("🚀 Starting Database Service...")
+    print("Starting Database Service...")
     
     # Reset database to ensure clean integer schema
     if reset_database():
-        print("✅ Database reset successful")
+        print("Database reset successful")
     else:
-        print("⚠️ Database reset failed, trying with existing schema...")
+        print("Database reset failed, trying with existing schema...")
         init_db()
     
     # load data from departments.csv, aisles.csv, products.csv, and users.csv into their respective tables
@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     # load enriched product data from enriched_products_dept1.csv
     populate_enriched_data()
     
-    print("✅ Database Service ready!")
+    print("Database Service ready!")
     yield       # App runs
     # Optionally add shutdown logic after yield
 

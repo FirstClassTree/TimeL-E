@@ -19,21 +19,17 @@ def populate_enriched_data():
     engine = create_engine(DATABASE_URL)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
-    # CSV file path - check both possible locations
-    csv_file_local = Path(__file__).parent.parent / "data" / "enriched_products_dept1.csv"
-    csv_file_docker = Path("/app/csv_data/enriched_products_dept1.csv")
-    
-    # Use docker path if it exists, otherwise use local path
-    csv_file = csv_file_docker if csv_file_docker.exists() else csv_file_local
+    # Use /data/products_enriched/ (/data is a mounted volume)
+    csv_file = Path("/data/products_enriched/enriched_products_dept1.csv")
     
     if not csv_file.exists():
-        print(f"❌ Error: CSV file not found at {csv_file}")
-        print("Make sure you've generated enriched data using the product_enricher.py script")
+        print(f"Error: CSV file not found at {csv_file}")
+        print("Make sure enriched data was generated using the product_enricher.py script and that /data is mounted correctly")
         return False
     
     try:
         # Read CSV
-        print(f"📖 Reading enriched data from {csv_file}")
+        print(f"Reading enriched data from {csv_file}")
         df = pd.read_csv(csv_file)
         
         print(f"Found {len(df)} enriched products")
@@ -41,7 +37,7 @@ def populate_enriched_data():
         # Validate CSV structure
         required_columns = ['product_id', 'product_name', 'description', 'price', 'image_url']
         if not all(col in df.columns for col in required_columns):
-            print(f"❌ Error: CSV missing required columns. Found: {list(df.columns)}")
+            print(f"Error: CSV missing required columns. Found: {list(df.columns)}")
             return False
         
         # Create database session
@@ -49,12 +45,12 @@ def populate_enriched_data():
         
         try:
             # Clear existing enriched data
-            print("🧹 Clearing existing enriched data...")
+            print("Clearing existing enriched data...")
             session.execute(text("DELETE FROM products.product_enriched"))
             session.commit()
             
             # Insert enriched data
-            print("📝 Inserting enriched product data...")
+            print("Inserting enriched product data...")
             
             success_count = 0
             error_count = 0
@@ -82,41 +78,40 @@ def populate_enriched_data():
             # Commit all changes
             session.commit()
             
-            print(f"\n✅ Successfully populated enriched data!")
-            print(f"   ✓ Inserted: {success_count} products")
+            print(f"\nSuccessfully populated enriched data!")
+            print(f"   Inserted: {success_count} products")
             if error_count > 0:
-                print(f"   ⚠️  Errors: {error_count} products")
+                print(f"   Errors: {error_count} products")
             
             # Verify data
             result = session.execute(text("SELECT COUNT(*) FROM products.product_enriched")).scalar()
-            print(f"   📊 Total enriched products in database: {result}")
+            print(f"Total enriched products in database: {result}")
             
             return True
             
         except Exception as e:
             session.rollback()
-            print(f"❌ Error during database operations: {e}")
+            print(f"Error during database operations: {e}")
             return False
             
         finally:
             session.close()
     
     except Exception as e:
-        print(f"❌ Error reading CSV file: {e}")
+        print(f"Error reading CSV file: {e}")
         return False
 
 def main():
-    """Main function"""
-    print("🛒 TimeL-E Enriched Data Populator")
+    print("TimeL-E Enriched Data Populator")
     print("=" * 40)
     
     success = populate_enriched_data()
     
     if success:
-        print("\n🎉 Enriched data population completed successfully!")
-        print("You can now use the enriched product data in your API calls.")
+        print("\nEnriched data population completed successfully!")
+        print("Enriched product data can now be used in API calls.")
     else:
-        print("\n💥 Enriched data population failed!")
+        print("\nEnriched data population failed!")
         sys.exit(1)
 
 # Removed automatic execution - only run via lifespan function

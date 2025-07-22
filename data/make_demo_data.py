@@ -1,4 +1,5 @@
-#  run on host
+# Demo Data Extraction Script - Run in /data/ with source CSVs present
+# run on host
 
 import pandas as pd
 import numpy as np
@@ -7,9 +8,9 @@ import random
 import bcrypt
 
 # Configs
-ORDERS_CSV = '../../data/orders.csv'
-ORDER_PRIOR_CSV = '../../data/order_products__prior.csv'
-ORDER_TRAIN_CSV = '../../data/order_products__train.csv'
+ORDERS_CSV = 'orders.csv'
+ORDER_PRIOR_CSV = 'order_products__prior.csv'
+# ORDER_TRAIN_CSV = 'order_products__train.csv'
 ORDERS_DEMO_CSV = 'orders_demo.csv'
 ORDER_ITEMS_DEMO_CSV = 'order_items_demo.csv'
 USERS_DEMO_CSV = 'users_demo.csv'
@@ -75,3 +76,4 @@ print("  Demo CSVs generated:")
 print(f"  Users: {USERS_DEMO_CSV} ({len(users_demo_df)})")
 print(f"  Orders: {ORDERS_DEMO_CSV} ({len(orders_demo)})")
 print(f"  Order Items: {ORDER_ITEMS_DEMO_CSV} ({len(order_items_demo)})")
+

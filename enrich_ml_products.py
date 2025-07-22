@@ -14,7 +14,7 @@ import os
 import random
 
 # Configuration
-CSV_FILE = "db_service/data/enriched_products_dept1.csv"
+CSV_FILE = "data/products_enriched/enriched_products_dept1.csv"
 
 # ML Prediction Products to enrich
 ML_PRODUCTS = [

@@ -7,11 +7,16 @@ This script enriches product data from products.csv by calling external APIs
 to get descriptions, prices, and image URLs. Uses concurrent processing for
 much faster performance while being respectful to API rate limits.
 
+Now supports:
+- --department / -d command-line argument
+- If not specified, runs for ALL departments in departments.csv
+
 Usage:
-    python product_enricher.py
+    python product_enricher.py                 # All departments
+    python product_enricher.py --department 3  # Only department 3
 
 Output:
-    Creates data/enriched_products_dept{DEPARTMENT_ID}.csv
+    Creates enriched_products_dept{DEPARTMENT_ID}.csv for each department
 
 Author: TimeL-E Team
 """
@@ -22,6 +27,7 @@ import time
 import random
 import os
 import sys
+import argparse
 from urllib.parse import quote
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -29,9 +35,9 @@ import threading
 from collections import deque
 
 # Configuration
-DEPARTMENT_ID = 1  # Change this to process different departments
-INPUT_CSV = "../data/products.csv"
-OUTPUT_CSV = f"../data/enriched_products_dept{DEPARTMENT_ID}.csv"
+INPUT_CSV = "products.csv"
+DEPARTMENTS_CSV = "departments.csv"
+OUTPUT_SUBDIR = "products_enriched"
 MAX_WORKERS = 15  # Number of concurrent threads
 REQUESTS_PER_SECOND = 10  # API rate limit (requests per second)
 TIMEOUT = 10  # Request timeout in seconds
@@ -45,7 +51,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class ProductEnricher:
-    def __init__(self):
+    def __init__(self, department_id, output_csv):
+        self.department_id = department_id
+        self.output_csv = output_csv
         self.processed_count = 0
         self.total_count = 0
         self.lock = threading.Lock()
@@ -196,7 +204,7 @@ class ProductEnricher:
         description_fields = [
             'generic_name_en',
             'generic_name',
-            'product_name_en', 
+            'product_name_en',
             'product_name',
             'brands',
             'categories_en'
@@ -235,18 +243,16 @@ class ProductEnricher:
             'image_url': "https://via.placeholder.com/300x300?text=No+Image"
         }
     
-    def process_products(self):
-        """Main processing function with concurrent processing"""
+    def process_products(self, input_csv):
         try:
-            # Check if input file exists
-            if not os.path.exists(INPUT_CSV):
-                logger.error(f"Input file not found: {INPUT_CSV}")
-                logger.error("Make sure you're running this script from the backend/ directory")
+            if not os.path.exists(input_csv):
+                logger.error(f"Input file not found: {input_csv}")
+                logger.error("Make sure you're running this script from the data/ directory")
                 return False
             
             # Read products CSV
-            logger.info(f"Reading products from {INPUT_CSV}")
-            df = pd.read_csv(INPUT_CSV)
+            logger.info(f"Reading products from {input_csv}")
+            df = pd.read_csv(input_csv)
             
             # Validate CSV structure
             required_columns = ['product_id', 'product_name', 'aisle_id', 'department_id']
@@ -255,14 +261,13 @@ class ProductEnricher:
                 return False
             
             # Filter by department
-            filtered_df = df[df['department_id'] == DEPARTMENT_ID].copy()
+            filtered_df = df[df['department_id'] == self.department_id].copy()
             self.total_count = len(filtered_df)
             
             if self.total_count == 0:
-                logger.warning(f"No products found for department_id = {DEPARTMENT_ID}")
+                logger.warning(f"No products found for department_id = {self.department_id}")
                 return False
-            
-            logger.info(f"Found {self.total_count} products in department {DEPARTMENT_ID}")
+            logger.info(f"Found {self.total_count} products in department {self.department_id}")
             logger.info(f"Using {MAX_WORKERS} concurrent workers for processing")
             logger.info(f"Rate limit: {REQUESTS_PER_SECOND} requests per second")
             
@@ -302,12 +307,14 @@ class ProductEnricher:
             
             # Save results
             output_df = pd.DataFrame(enriched_products)
+
+            # Only create the output directory if one is specified (avoids errors if saving in current directory)
+            output_dir = os.path.dirname(self.output_csv)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
             
-            # Create output directory if it doesn't exist
-            os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
-            
-            output_df.to_csv(OUTPUT_CSV, index=False)
-            logger.info(f"✅ Successfully saved {len(enriched_products)} enriched products to {OUTPUT_CSV}")
+            output_df.to_csv(self.output_csv, index=False)
+            logger.info(f"✅ Successfully saved {len(enriched_products)} enriched products to {self.output_csv}")
             
             # Display sample results
             self.display_sample_results(output_df)
@@ -335,36 +342,64 @@ class ProductEnricher:
         
         logger.info(f"\n📊 SUMMARY:")
         logger.info(f"   Total products processed: {len(df)}")
-        logger.info(f"   Department: {DEPARTMENT_ID}")
-        logger.info(f"   Output file: {OUTPUT_CSV}")
+        logger.info(f"   Department: {self.department_id}")
+        logger.info(f"   Output file: {self.output_csv}")
         logger.info(f"   Average price: ${df['price'].mean():.2f}")
 
+def get_all_departments(departments_csv):
+    if not os.path.exists(departments_csv):
+        logger.error(f"Departments file not found: {departments_csv}")
+        sys.exit(1)
+    df = pd.read_csv(departments_csv)
+    if 'department_id' not in df.columns:
+        logger.error("departments.csv must have a 'department_id' column")
+        sys.exit(1)
+    return sorted(df['department_id'].dropna().unique().astype(int))
+
 def main():
-    """Main function"""
+    parser = argparse.ArgumentParser(description="Product Enricher (Concurrent Version)")
+    parser.add_argument(
+        "-d", "--department", type=int, default=None,
+        help="Department number to process (if omitted, processes all departments)"
+    )
+    args = parser.parse_args()
+    if args.department is not None:
+        departments_to_process = [args.department]
+    else:
+        departments_to_process = get_all_departments(DEPARTMENTS_CSV)
+
+    # Prepare output file list
+    output_files = [f"{OUTPUT_SUBDIR}/enriched_products_dept{dept_id}.csv" for dept_id in departments_to_process]
+
     print("🛒 TimeL-E Product Enricher (Concurrent Version)")
     print("=" * 50)
-    print(f"Processing department: {DEPARTMENT_ID}")
+    print(f"Processing departments: {departments_to_process}")
     print(f"Input file: {INPUT_CSV}")
-    print(f"Output file: {OUTPUT_CSV}")
+    print("Output files:")
+    for ofile in output_files:
+        print(f"  {ofile}")
     print(f"Concurrent workers: {MAX_WORKERS}")
     print(f"Rate limit: {REQUESTS_PER_SECOND} requests/second")
     print("=" * 50)
-    
-    enricher = ProductEnricher()
-    
-    start_time = time.time()
-    success = enricher.process_products()
-    end_time = time.time()
-    
-    if success:
-        duration = end_time - start_time
-        print(f"\n✅ Processing completed in {duration:.1f} seconds")
-        print(f"📁 Results saved to: {OUTPUT_CSV}")
-        print(f"⚡ Speed: ~{enricher.total_count/duration:.1f} products/second")
-        print(f"\n💡 To process other departments, change DEPARTMENT_ID and run again")
-    else:
-        print(f"\n❌ Processing failed. Check the logs above for details.")
-        sys.exit(1)
+    total_start = time.time()
+    for department_id in departments_to_process:
+        output_csv = f"{OUTPUT_SUBDIR}/enriched_products_dept{department_id}.csv"
+        print(f"\n--- Processing department {department_id} ---")
+        enricher = ProductEnricher(department_id, output_csv)
+        start_time = time.time()
+        success = enricher.process_products(INPUT_CSV)
+        end_time = time.time()
+        if success:
+            duration = end_time - start_time
+            print(f"\n✅ Department {department_id} completed in {duration:.1f} seconds")
+            print(f"📁 Results saved to: {output_csv}")
+            if enricher.total_count and duration > 0:
+                print(f"⚡ Speed: ~{enricher.total_count/duration:.1f} products/second")
+        else:
+            print(f"\n❌ Processing failed for department {department_id}. Check logs above.")
+    total_end = time.time()
+    print("\n=== ALL PROCESSING COMPLETE ===")
+    print(f"Total time: {total_end - total_start:.1f} seconds")
 
 if __name__ == "__main__":
     main()

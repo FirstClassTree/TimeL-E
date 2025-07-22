@@ -7,7 +7,7 @@ from app.database import SessionLocal
 from app.models import Product, Department, Aisle
 from app.models.users import User
 
-CSV_DIR = "/app/csv_data"
+CSV_DIR = "/data"
 
 def populate_tables():
     db: Session = SessionLocal()
@@ -67,14 +67,14 @@ def populate_tables():
             print(f"👥 Loading users from: {users_file}")
             
             if not os.path.exists(users_file):
-                print(f"❌ ERROR: Users file not found: {users_file}")
+                print(f"ERROR: Users file not found: {users_file}")
                 print("Available files in directory:")
                 for f in os.listdir(CSV_DIR):
                     print(f"   - {f}")
             else:
-                print(f"✅ Users file exists: {users_file}")
+                print(f"Users file exists: {users_file}")
                 file_size = os.path.getsize(users_file)
-                print(f"📏 File size: {file_size} bytes")
+                print(f"File size: {file_size} bytes")
                 
                 users_loaded = 0
                 errors = 0
@@ -82,7 +82,7 @@ def populate_tables():
                 
                 with open(users_file, newline='', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
-                    print(f"📋 CSV columns: {reader.fieldnames}")
+                    print(f"CSV columns: {reader.fieldnames}")
                     
                     batch_users = []
                     for row_num, row in enumerate(reader, 1):
@@ -94,19 +94,19 @@ def populate_tables():
                             
                             if existing_user_id:
                                 if errors < 3:
-                                    print(f"   ⚠️  Row {row_num}: User ID {row['user_id']} already exists, skipping")
+                                    print(f"   Row {row_num}: User ID {row['user_id']} already exists, skipping")
                                 errors += 1
                                 continue
                             
                             if existing_name:
                                 if errors < 3:
-                                    print(f"   ⚠️  Row {row_num}: User name '{row['name']}' already exists, skipping")
+                                    print(f"   Row {row_num}: User name '{row['name']}' already exists, skipping")
                                 errors += 1
                                 continue
                                 
                             if existing_email:
                                 if errors < 3:
-                                    print(f"   ⚠️  Row {row_num}: Email '{row['email_address']}' already exists, skipping")
+                                    print(f"   Row {row_num}: Email '{row['email_address']}' already exists, skipping")
                                 errors += 1
                                 continue
                             
@@ -125,54 +125,54 @@ def populate_tables():
                             users_loaded += 1
                             
                             if users_loaded <= 5:  # Show first 5 for confirmation
-                                print(f"   ✅ Row {row_num}: Prepared user {row['user_id']}: {row['name']}")
+                                print(f"   Row {row_num}: Prepared user {row['user_id']}: {row['name']}")
                             
                             # Commit in batches
                             if len(batch_users) >= batch_size:
                                 db.add_all(batch_users)
                                 db.flush()  # Flush to catch constraint errors
-                                print(f"   💾 Committed batch of {len(batch_users)} users")
+                                print(f"   Committed batch of {len(batch_users)} users")
                                 batch_users = []
                                 
                         except Exception as row_error:
                             errors += 1
                             if errors <= 3:  # Show first 3 errors
-                                print(f"   ❌ Row {row_num}: Error processing user {row.get('user_id', 'unknown')}: {row_error}")
+                                print(f"   Row {row_num}: Error processing user {row.get('user_id', 'unknown')}: {row_error}")
                     
                     # Commit remaining users
                     if batch_users:
                         db.add_all(batch_users)
                         db.flush()
-                        print(f"   💾 Committed final batch of {len(batch_users)} users")
+                        print(f"   Committed final batch of {len(batch_users)} users")
                 
-                print(f"📊 Users processing summary:")
-                print(f"   ✅ Successfully prepared: {users_loaded} users")
-                print(f"   ⚠️  Skipped/Errors: {errors}")
+                print(f"Users processing summary:")
+                print(f"   Successfully prepared: {users_loaded} users")
+                print(f"   Skipped/Errors: {errors}")
 
-        print("💾 Committing all changes to database...")
+        print("Committing all changes to database...")
         db.commit()
-        print("✅ All CSV data successfully loaded into DB!")
+        print("All CSV data successfully loaded into DB!")
         
         # Final verification
         final_products = db.query(Product).count()
         final_users = db.query(User).count()
-        print(f"📊 Final counts - Products: {final_products}, Users: {final_users}")
+        print(f"Final counts - Products: {final_products}, Users: {final_users}")
         
         # Sample a few users to verify they loaded correctly
         sample_users = db.query(User).limit(3).all()
         if sample_users:
-            print("🔍 Sample users in database:")
+            print("Sample users in database:")
             for user in sample_users:
                 print(f"   User {user.user_id}: {user.name} ({user.email_address})")
         
     except Exception as e:
-        print(f"❌ CRITICAL ERROR during CSV loading: {e}")
+        print(f"CRITICAL ERROR during CSV loading: {e}")
         print("Full error details:")
         traceback.print_exc()
         try:
             db.rollback()
-            print("🔄 Database rolled back successfully")
+            print("Database rolled back successfully")
         except Exception as rollback_error:
-            print(f"❌ Error during rollback: {rollback_error}")
+            print(f"Error during rollback: {rollback_error}")
     finally:
         db.close()
