@@ -8,13 +8,12 @@ from sqlalchemy import func
 from app.database import SessionLocal
 import asyncpg
 from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
+from app.config import settings
 from pydantic import BaseModel
 from typing import List, Optional
 # Removed UUID imports since we're using integer user_ids and order_ids
 
 router = APIRouter()
-
-DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def validate_params(params):
     """Reject malformed inputs or strange usage."""
@@ -32,7 +31,7 @@ def validate_params(params):
 def health_check():
     try:
         import psycopg2
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(settings.DATABASE_URL)
         conn.close()
         return {"status": "ok", "database": "reachable"}
     except Exception as e:
@@ -62,7 +61,7 @@ async def run_query(request: Request):
     try:
         validate_params(params) # protects against malformed inputs or strange usage
         # asyncpg expects $1/$2, but parameters should be passed as *args
-        conn = await asyncpg.connect(DATABASE_URL)
+        conn = await asyncpg.connect(settings.DATABASE_URL)
         try:
             rows = await conn.fetch(sql, *params)
             # Convert Record objects to dicts for JSON serialization

@@ -17,8 +17,6 @@ Usage:
 
 Output:
     Creates enriched_products_dept{DEPARTMENT_ID}.csv for each department
-
-Author: TimeL-E Team
 """
 
 import pandas as pd

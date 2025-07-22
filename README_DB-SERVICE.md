@@ -21,16 +21,18 @@ This allows backend to remain DB-agnostic, and enables swapping/replicating DBs 
 ```text
 db_service/
 ├── app/
-│   ├── main.py                 # FastAPI entrypoint with health check
-│   ├── init_db.py              # Initializes the PostgreSQL schemas
-│   ├── database_service.py     # Defines API endpoints for DB access
-│   ├── database.py             # SQLAlchemy engine/session setup
-│   ├── config.py               # Environment/config loading
-│   ├── populate_from_csv.py    # populate empty db with data from products.csv, aisles.csv, departments.csv
-│   ├── order_routs.py          # Defines API endpoints for DB access to orders
-│   ├── user_routs.py           # Defines API endpoints for DB access to users
+│   ├── main.py                     # FastAPI entrypoint with health check
+│   ├── init_db.py                  # Initializes the PostgreSQL schemas
+│   ├── database_service.py         # Defines API endpoints for DB access
+│   ├── database.py                 # SQLAlchemy engine/session setup
+│   ├── config.py                   # Environment/config loading
+│   ├── populate_from_csv.py        # populate empty db with data from products.csv, aisles.csv, departments.csv
+│   ├── populate_enriched_data.py   # populate db with enriched products data
+│   ├── order_routs.py              # Defines API endpoints for DB access to orders
+│   ├── user_routs.py               # Defines API endpoints for DB access to users
+│   ├── reset_database.py           # drop all schemas with all tables
 │   ├── __init__.py
-│   └── models/                 # SQLAlchemy models
+│   └── models/                     # SQLAlchemy models
 │       ├── __init__.py
 │       └── base.py
 │       └──orders.py
@@ -38,7 +40,8 @@ db_service/
 │       └──users.py
 ├── Dockerfile
 ├── .dockerignore
-└── requirements.txt
+├── requirements.txt
+└── update_schema.sql
 ```
 
 ## How It Works
@@ -68,6 +71,14 @@ Docker Compose healthcheck is defined as:
       timeout: 3s
       retries: 5
 ```
+
+## Configuration
+
+- **CSV data population always runs at startup**: The service will attempt to populate data from CSV files on each startup.  
+If the tables already contain data, the process is skipped.
+- **Database reset is controlled via the environment variable `RESET_DATABASE_ON_STARTUP`**:  
+  Set `RESET_DATABASE_ON_STARTUP=true` in the `.env` to drop and fully recreate all schemas/tables on startup,  
+ensuring a fresh state before loading CSV data. If false or unset, the existing database is preserved.
 
 ## Testing the API (Example)
 

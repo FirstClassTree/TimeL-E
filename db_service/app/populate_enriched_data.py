@@ -9,14 +9,14 @@ import os
 from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from app.config import DATABASE_URL
+from app.config import settings
 from app.models.products import ProductEnriched
 
 def populate_enriched_data():
     """Populate the product_enriched table from CSV"""
     
     # Database setup
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(settings.DATABASE_URL)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
     # Use /data/products_enriched/ (/data is a mounted volume)

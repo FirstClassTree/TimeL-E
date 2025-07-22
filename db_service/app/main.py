@@ -1,3 +1,10 @@
+"""
+FastAPI application for the database service.
+- Handles database reset (optional, via env variable)
+- Initializes schemas/tables on startup
+- Populates data from CSV files
+"""
+
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from .init_db import init_db
@@ -5,28 +12,47 @@ from .database_service import router
 from .users_routers import router as users_router
 from .orders_routers import router as orders_router
 import os
+import sys
+import datetime
 from .populate_from_csv import populate_tables
 from .populate_enriched_data import populate_enriched_data
-from .reset_database import reset_database
+from .config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Runs once at startup
+
     print("Starting Database Service...")
     
-    # Reset database to ensure clean integer schema
-    if reset_database():
-        print("Database reset successful")
-    else:
-        print("Database reset failed, trying with existing schema...")
+    if settings.RESET_DATABASE_ON_STARTUP:
+        from .reset_database import reset_database
+        print("RESET_DATABASE_ON_STARTUP is true, resetting database...")
+        if reset_database():
+            print("Database reset successful")
+        else:
+            print("Database reset failed, trying with existing schema...")
+
+    print("Initializing schemas/tables...")
+    try:
         init_db()
+    except Exception as e:
+        print(f"CRITICAL ERROR during schema/table initialization: {e}")
+        sys.exit(1)  # Immediately kill the process so container restarts/fails
+
+    # load data from departments.csv, aisles.csv, products.csv, and users.csv into their respective tables (function will skip if already populated)
+    try:
+        populate_tables()
+    except Exception as e:
+        print(f"Error while populating tables from CSV: {e}")
+
+    # load enriched product data from enriched_products_dept*.csv (function will skip if already populated)
+    try:
+        populate_enriched_data()
+    except Exception as e:
+        print(f"Error while populating enriched product data: {e}")
     
-    # load data from departments.csv, aisles.csv, products.csv, and users.csv into their respective tables
-    populate_tables()
-    # load enriched product data from enriched_products_dept1.csv
-    populate_enriched_data()
-    
-    print("Database Service ready!")
+    print(f"Database Service ready! ({datetime.datetime.now().isoformat(timespec='seconds')})")
+
     yield       # App runs
     # Optionally add shutdown logic after yield
 
