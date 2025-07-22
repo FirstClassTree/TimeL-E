@@ -94,6 +94,37 @@ def test_orders_order_id_items():
     print(resp.status_code)
     print(resp.json())
 
+def test_enriched_products_across_departments():
+    url = "http://localhost:7000/products"
+    departments = ["Frozen", "Bakery"]  # Change as needed to match your DB
+
+    for dept in departments:
+        params = {
+            "categories": [dept],
+            "limit": 5
+        }
+        response = requests.get(url, params=params)
+        if response.status_code != 200:
+            print(f"Failed to fetch products for department: {dept}, status: {response.status_code}")
+            continue
+        data = response.json()
+        products = data.get("products", [])
+        assert products, f"No products found for department: {dept}"
+        enriched_product = None
+        for p in products:
+            if p.get("description") or p.get("price") or p.get("image_url"):
+                enriched_product = p
+                break
+
+        assert enriched_product, f"No enriched data found for products in department: {dept}"
+
+        print(f"\nDepartment '{dept}': found enriched product")
+        print("   Product ID:", enriched_product.get("product_id"))
+        print("   Name:", enriched_product.get("product_name"))
+        print("   Description:", (enriched_product.get("description") or "")[:60])
+        print("   Price:", enriched_product.get("price"))
+        print("   Image URL:", enriched_product.get("image_url"))
+
 class UserApiTests:
     BASE = "http://localhost:7000/users"
 
@@ -161,4 +192,6 @@ if __name__ == "__main__":
     print()
     tester = UserApiTests()
     tester.run_all()
+    print()
+    test_enriched_products_across_departments()
 

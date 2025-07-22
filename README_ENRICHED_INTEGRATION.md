@@ -65,7 +65,10 @@ CREATE TABLE products.product_enriched (
 ## Data Population
 
 ### **Automatic Population**
-The enriched data is automatically populated when the db-service starts up. The system looks for `db_service/data/enriched_products_dept1.csv` and loads it into the database.
+The enriched data is automatically populated when the db-service starts up.  
+The population script looks for all CSV files matching `/data/products_enriched/enriched_products_dept*.csv`  
+(inside the container, `/data` is a mounted volume) and loads all of them into the database.  
+This supports loading enriched product data for multiple departments automatically.
 
 ### **Manual Population**
 If you need to manually populate or update enriched data:

@@ -20,42 +20,46 @@ def populate_enriched_data():
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
     # Use /data/products_enriched/ (/data is a mounted volume)
-    csv_file = Path("/data/products_enriched/enriched_products_dept1.csv")
+    enriched_dir = Path("/data/products_enriched")
+    csv_files = sorted(enriched_dir.glob("enriched_products_dept*.csv"))
     
-    if not csv_file.exists():
-        print(f"Error: CSV file not found at {csv_file}")
+    if not csv_files:
+        print(f"Error: No enriched CSV files found in {enriched_dir}")
         print("Make sure enriched data was generated using the product_enricher.py script and that /data is mounted correctly")
         return False
-    
+    else:
+        print(f"Found enriched CSV files: {[str(f) for f in csv_files]}")
+
     try:
-        # Read CSV
-        print(f"Reading enriched data from {csv_file}")
-        df = pd.read_csv(csv_file)
-        
-        print(f"Found {len(df)} enriched products")
-        
+        # Combine all department CSVs
+        dfs = []
+        for csv_file in csv_files:
+            print(f"Reading enriched data from {csv_file}")
+            df = pd.read_csv(csv_file)
+            dfs.append(df)
+        combined_df = pd.concat(dfs, ignore_index=True)
+        print(f"Found {len(combined_df)} enriched products (all departments)")
+
         # Validate CSV structure
         required_columns = ['product_id', 'product_name', 'description', 'price', 'image_url']
-        if not all(col in df.columns for col in required_columns):
-            print(f"Error: CSV missing required columns. Found: {list(df.columns)}")
+        if not all(col in combined_df.columns for col in required_columns):
+            print(f"Error: CSV missing required columns. Found: {list(combined_df.columns)}")
             return False
         
         # Create database session
         session = SessionLocal()
         
         try:
-            # Clear existing enriched data
             print("Clearing existing enriched data...")
             session.execute(text("DELETE FROM products.product_enriched"))
             session.commit()
             
-            # Insert enriched data
             print("Inserting enriched product data...")
             
             success_count = 0
             error_count = 0
             
-            for _, row in df.iterrows():
+            for _, row in combined_df.iterrows():
                 try:
                     enriched = ProductEnriched(
                         product_id=int(row['product_id']),
@@ -74,8 +78,7 @@ def populate_enriched_data():
                     error_count += 1
                     print(f"   Warning: Failed to insert product {row['product_id']}: {e}")
                     continue
-            
-            # Commit all changes
+
             session.commit()
             
             print(f"\nSuccessfully populated enriched data!")
@@ -114,4 +117,3 @@ def main():
         print("\nEnriched data population failed!")
         sys.exit(1)
 
-# Removed automatic execution - only run via lifespan function
