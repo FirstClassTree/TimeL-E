@@ -7,18 +7,15 @@ import pandas as pd
 import sys
 import os
 from pathlib import Path
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
 from app.models.products import ProductEnriched
+from app.database import SessionLocal
 
 def populate_enriched_data():
     """Populate the product_enriched table from CSV"""
-    
-    # Database setup
-    engine = create_engine(settings.DATABASE_URL)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    
+
     # Use /data/products_enriched/ (/data is a mounted volume)
     enriched_dir = Path("/data/products_enriched")
     csv_files = sorted(enriched_dir.glob("enriched_products_dept*.csv"))
