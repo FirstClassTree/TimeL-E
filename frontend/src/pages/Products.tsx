@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Grid, List } from 'lucide-react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { productService } from '@/services/product.service';
 import ProductCard from '@/components/products/ProductCard';
 import ProductListItem from '@/components/products/ProductListItem';

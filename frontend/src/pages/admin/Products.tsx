@@ -2,7 +2,7 @@
 // FIXED: Aligned with read-only backend - removed non-functional CRUD buttons
 
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Search, Filter, Package, DollarSign, Eye

@@ -1,8 +1,7 @@
-// frontend/src/App.tsx
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ReactQueryDevtools } from 'react-query/devtools';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
 
@@ -107,11 +106,11 @@ const App: React.FC = () => {
                   <Route path="users" element={<AdminUsers />} />
                   <Route path="metrics" element={<AdminMetrics />} />
                   <Route path="settings" element={<AdminSettings />} />
-                  
+
                   {/* NEW: Demo functionality routes */}
                   <Route path="user-seeding" element={<UserSeeding />} />
                   <Route path="demo-prediction" element={<DemoPredictionPage />} />
-                  
+
                   {/* Legacy route redirects */}
                   <Route path="demo" element={<Navigate to="/admin/demo-prediction" replace />} />
                   <Route path="seed-users" element={<Navigate to="/admin/user-seeding" replace />} />
@@ -162,8 +161,8 @@ const App: React.FC = () => {
 
           {/* React Query DevTools (development only) */}
           {process.env.NODE_ENV === 'development' && (
-            <ReactQueryDevtools 
-              initialIsOpen={false} 
+            <ReactQueryDevtools
+              initialIsOpen={false}
               position="bottom-right"
             />
           )}

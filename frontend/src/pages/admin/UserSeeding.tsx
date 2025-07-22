@@ -1,9 +1,6 @@
-// frontend/src/pages/admin/UserSeeding.tsx
-// NEW PAGE: Dedicated interface for seeding demo users from Instacart data
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   UserPlus, Database, CheckCircle, AlertCircle, 
   Info, Loader2, Mail, Key, Calendar, Package

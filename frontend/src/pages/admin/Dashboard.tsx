@@ -1,7 +1,6 @@
-// frontend/src/pages/admin/Dashboard.tsx
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { 
   TrendingUp, Users, ShoppingCart, Brain, 
   Package, DollarSign, Activity, AlertCircle,

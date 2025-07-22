@@ -1,8 +1,5 @@
-// frontend/src/pages/admin/DemoPredictionPage.tsx
-// ENHANCED: Improved UX for any user ID input with better error handling and suggestions
-
 import React, { useState } from 'react';
-import { useQuery, useMutation } from 'react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminService, DemoUserPrediction } from '@/services/admin.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';

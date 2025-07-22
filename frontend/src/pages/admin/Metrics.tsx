@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Brain, TrendingUp, Target, Activity, Info, RefreshCw, Zap, CheckCircle, AlertCircle
 } from 'lucide-react';

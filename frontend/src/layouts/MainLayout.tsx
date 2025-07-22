@@ -25,43 +25,72 @@ const MainLayout: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  
+  const [isClient, setIsClient] = useState(false);
+
   const cartItemCount = getItemCount();
+
+  // Client-side mounting check
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
   }, []);
 
   useEffect(() => {
-    // Check for saved theme preference or default to light
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
+    // Only run on client side
+    if (!isClient || typeof window === 'undefined') return;
+
+    try {
+      // Check for saved theme preference or default to light
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        setIsDarkMode(true);
+        document.documentElement.classList.add('dark');
+      }
+    } catch (error) {
+      console.warn('Error accessing localStorage or matchMedia:', error);
+      // Fallback to light theme
+      setIsDarkMode(false);
     }
-  }, []);
+  }, [isClient]);
 
   const toggleDarkMode = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+    if (typeof window === 'undefined') return;
+
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+      setIsDarkMode(!isDarkMode);
+    } catch (error) {
+      console.warn('Error toggling dark mode:', error);
+      // Still toggle the visual state even if localStorage fails
+      setIsDarkMode(!isDarkMode);
     }
-    setIsDarkMode(!isDarkMode);
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const navLinks = [
@@ -97,7 +126,7 @@ const MainLayout: React.FC = () => {
             <nav className="hidden md:flex items-center gap-6">
               {navLinks.map((link) => {
                 if (link.authRequired && !isAuthenticated) return null;
-                
+
                 return (
                   <Link
                     key={link.path}
@@ -155,7 +184,7 @@ const MainLayout: React.FC = () => {
                     </motion.span>
                   )}
                 </button>
-                
+
                 <AnimatePresence>
                   {isCartOpen && (
                     <CartDropdown onClose={() => setIsCartOpen(false)} />
@@ -233,13 +262,13 @@ const MainLayout: React.FC = () => {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    to="/login"
+                    to="/auth/login"
                     className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     Sign In
                   </Link>
                   <Link
-                    to="/register"
+                    to="/auth/register"
                     className="px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors"
                   >
                     Sign Up

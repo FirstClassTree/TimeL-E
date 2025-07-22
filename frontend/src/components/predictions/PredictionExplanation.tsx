@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, ChevronDown, Calendar, ShoppingCart, TrendingUp } from 'lucide-react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { predictionService } from '@/services/prediction.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 

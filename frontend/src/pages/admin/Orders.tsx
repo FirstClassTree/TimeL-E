@@ -1,8 +1,5 @@
-// frontend/src/pages/admin/Orders.tsx
-// FIXED: Replaced mock data with live API calls to backend
-
 import React, { useState } from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Package, DollarSign, Calendar, Search, Filter,
