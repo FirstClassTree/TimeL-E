@@ -130,6 +130,53 @@ def update_user_password(
     finally:
         session.close()
 
+class UpdateEmailRequest(BaseModel):
+    current_password: str
+    new_email_address: EmailStr
+
+@router.post("/{user_id}/email", status_code=status.HTTP_200_OK)
+def update_user_email(
+        user_id: int,
+        payload: UpdateEmailRequest
+):
+    session = SessionLocal()
+    try:
+        # Fetch user
+        user = session.query(User).filter_by(user_id=user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Verify current password
+        if not verify_password(payload.current_password, user.hashed_password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+        # Check for duplicate email (must not already exist)
+        existing = session.query(User).filter(
+            User.email_address == payload.new_email_address,
+            User.user_id != user_id  # Exclude current user
+        ).first()
+        if existing:
+            print("Email address already in use by another user.")
+            raise HTTPException(status_code=409, detail="Invalid update request.")
+
+        # Update email
+        user.email_address = payload.new_email_address
+        session.commit()
+        return {"message": "Email address updated successfully"}
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating email: {e}")
+        raise HTTPException(status_code=500, detail="Error updating email address")
+    finally:
+        session.close()
+
 @router.get("/{user_id}")
 def get_user(user_id: int):
     session = SessionLocal()
@@ -170,7 +217,8 @@ class UpdateUserRequest(BaseModel):
     postal_code: Optional[str] = None
     country: Optional[str] = None
 
-
+# Only non-credential fields can be updated here.
+# Attempting to update email/password will have no effect.
 @router.patch("/{user_id}")
 def update_user(user_id: int, payload: UpdateUserRequest):
     session = SessionLocal()
@@ -180,29 +228,6 @@ def update_user(user_id: int, payload: UpdateUserRequest):
             raise HTTPException(status_code=404, detail="User not found")
 
         update_data = payload.model_dump(exclude_unset=True)
-
-        # Disallow password updates via this endpoint
-        if "password" in update_data:
-            print("Password updates are not allowed via this endpoint. Use the password update API.")
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid update request."
-            )
-
-        # Validate email uniqueness if email is being updated
-        if "email_address" in update_data:
-            new_email = update_data["email_address"]
-            # Check if another user already uses this email
-            existing_user = session.query(User).filter(
-                User.email_address == new_email,
-                User.user_id != user_id  # Exclude current user
-            ).first()
-            if existing_user:
-                print("Email address already in use by another user.")
-                raise HTTPException(
-                    status_code=409,
-                    detail="Invalid update request."
-                )
 
         # Update allowed fields
         for field, value in update_data.items():

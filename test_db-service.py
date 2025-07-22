@@ -167,6 +167,15 @@ class UserApiTests:
         print("Password updated:", resp.json())
         self.password = self.new_password  # Update for later deletion
 
+    def update_email(self):
+        data = {
+            "current_password": self.password,
+            "new_email_address": "alice.changed@example.com"
+        }
+        resp = requests.post(f"{self.BASE}/{self.user_id}/email", json=data)
+        assert resp.status_code == 200, f"{resp.status_code} {resp.text}"
+        print("Email updated:", resp.json())
+
     def delete_user(self):
         data = {"password": self.password}
         resp = requests.delete(f"{self.BASE}/{self.user_id}", json=data)
@@ -178,6 +187,7 @@ class UserApiTests:
         self.get_user()
         self.update_user()
         self.update_password()
+        self.update_email()
         self.delete_user()
 
 

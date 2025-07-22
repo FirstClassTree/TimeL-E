@@ -74,9 +74,11 @@ Docker Compose healthcheck is defined as:
 
 ## Configuration
 
-- **CSV data population always runs at startup**: The service will attempt to populate data from CSV files on each startup.  
+- CSV data population always runs at startup: The service will attempt to populate data from CSV files on each startup.  
 If the tables already contain data, the process is skipped.
-- **Database reset is controlled via the environment variable `RESET_DATABASE_ON_STARTUP`**:  
+- For enriched products data, the script looks for all matching /data/products_enriched/enriched_products_dept*.csv files  
+and only populates if the table is empty.
+- Database reset is controlled via the environment variable `RESET_DATABASE_ON_STARTUP`:  
   Set `RESET_DATABASE_ON_STARTUP=true` in the `.env` to drop and fully recreate all schemas/tables on startup,  
 ensuring a fresh state before loading CSV data. If false or unset, the existing database is preserved.
 
@@ -345,7 +347,7 @@ user = db_service.create_entity(
 ```
 
 
-### Update Password ```POST /{user_id}/password```
+### Update Password ```POST /users/{user_id}/password```
 
 Updates the user's password. Requires current password for validation.
 
@@ -358,7 +360,27 @@ db_service.create_entity(
 )
 ```
 
-### Fetch details ```GET /{user_id}```
+### Update Email ```POST /users/{user_id}/email```
+
+Updates the user's email address.  
+Requires current password for validation and ensures the new email is unique.
+
+#### Example Request (Backend usage):
+
+```python
+db_service.create_entity(
+    endpoint=f"/users/{user_id}/email",
+    data={"current_password": "pw", "new_email_address": "new@email.com"}
+)
+```
+
+Notes:
+* If the current password is incorrect, the request will fail.
+* The new email must not already exist in the database.
+* For user security, email changes are not allowed via the general update endpoint (PATCH /users/{user_id});  
+this dedicated endpoint must be used.
+
+### Fetch details ```GET /users/{user_id}```
 
 Fetches user details by user_id (uuid7).
 
@@ -368,9 +390,10 @@ Fetches user details by user_id (uuid7).
 user = db_service.get_entity(endpoint=f"/users/{user_id}")
 ```
 
-### Update ```PATCH /{user_id}```
+### Update ```PATCH /users/{user_id}```
 
-Partially updates user fields. Only the provided fields will be updated.
+Partially updates user fields. Only the provided fields will be updated.  
+Cannot update email_address or password through this endpoint by default.  
 
 #### Example Request (Backend usage):
 
@@ -381,7 +404,7 @@ db_service.update_entity(
 )
 ```
 
-### Delete User ```DELETE /{user_id}```
+### Delete User ```DELETE /users/{user_id}```
 
 Deletes a user. Requires current password for validation to prevent unauthorized deletion.
 
@@ -393,3 +416,4 @@ db_service.delete_entity(
     data={"password": "currentpw"}
 )
 ```
+
