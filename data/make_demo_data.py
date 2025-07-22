@@ -45,6 +45,7 @@ order_items_demo.to_csv(ORDER_ITEMS_DEMO_CSV, index=False)
 # Step 4: Generate fake user info
 fake = Faker()
 users_info = []
+used_emails = set()
 
 for user_id in selected_users:
     name = fake.name()
@@ -52,7 +53,12 @@ for user_id in selected_users:
     password = 'password123'
     # Use bcrypt instead of sha256
     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    email_address = fake.email()
+    # Ensure email uniqueness
+    while True:
+        email_address = fake.email()
+        if email_address not in used_emails:
+            used_emails.add(email_address)
+            break
     phone_number = fake.phone_number()
     street_address = fake.street_address()
     city = fake.city()

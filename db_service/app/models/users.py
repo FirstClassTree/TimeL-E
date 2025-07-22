@@ -9,7 +9,7 @@ class User(Base):
     __table_args__ = {"schema": "users"}
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
-    name: Mapped[str] = mapped_column(String, unique=True)
+    name: Mapped[str] = mapped_column(String)   # allow repeating names
     hashed_password: Mapped[str] = mapped_column(String(128))
     email_address: Mapped[str] = mapped_column(String, unique=True, index=True)     # indexed for login
 

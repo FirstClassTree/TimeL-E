@@ -310,7 +310,8 @@ Note:
 
 ### Create User ```POST /users```
 
-Creates new user with unique email and username.  
+Creates new user with unique email address.
+Names do not have to be unique and may be repeated.  
 Password is hashed using bcrypt.
 
 **User IDs use UUIDv7:**  

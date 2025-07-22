@@ -48,8 +48,8 @@ def create_user(user_request: CreateUserRequest):
         # Check for duplicate email or name
         if session.query(User).filter_by(email_address=user_request.email_address).first():
             raise HTTPException(status_code=409, detail="Email address already exists")
-        if session.query(User).filter_by(name=user_request.name).first():
-            raise HTTPException(status_code=409, detail="Username already exists")
+        # if session.query(User).filter_by(name=user_request.name).first():
+        #     raise HTTPException(status_code=409, detail="Username already exists")
 
         hashed_pw = hash_password(user_request.password)
         # Get next available user_id (auto-increment would be better but this works)
@@ -178,7 +178,34 @@ def update_user(user_id: int, payload: UpdateUserRequest):
         user = session.query(User).filter_by(user_id=user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        for field, value in payload.model_dump(exclude_unset=True).items():
+
+        update_data = payload.model_dump(exclude_unset=True)
+
+        # Disallow password updates via this endpoint
+        if "password" in update_data:
+            print("Password updates are not allowed via this endpoint. Use the password update API.")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid update request."
+            )
+
+        # Validate email uniqueness if email is being updated
+        if "email_address" in update_data:
+            new_email = update_data["email_address"]
+            # Check if another user already uses this email
+            existing_user = session.query(User).filter(
+                User.email_address == new_email,
+                User.user_id != user_id  # Exclude current user
+            ).first()
+            if existing_user:
+                print("Email address already in use by another user.")
+                raise HTTPException(
+                    status_code=409,
+                    detail="Invalid update request."
+                )
+
+        # Update allowed fields
+        for field, value in update_data.items():
             setattr(user, field, value)
         session.commit()
         return {"message": "User updated successfully"}
