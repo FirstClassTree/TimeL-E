@@ -2,29 +2,26 @@ import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { cartService, Cart, CartItem } from '@/services/cart.service';
 import { Product } from '@/services/product.service';
-import { useUser } from '@/components/auth/UserProvider';
 import toast from 'react-hot-toast';
-
-const { userId } = useUser();
 
 interface CartState {
   cart: Cart | null;
   isLoading: boolean;
   isUpdating: boolean;
-  
+
   // Actions
-  fetchCart: () => Promise<void>;
-  addToCart: (productId: string, quantity?: number) => Promise<void>;
-  updateQuantity: (itemId: string, quantity: number) => Promise<void>;
-  removeItem: (itemId: string) => Promise<void>;
-  clearCart: () => Promise<void>;
-  syncWithPredictedBasket: (basketId: string) => Promise<void>;
-  
+  fetchCart: (userId: string) => Promise<void>;
+  addToCart: (userId: string, productId: string, quantity?: number) => Promise<void>;
+  updateQuantity: (userId: string, itemId: string, quantity: number) => Promise<void>;
+  removeItem: (userId: string, itemId: string) => Promise<void>;
+  clearCart: (userId: string) => Promise<void>;
+  syncWithPredictedBasket: (userId: string, basketId: string) => Promise<void>;
+
   // Computed values
   getItemCount: () => number;
   getSubtotal: () => number;
   isProductInCart: (productId: string) => boolean;
-  getCartItem: (productId: string) => CartItem | undefined;
+  getCartItem: (userId: string, productId: string) => CartItem | undefined;
 }
 
 export const useCartStore = create<CartState>()(
@@ -34,7 +31,7 @@ export const useCartStore = create<CartState>()(
       isLoading: false,
       isUpdating: false,
 
-      fetchCart: async () => {
+      fetchCart: async (userId: string) => {
         set({ isLoading: true });
         try {
           const cart = await cartService.getCart(userId);
@@ -45,12 +42,12 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      addToCart: async (productId, quantity = 1) => {
+      addToCart: async (userId: string, productId: string, quantity = 1) => {
         set({ isUpdating: true });
         try {
           const cart = await cartService.addToCart(userId, { productId, quantity });
           set({ cart, isUpdating: false });
-          
+
           const addedItem = cart.items.find(item => item.productId === productId);
           if (addedItem) {
             toast.success(`${addedItem.product.name} added to cart`);
@@ -64,9 +61,9 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      updateQuantity: async (itemId, quantity) => {
+      updateQuantity: async (userId: string, itemId: string, quantity: number) => {
         if (quantity < 1) {
-          return get().removeItem(itemId);
+          return get().removeItem(userId, itemId);
         }
 
         set({ isUpdating: true });
@@ -80,9 +77,9 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      removeItem: async (itemId) => {
+      removeItem: async (userId: string, itemId: string) => {
         set({ isUpdating: true });
-        
+
         // Optimistically update UI
         const currentCart = get().cart;
         if (currentCart) {
@@ -115,11 +112,10 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-     //Not supported in backend yet
-      clearCart: async () => {
+      clearCart: async (userId: string) => {
         set({ isUpdating: true });
         try {
-          const cart = await cartService.clearCart(useUser().userId);
+          const cart = await cartService.clearCart(userId);
           set({ cart, isUpdating: false });
           toast.success('Cart cleared');
         } catch (error) {
@@ -129,7 +125,7 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      syncWithPredictedBasket: async (basketId) => {
+      syncWithPredictedBasket: async (userId: string, basketId: string) => {
         set({ isUpdating: true });
         try {
           const cart = await cartService.syncWithPredictedBasket(userId, basketId);
@@ -153,13 +149,13 @@ export const useCartStore = create<CartState>()(
         return cart?.subtotal || 0;
       },
 
-      isProductInCart: (productId) => {
+      isProductInCart: (productId: string) => {
         const { cart } = get();
         if (!cart) return false;
         return cartService.isProductInCart(cart, productId);
       },
 
-      getCartItem: (productId) => {
+      getCartItem: (userId: string, productId: string) => {
         const { cart } = get();
         if (!cart) return undefined;
         return cartService.getCartItem(userId, cart, productId);

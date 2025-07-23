@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { authService, User } from '@/services/auth.service';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 
 interface AuthState {
   user: User | null;
