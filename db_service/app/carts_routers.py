@@ -302,3 +302,164 @@ def delete_cart(user_id: int):
     finally:
         session.close()
 
+# Utility: get cart or create empty
+def get_cart(session: Session, user_id: int) -> Cart:
+    cart = carts_db.get(user_id, Cart(user_id=user_id, items=[]))
+    # TODO: change to DB call
+    # cart = session.query(Cart).filter(Cart.user_id == user_id).first()
+    # if not cart:
+    #     cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
+    return cart
+
+# POST /carts/{user_id}/items
+@router.post("/{user_id}/items", response_model=CartResponse)
+def add_cart_item(user_id: int, item: AddCartItemRequest):
+    """Add an item to user's cart, or increment if exists."""
+    session = SessionLocal()
+    try:
+        # Validate user and product
+        verify_user_exists(session, user_id)
+        verify_all_products_exist(session, [item.product_id])
+
+        # Fetch cart (or create)
+        cart = get_cart(session, user_id)
+        found = False
+        for cart_item in cart.items:
+            if cart_item.product_id == item.product_id:
+                cart_item.quantity += item.quantity
+                found = True
+                break
+        if not found:
+            cart.items.append(CartItem(product_id=item.product_id, quantity=item.quantity))
+        cart.updated_at = datetime.datetime.now(datetime.UTC)
+        carts_db[user_id] = cart  # TODO: Replace with DB store
+
+        saved_cart = carts_db.get(cart.user_id)  # TODO: Fetch the cart and all related items from DB
+        if not saved_cart:
+            raise HTTPException(status_code=500, detail="Failed to persist cart")
+
+        return build_cart_response(session, user_id, saved_cart)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error adding cart item: {e}")
+        raise HTTPException(status_code=500, detail="Error adding cart item")
+    finally:
+        session.close()
+
+# PUT /carts/{user_id}/items/{product_id}
+@router.put("/{user_id}/items/{product_id}", response_model=CartResponse)
+def update_cart_item(user_id: int, product_id: int, update: UpdateCartItemRequest):
+    """Update quantity of a specific item in cart"""
+    session = SessionLocal()
+    try:
+        verify_user_exists(session, user_id)
+        verify_all_products_exist(session, [product_id])
+        cart = carts_db.get(user_id)    # TODO: DB
+        if not cart:
+            raise HTTPException(status_code=404, detail=f"Cart not found for user {user_id}")
+        updated = False
+        for cart_item in cart.items:
+            if cart_item.product_id == product_id:
+                if update.quantity <= 0:
+                    cart.items.remove(cart_item)
+                else:
+                    cart_item.quantity = update.quantity
+                    updated = True
+                break
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
+        cart.updated_at = datetime.datetime.now(datetime.UTC)
+        carts_db[user_id] = cart    # TODO: DB
+        saved_cart = carts_db.get(user_id)  # TODO: Fetch the cart and all related items from DB
+        if not saved_cart:
+            raise HTTPException(status_code=500, detail="Failed to persist cart")
+
+        return build_cart_response(session, user_id, saved_cart)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error updating cart item: {e}")
+        raise HTTPException(status_code=500, detail="Error updating cart item")
+    finally:
+        session.close()
+
+# DELETE /carts/{user_id}/items/{product_id}
+@router.delete("/{user_id}/items/{product_id}", response_model=CartResponse)
+def remove_cart_item(user_id: int, product_id: int):
+    """Remove a specific item from cart"""
+    session = SessionLocal()
+    try:
+        verify_user_exists(session, user_id)
+        cart = carts_db.get(user_id)   # TODO: DB
+        if not cart:
+            raise HTTPException(status_code=404, detail=f"Cart not found for user {user_id}")
+        if product_id not in (i.product_id for i in cart.items):
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
+        cart.items = [item for item in cart.items if item.product_id != product_id]   # TODO: DB
+        cart.updated_at = datetime.datetime.now(datetime.UTC)
+        carts_db[user_id] = cart   # TODO: DB
+        saved_cart = carts_db.get(user_id)  # TODO: Fetch the cart and all related items from DB
+        if not saved_cart:
+            raise HTTPException(status_code=500, detail="Failed to persist cart")
+
+        return build_cart_response(session, user_id, saved_cart)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error removing item from cart: {e}")
+        raise HTTPException(status_code=500, detail="Error removing item from cart")
+    finally:
+        session.close()
+
+# DELETE /carts/{user_id}}
+@router.delete("/{user_id}", response_model=CartResponse)
+def clear_user_cart(user_id: int):
+    """Clear all items from cart for a user"""
+    session = SessionLocal()
+    try:
+        verify_user_exists(session, user_id)
+        cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
+        items_count = len(carts_db.pop(user_id, cart))
+        return build_cart_response(session, user_id, cart)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error deleting cart: {e}")
+        raise HTTPException(status_code=500, detail="Error deleting cart")
+    finally:
+        session.close()
+
+# POST /carts/{user_id}/checkout
+class HTTPException:
+    pass
+
+
+@router.post("/{user_id}/checkout")
+def checkout_cart(user_id: int):
+    """Convert cart to order (checkout process)"""
+    # This should create an order, and clear the cart
+    session = SessionLocal()
+    try:
+        verify_user_exists(session, user_id)
+        cart = carts_db.get(user_id)    # TODO: DB
+        if not cart or not cart.items:
+            raise HTTPException(status_code=400, detail="Cart is empty")
+        # TODO: Implement order creation
+        # Simulate for now:
+        order_id = "TODO"
+        carts_db[user_id] = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
+        return {
+                "user_id": user_id,
+                "order_id": order_id,
+                "status": "order_created",
+                "total_items": [item.model_dump() for item in cart.items]
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error at checkout: {e}")
+        raise HTTPException(status_code=500, detail="Error at check out")
+    finally:
+        session.close()
+

@@ -190,6 +190,8 @@ class UserApiTests:
         self.update_email()
         self.delete_user()
 
+# TODO: add sample test for cart api
+
 
 if __name__ == "__main__":
     test_query()

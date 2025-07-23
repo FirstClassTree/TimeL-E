@@ -609,6 +609,24 @@ await db_service.delete_entity("carts", user_id)
 ```
 
 ##########################################################
+
+\# TODO:
+
+add_cart_item(user_id, item) → POST /carts/{user_id}/items – add an item (or increment if exists)
+
+
+update_cart_item(user_id, product_id, qty) → PUT /carts/{user_id}/items/{product_id} – set quantity for item (update/remove)
+
+
+remove_cart_item(user_id, product_id) → DELETE /carts/{user_id}/items/{product_id} – remove item
+
+
+clear_user_cart(user_id) → DELETE /carts/{user_id}} – clear cart
+
+
+checkout_cart(user_id) → POST /carts/{user_id}/checkout – convert cart to order
+
+
 ### Create Cart ```POST /carts```
 
 ...
