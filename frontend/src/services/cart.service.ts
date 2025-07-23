@@ -2,9 +2,9 @@ import { api } from '@/services/api.client';
 import { Product } from '@/services/product.service';
 
 export interface CartItem {
-  id: string;
+  id: number;
   cartId: string;
-  productId: string;
+  productId: number;
   product: Product;
   quantity: number;
   price: number;
@@ -27,7 +27,7 @@ export interface Cart {
 }
 
 export interface AddToCartData {
-  productId: string;
+  productId: number;
   quantity: number;
 }
 
@@ -52,12 +52,12 @@ class CartService {
   }
 
   // Update cart item
-  async updateCartItem(userId : string, itemId: string, data: UpdateCartItemData): Promise<Cart> {
+  async updateCartItem(userId : string, itemId: number, data: UpdateCartItemData): Promise<Cart> {
     return api.put<Cart>(`/cart/${userId}/items/${itemId}`, data);
   }
 
   // Remove item from cart
-  async removeFromCart(userId : string, itemId: string): Promise<Cart> {
+  async removeFromCart(userId : string, itemId: number): Promise<Cart> {
     return api.delete<Cart>(`/cart/${userId}/items/${itemId}`);
   }
 
@@ -76,12 +76,12 @@ class CartService {
   }
 
   // Check if product is in cart
-  isProductInCart(cart: Cart, productId: string): boolean {
+  isProductInCart(cart: Cart, productId: number): boolean {
     return cart.items.some(item => item.productId === productId);
   }
 
   // Get cart item by product ID
-  getCartItem(cart: Cart, productId: string): CartItem | undefined {
+  getCartItem(cart: Cart, productId: number): CartItem | undefined {
     return cart.items.find(item => item.productId === productId);
   }
 
@@ -89,21 +89,11 @@ class CartService {
   calculateTotals(cart: Cart): {
     subtotal: number;
     itemCount: number;
-    savings: number;
   } {
     const subtotal = cart.items.reduce((sum, item) => sum + item.total, 0);
     const itemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-    
-    // Calculate savings from sale prices
-    const savings = cart.items.reduce((sum, item) => {
-      if (item.product.compareAtPrice && item.product.compareAtPrice > item.product.price) {
-        const itemSavings = (item.product.compareAtPrice - item.product.price) * item.quantity;
-        return sum + itemSavings;
-      }
-      return sum;
-    }, 0);
 
-    return { subtotal, itemCount, savings };
+    return { subtotal, itemCount };
   }
 
   // Supported in ml service? Get recommendations based on cart

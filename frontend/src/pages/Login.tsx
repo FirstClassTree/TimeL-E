@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, ShoppingCart, Brain, Loader2 } from 'lucide-re
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 interface LoginFormData {
   email: string;
@@ -16,9 +17,10 @@ interface LoginFormData {
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading } = useAuthStore();
+  const { user, login, isLoading } = useAuthStore();
   const { fetchCart } = useCartStore();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
+  const { userId } = useUser();
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -40,7 +42,7 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       
       // Fetch cart after successful login
-      await fetchCart();
+      await fetchCart(user?.id ?? userId);
       
       // Redirect to intended page or home
       navigate(from, { replace: true });

@@ -53,6 +53,14 @@ const Hero: React.FC = () => {
               >
                 View Predictions
               </Link>
+
+              <Link
+                to="/"
+                className="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                Schedule Your Shopping
+              </Link>
             </div>
           </motion.div>
           

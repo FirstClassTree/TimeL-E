@@ -32,16 +32,6 @@ const Register = lazy(() => import('@/pages/Register'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 
-// Admin pages
-const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
-const AdminProducts = lazy(() => import('@/pages/admin/Products'));
-const AdminOrders = lazy(() => import('@/pages/admin/Orders'));
-const AdminUsers = lazy(() => import('@/pages/admin/Users'));
-const AdminMetrics = lazy(() => import('@/pages/admin/Metrics'));
-const AdminSettings = lazy(() => import('@/pages/admin/Settings'));
-const UserSeeding = lazy(() => import('@/pages/admin/UserSeeding'));
-const DemoPredictionPage = lazy(() => import('@/pages/admin/DemoPredictionPage'));
-
 // Create React Query client with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,17 +89,6 @@ const App: React.FC = () => {
                     <AdminLayout />
                   </AdminRoute>
                 }>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="metrics" element={<AdminMetrics />} />
-                  <Route path="settings" element={<AdminSettings />} />
-
-                  {/* NEW: Demo functionality routes */}
-                  <Route path="user-seeding" element={<UserSeeding />} />
-                  <Route path="demo-prediction" element={<DemoPredictionPage />} />
 
                   {/* Legacy route redirects */}
                   <Route path="demo" element={<Navigate to="/admin/demo-prediction" replace />} />

@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface PredictionExplanationProps {
   basketId: string;
-  productId: string;
+  productId: number;
   compact?: boolean;
   className?: string;
 }

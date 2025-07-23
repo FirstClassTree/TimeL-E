@@ -4,7 +4,7 @@ import { Product } from '@/services/product.service';
 export interface PredictedBasketItem {
   id: string;
   basketId: string;
-  productId: string;
+  productId: number;
   product: Product;
   quantity: number;
   confidenceScore: number;
@@ -49,7 +49,7 @@ export interface PredictionFeedback {
   basketId: string;
   accepted: boolean;
   modifiedItems?: Array<{
-    productId: string;
+    productId: number;
     action: 'added' | 'removed' | 'quantity_changed';
     newQuantity?: number;
   }>;
@@ -97,7 +97,7 @@ class PredictionService {
    */
   async updateBasketItem(
     basketId: string,
-    itemId: string,
+    itemId: number,
     data: {
       quantity?: number;
       isAccepted?: boolean;
@@ -161,7 +161,7 @@ class PredictionService {
   async getPredictionExplanation(basketId: string): Promise<{
     overallConfidence: number;
     explanations: Array<{
-      productId: string;
+      productId: number;
       productName: string;
       reasons: string[];
       confidence: number;

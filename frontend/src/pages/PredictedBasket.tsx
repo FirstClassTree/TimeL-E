@@ -54,7 +54,7 @@ const PredictedBasket: React.FC = () => {
 
   // Update item mutation
   const updateItemMutation = useMutation(
-    ({ itemId, data }: { itemId: string; data: any }) => 
+    ({ itemId, data }: { itemId: number; data: any }) =>
       predictionService.updateBasketItem(basket!.id, itemId, data),
     {
       onSuccess: () => {
@@ -68,7 +68,7 @@ const PredictedBasket: React.FC = () => {
     totalItems: basket.items.filter(item => item.isAccepted).length,
     totalValue: basket.items
       .filter(item => item.isAccepted)
-      .reduce((sum, item) => sum + (item.product.price * item.quantity), 0),
+      .reduce((sum, item) => sum + ((item.product.price ?? 0) * item.quantity), 0),
     avgConfidence: basket.items.length > 0
       ? basket.items.reduce((sum, item) => sum + item.confidenceScore, 0) / basket.items.length
       : 0,
@@ -277,8 +277,8 @@ const PredictedBasket: React.FC = () => {
                     {/* Product Image */}
                     <div className="relative">
                       <ProductImage
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
+                        src={item.product.image_url}
+                        alt={item.product.product_name}
                         className="w-24 h-24 object-cover rounded-lg"
                       />
                     </div>
@@ -288,10 +288,10 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {item.product.name}
+                            {item.product.product_name}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.product.brand} • {item.product.unit}
+                            {item.product.department_name} • {item.product.aisle_name}
                           </p>
                         </div>
                         <button
@@ -309,10 +309,10 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ${item.product.price.toFixed(2)}
-                            {item.product.compareAtPrice && (
+                            ${item.product.price?.toFixed(2)}
+                            {item.product.price && (
                               <span className="ml-2 text-sm text-gray-500 line-through">
-                                ${item.product.compareAtPrice.toFixed(2)}
+                                ${item.product.price.toFixed(2)}
                               </span>
                             )}
                           </p>

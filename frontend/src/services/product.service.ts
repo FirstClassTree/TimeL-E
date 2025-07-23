@@ -1,21 +1,15 @@
 import { api } from '@/services/api.client';
 
 export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  compareAtPrice?: number;
-  unit?: string;
-  unitValue?: number;
-  brand?: string;
-  imageUrl?: string;
-  categoryId: string;
-  department?: Department;
-  stock: number;
-  metadata: Record<string, any>;
-  purchaseCount: number;
-  avgRating: number;
+  product_id: number;
+  product_name: string;
+  aisle_id: number;
+  department_id: number;
+  aisle_name: string;
+  department_name: string;
+  description: string | null;
+  price: number | null;
+  image_url: string | null;
 }
 
 export interface Department {

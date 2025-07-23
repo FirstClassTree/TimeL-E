@@ -1,4 +1,3 @@
-// frontend/src/pages/Cart.tsx
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,10 +11,11 @@ import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
-  useAuthStore();
+  const { user } = useAuthStore();
   const { 
     cart, 
     isLoading, 
@@ -26,17 +26,18 @@ const Cart: React.FC = () => {
     clearCart,
     getSubtotal
   } = useCartStore();
+  const { userId } = useUser();
 
   useEffect(() => {
-    fetchCart();
+    fetchCart(user?.id ?? userId);
   }, []);
 
-  const handleQuantityChange = async (itemId: string, currentQuantity: number, delta: number) => {
+  const handleQuantityChange = async (itemId: number, currentQuantity: number, delta: number) => {
     const newQuantity = currentQuantity + delta;
     if (newQuantity < 1) {
-      await removeItem(itemId);
+      await removeItem(user?.id ?? userId, itemId);
     } else {
-      await updateQuantity(itemId, newQuantity);
+      await updateQuantity(user?.id ?? userId, itemId, newQuantity);
     }
   };
 
@@ -51,7 +52,7 @@ const Cart: React.FC = () => {
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
       try {
-        await clearCart();
+        await clearCart(user?.id ?? userId);
       } catch (error) {
         console.error('Failed to clear cart:', error);
       }
@@ -129,8 +130,8 @@ const Cart: React.FC = () => {
                       <div className="flex items-start gap-4">
                         <div className="w-20 h-20 flex-shrink-0">
                           <ProductImage
-                            src={item.product.imageUrl}
-                            alt={item.product.name}
+                            src={item.product.image_url}
+                            alt={item.product.product_name}
                             className="w-full h-full object-cover rounded-lg"
                           />
                         </div>
@@ -139,10 +140,10 @@ const Cart: React.FC = () => {
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-base font-medium text-gray-900 dark:text-white truncate">
-                                {item.product.name}
+                                {item.product.product_name}
                               </h3>
                               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {item.product.department?.name}
+                                {item.product.department_name}
                               </p>
                               
                               {item.product.price != null && (
@@ -158,7 +159,7 @@ const Cart: React.FC = () => {
                             </div>
                             
                             <button
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeItem(user?.id ?? userId, item.id)}
                               disabled={isUpdating}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 disabled:opacity-50"
                             >

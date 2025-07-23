@@ -1,6 +1,3 @@
-// frontend/src/layouts/AdminLayout.tsx
-// UPDATED: Added navigation for User Seeding and enhanced demo features
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
