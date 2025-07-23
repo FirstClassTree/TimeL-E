@@ -4,6 +4,9 @@
 # BUILD STAGE - Compile dependencies and prepare environment
 # ============================================================================
 FROM python:3.9-slim as builder
+#FROM python:3.9-bullseye as builder
+#FROM python:3.11-bullseye as builder
+#FROM python:3.10.14-slim as builder
 
 # Set working directory
 WORKDIR /app
@@ -24,14 +27,50 @@ COPY requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+ENV PIP_NO_CACHE_DIR=1
+
+# Upgrade pip + wheels
+RUN pip install --upgrade pip setuptools wheel
+
+# Force upgrade pip
+RUN pip install --upgrade pip==25.1.1
+
+# Install dependencies ONE BY ONE for low memory
+#RUN grep -vE '^\s*#|^\s*$' requirements.txt | xargs -n 1 pip install
+#RUN grep -vE '^\s*#|^\s*$' requirements.txt | xargs -n 1 -I {} sh -c 'echo "Installing {}" && pip install --no-cache-dir "{}"'
+RUN pip -v install fastapi==0.103.1
+RUN pip -v install uvicorn==0.23.2
+RUN pip -v install pydantic==2.3.0
+#RUN pip -v install --upgrade numpy pandas
+RUN pip -v install numpy==1.24.3
+RUN pip -v install pandas==2.0.3
+#RUN pip -v install pandas==2.2.3
+#RUN pip -v install scipy==1.11.2
+RUN pip -v install scipy==1.13.0
+RUN pip -v install lightgbm==4.0.0
+RUN pip -v install sqlalchemy==2.0.20
+RUN pip -v install joblib
+
+
+#ENV PIP_NO_CACHE_DIR=1
+
+##ensure no stale wheels
+#RUN pip install --upgrade pip setuptools wheel
+##RUN pip cache purge
+
 # Upgrade pip and install dependencies
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+#RUN pip install --upgrade pip && \
+#    pip install --no-cache-dir -r requirements.txt
+#RUN pip install --upgrade pip
+## RUN pip install --no-cache-dir -r requirements.txt
+#RUN pip install --no-cache-dir -v -r requirements.txt
 
 # ============================================================================
 # PRODUCTION STAGE - Minimal runtime environment
 # ============================================================================
 FROM python:3.9-slim as production
+#FROM python:3.11-slim as production
+#FROM python:3.10.14-slim as production
 
 # Set working directory
 WORKDIR /app
@@ -59,6 +98,11 @@ RUN mkdir -p /app/models /app/training-data /app/logs && \
 COPY --chown=mluser:mluser src/ ./src/
 COPY --chown=mluser:mluser *.py ./
 
+## Remove all .pyc files (avoiding stale/mismatched bytecode)
+#RUN find . -name "*.pyc" -delete
+# Remove all .pyc files using xargs (safer for large trees)
+RUN find . -name "*.pyc" -print0 | xargs -0 rm -f
+
 # Set Python path and other environment variables
 ENV PYTHONPATH=/app \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -66,20 +110,7 @@ ENV PYTHONPATH=/app \
     PYTHONIOENCODING=utf-8
 
 # Health check script
-COPY --chown=mluser:mluser <<EOF /app/healthcheck.py
-#!/usr/bin/env python3
-import sys
-import requests
-try:
-    response = requests.get('http://localhost:8001/health', timeout=10)
-    if response.status_code == 200 and response.json().get('status') == 'healthy':
-        sys.exit(0)
-    else:
-        sys.exit(1)
-except:
-    sys.exit(1)
-EOF
-
+COPY --chown=mluser:mluser healthcheck.py /app/healthcheck.py
 RUN chmod +x /app/healthcheck.py
 
 # Switch to non-root user
@@ -91,6 +122,9 @@ EXPOSE 8001
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD python /app/healthcheck.py
+
+# test
+#RUN ls -lR /app/src
 
 # Start command with proper signal handling
 CMD ["python", "-m", "uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "1"]

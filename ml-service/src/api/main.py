@@ -19,7 +19,8 @@ from ..services.prediction import EnhancedPredictionService
 from ..features.engineering import UnifiedFeatureEngineer as DatabaseFeatureEngineer
 # from ..core.evaluator import BasketPredictionEvaluator  # Commented out for now
 from ..core.logger import setup_logger
-from ..data.connection import test_database_connection, get_db_session
+# from ..data.connection import test_database_connection, get_db_session
+from ..data.database import test_database_connection, SessionLocal
 from ..data.models import User
 
 logger = setup_logger(__name__)

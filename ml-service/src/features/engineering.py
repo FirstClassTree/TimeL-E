@@ -7,8 +7,9 @@ import os
 from typing import List, Dict, Optional, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
-from ..data.models import User, Order, OrderItem, Product, Category
-from ..data.connection import get_db_session
+from ..data.models import User, Order, OrderItem, Product
+# from ..data.connection import get_db_session
+from ..data.database import SessionLocal
 from ..core.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -158,7 +159,8 @@ class UnifiedFeatureEngineer:
             DataFrame with engineered features
         """
         try:
-            with get_db_session() as session:
+            # with get_db_session() as session:
+            with SessionLocal() as session:
                 # Fetch user's order history from database
                 orders = session.query(Order).filter(
                     Order.user_id == user_id
