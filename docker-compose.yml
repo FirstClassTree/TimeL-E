@@ -61,6 +61,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/training-data
+#      - ../db_service/app/db_core:/app/src/data:ro
       - ml_models:/app/models
     networks:
       - timele-network

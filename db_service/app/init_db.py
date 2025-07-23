@@ -7,8 +7,8 @@ This script creates the required schemas and tables in the database *only if the
 - Existing data is not modified, and no migrations or destructive actions are performed.
 """
 
-from app.database import engine
-from app.models.base import Base
+from app.db_core.database import engine
+from app.db_core.models.base import Base
 from sqlalchemy import text
 
 schemas = ["users", "products", "orders"]

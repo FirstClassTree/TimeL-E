@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from app.database import SessionLocal
-from app.models import User
+from app.db_core.database import SessionLocal
+from app.db_core.models import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 # Removed UUID imports since we're using integer user_ids

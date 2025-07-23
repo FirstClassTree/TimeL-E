@@ -5,10 +5,10 @@ import os
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from app.database import SessionLocal
+from app.db_core.database import SessionLocal
 import asyncpg
-from app.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
-from app.config import settings
+from app.db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
+from app.db_core.config import settings
 from pydantic import BaseModel
 from typing import List, Optional
 # Removed UUID imports since we're using integer user_ids and order_ids

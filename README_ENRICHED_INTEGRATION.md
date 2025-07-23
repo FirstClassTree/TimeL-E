@@ -1,7 +1,8 @@
 # Enriched Product Data Integration
 
 ## Overview
-This integration adds enriched product data (descriptions, prices, images) to the TimeL-E API endpoints. The enriched data is sourced from external APIs (OpenFoodFacts) and stored in the database for fast access.
+This integration adds enriched product data (descriptions, prices, images) to the TimeL-E API endpoints.  
+The enriched data is sourced from external APIs (OpenFoodFacts) and stored in the database for fast access.
 
 ## What's New
 
@@ -70,6 +71,12 @@ The population script looks for all CSV files matching `/data/products_enriched/
 (inside the container, `/data` is a mounted volume) and loads all of them into the database.  
 This supports loading enriched product data for multiple departments automatically.
 
+By default, the service will only populate if the` products.product_enriched` table is empty (safe for repeated restarts).   
+To force a full replacement of enriched data, see below.
+
+You can control whether the database is fully reset at startup via the `RESET_DATABASE_ON_STARTUP` environment variable in .env.  
+If set to `true`, the database schemas and all data are dropped and recreated before population.
+
 ### **Manual Population**
 If you need to manually populate or update enriched data:
 
@@ -78,6 +85,20 @@ If you need to manually populate or update enriched data:
 cd db_service
 python -m app.populate_enriched_data
 ```
+
+#### Options
+
+```bash
+python -m app.populate_enriched_data --help
+```
+
+You can use the --force-reset flag to clear all existing enriched data before populating:
+```bash
+python -m app.populate_enriched_data --force-reset
+```
+* If `--force-reset` is not set (the default), the script will **only populate if the table is empty**.
+
+* If `--force-reset` is set, any existing data will be deleted first.
 
 ### **Generate New Enriched Data**
 To create enriched data for all products:
@@ -139,7 +160,7 @@ If you have an existing database, run the migration script:
 ## Troubleshooting
 
 ### **No Enriched Data Showing**
-1. Ensure the enriched CSV file exists, for example: `data/enriched_products_dept1.csv`
+1. Ensure the enriched CSV file exists, for example: `/data/products_enriched/enriched_products_dept1.csv`
 2. Verify the database table has been created and populated:  
 `SELECT COUNT(*) FROM products.product_enriched;`
 3. Review db-service logs for any errors during data population.

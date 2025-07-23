@@ -1,7 +1,7 @@
-# db_service/app/models/products.py
+# db_service/app/db_core/models/products.py
 
 from sqlalchemy import Integer, String, ForeignKey, Numeric, Text
-from app.models.base import Base
+from ..models.base import Base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional
 
@@ -43,6 +43,8 @@ class Product(Base):
     # Enables accessing order items that reference this product
     order_items = relationship("OrderItem", back_populates="product")
 
+    enriched = relationship("ProductEnriched", uselist=False, back_populates="product")
+
 class ProductEnriched(Base):
     __tablename__ = 'product_enriched'
     __table_args__ = {"schema": "products"}
@@ -53,4 +55,5 @@ class ProductEnriched(Base):
     image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Relationship to the main product
-    product = relationship("Product")
+    product = relationship("Product", back_populates="enriched")
+

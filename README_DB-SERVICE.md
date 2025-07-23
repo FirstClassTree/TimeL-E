@@ -164,7 +164,7 @@ products_result = await db_service.list_entities(
 
 ### ORDER API Endpoints
 
-```POST /orders```
+### Create Order ```POST /orders```
 
 Creates a new order in the database.  
 **User IDs use UUIDv7. (See below).
@@ -228,7 +228,7 @@ order_request = {
 order_result = await db_service.create_order(order_request)
 ```
 
-```POST /orders/{order_id}/items```
+### Add Product to Order ```POST /orders/{order_id}/items```
 
 Adds new products to an existing order.
 
@@ -256,7 +256,7 @@ Full address for other containers:
 ]
 ```
 
-Response:
+#### Response:
 
 ```json
 {
@@ -417,3 +417,256 @@ db_service.delete_entity(
 )
 ```
 
+### Cart API Endpoints
+
+These endpoints provide full CRUD (create, retrieve, update, delete) operations for user shopping carts.  
+Each cart belongs to a specific user and contains a list of items (products with quantity).  
+All product IDs must be valid (exist in the products table).  
+The backend is responsible for ensuring only authenticated users can access their own carts.    
+
+Note:
+* All endpoints validate that the user exists.  
+* All product IDs in requests are validated for existence.  
+* Cart responses always return enriched product details (name, aisle, department, price, etc).  
+* All changes update the cart’s updated_at timestamp (exposed in API, ISO8601 UTC).  
+* All cart responses include `updated_at` timestamp.  
+Clients can display or use this value to track last updates.  
+* All Cart CRUD endpoints respond with the full Cart (including `updated_at`) except for DELETE, which returns a simple message.  
+`updated_at` is always UTC and ISO8601 formatted.
+
+
+### Create Cart ```POST /carts```
+
+Creates a new cart for the given user. Fails if user does not exist or a cart already exists for that user  
+or the new cart contains product_ids that do not exist in the products table.  
+Returns HTTP `409` if cart already exists for the user.  
+
+#### Request Body (JSON):
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3
+    },
+    {
+      "product_id": 99,
+      "quantity": 1
+    }
+  ]
+}
+```
+
+#### Response:
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3,
+      "product_name": "Banana",
+      "aisle_name": "Fruit",
+      "department_name": "Produce",
+      "description": "Fresh bananas",
+      "price": 0.25,
+      "image_url": "https://img/banana.png"
+    },
+    {
+      "product_id": 99,
+      "quantity": 1,
+      "product_name": "Milk",
+      "aisle_name": "Dairy",
+      "department_name": "Dairy",
+      "description": "Whole milk",
+      "price": 2.99,
+      "image_url": "https://img/milk.png"
+    }
+  ],
+  "total_items": 2,
+  "total_quantity": 4,
+  "updated_at": "2024-07-16T17:20:10.532588+00:00"
+}
+```
+
+#### Example Request (Backend usage):
+
+```python
+from ..models.base import Cart, CartItem
+
+# Build the Cart object in backend
+cart = Cart(
+    user_id=1234,
+    items=[
+        CartItem(product_id=42, quantity=3),
+        CartItem(product_id=99, quantity=1),
+    ]
+)
+# Create the cart for the user
+result = await db_service.create_entity(
+    endpoint="/carts/",
+    data=cart.model_dump()
+)
+```
+
+### Get Cart ```GET /carts/{user_id}```
+
+Fetches the cart for a specific user.  
+If no cart exists, returns empty cart with the current timestamp. 
+
+#### Response:
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3,
+      "product_name": "Banana",
+      "aisle_name": "Fruit",
+      "department_name": "Produce",
+      "description": "Fresh bananas",
+      "price": 0.25,
+      "image_url": "https://img/banana.png"
+    }
+  ],
+  "total_items": 1,
+  "total_quantity": 3,
+  "updated_at": "2024-07-16T17:20:10.532588+00:00"
+}
+```
+
+#### Example Request (Backend usage):
+
+```python
+user_id = 1234
+cart = await db_service.get_entity("carts", user_id)
+# cart is a dict matching the CartResponse model
+```
+
+#### Example Request (curl):
+
+```bash
+curl -X GET http://localhost:7000/carts/1234
+```
+
+### Update/Replace Cart ```PUT /carts/{user_id}```
+
+Replaces the entire cart for a user (full upsert/replace operation).  
+If a cart does not exist, creates a new one. Returns enriched product details and the latest `updated_at`.  
+
+#### Request Body (JSON):
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 2
+    }
+  ]
+}
+```
+
+#### Response:  
+same format as "Get Cart" above, with `updated_at`.
+
+#### Example Request (Backend usage):
+
+```python
+from ..models.base import Cart, CartItem
+
+cart = Cart(
+    user_id=1234,
+    items=[
+        CartItem(product_id=42, quantity=2),
+    ]
+)
+result = await db_service.update_entity(
+    "carts", 1234, cart.model_dump()
+)
+```
+
+### Delete Cart ```DELETE /carts/{user_id}```
+Deletes a user's cart.  
+Returns HTTP 404 if the user or the cart do not exist.  
+
+#### Response:
+
+```json
+{ "message": "Cart deleted successfully for user 1234" }
+```
+
+#### Example Request (Backend usage):
+
+```python
+await db_service.delete_entity("carts", user_id)
+```
+
+##########################################################
+### Create Cart ```POST /carts```
+
+...
+
+#### Request Body (JSON):
+
+```json
+```
+
+#### Response:
+
+```json
+```
+
+#### Example Request (Backend usage):
+
+```python
+```
+
+### Create Cart ```POST /carts```
+
+...
+
+#### Request Body (JSON):
+
+```json
+```
+
+#### Response:
+
+```json
+```
+
+#### Example Request (Backend usage):
+
+```python
+```
+
+### Full Example for Cart API (Backend usage):
+
+```python
+# Create a new cart for user
+cart_data = {
+    "user_id": 1234,
+    "items": [
+        {"product_id": 1, "quantity": 2},
+        {"product_id": 4, "quantity": 1}
+    ]
+}
+resp = await db_service.create_entity(endpoint="/carts/", data=cart_data)
+
+# Get cart
+resp = await db_service.get_entity("carts", user_id)
+
+# Update (replace) cart
+cart_data["items"].append({"product_id": 7, "quantity": 3})
+resp = await db_service.update_entity("carts", user_id, cart_data)
+
+# Delete cart
+await db_service.delete_entity("carts", user_id)
+```

@@ -1,7 +1,7 @@
-# db_service/app/models/users.py
+# db_service/app/db_core/models/users.py
 
 from sqlalchemy import String, Integer
-from app.models.base import Base
+from ..models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 class User(Base):

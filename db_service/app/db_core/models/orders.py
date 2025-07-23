@@ -1,9 +1,9 @@
-# db_service/app/models/orders.py
+# db_service/app/db_core/models/orders.py
 
 from sqlalchemy import Integer, String, Float, ForeignKey, LargeBinary
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
-from app.models.base import Base
+from ..models.base import Base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 import enum
 

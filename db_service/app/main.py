@@ -11,12 +11,13 @@ from .init_db import init_db
 from .database_service import router
 from .users_routers import router as users_router
 from .orders_routers import router as orders_router
+from .carts_routers import router as carts_router
 import os
 import sys
 import datetime
 from .populate_from_csv import populate_tables
 from .populate_enriched_data import populate_enriched_data
-from .config import settings
+from .db_core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,6 +64,7 @@ app = FastAPI(
 app.include_router(router)
 app.include_router(users_router)
 app.include_router(orders_router)
+app.include_router(carts_router)
 
 @app.get("/health")
 def health():
