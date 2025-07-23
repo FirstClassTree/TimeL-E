@@ -3,3 +3,5 @@ data/
 ./data/
 data/*.csv
 !data/enriched_products_dept1.csv
+!/ml-service/src/data/
+
