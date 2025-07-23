@@ -141,7 +141,14 @@ async def register_user(user_request: CreateUserRequest) -> APIResponse:
         create_result = await db_service.create_user(user_data)
         
         if not create_result.get("success", True):
-            raise HTTPException(status_code=500, detail="Failed to create user")
+            error_msg = create_result.get("error", "Failed to create user")
+            # Check for specific error types and return appropriate HTTP status codes
+            if "email address already exists" in error_msg.lower():
+                raise HTTPException(status_code=400, detail="Email address already exists")
+            elif "username already exists" in error_msg.lower():
+                raise HTTPException(status_code=400, detail="Username already exists")
+            else:
+                raise HTTPException(status_code=500, detail=f"Failed to create user: {error_msg}")
         
         created_data = create_result.get("data", [])
         

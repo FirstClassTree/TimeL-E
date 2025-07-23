@@ -56,24 +56,48 @@ class DatabaseService:
     async def query(self, query_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute custom query"""
         async with ServiceClient() as client:
-            response = await client.request(
-                method="POST",
-                url=f"{self.base_url}/query",
-                data=query_data
-            )
-            
-            # Convert db-service response format to expected backend format
-            if response.get("status") == "ok":
-                return {
-                    "success": True,
-                    "data": response.get("results", [])
-                }
-            else:
-                return {
-                    "success": False,
-                    "data": [],
-                    "error": response.get("detail", "Query failed")
-                }
+            try:
+                response = await client.request(
+                    method="POST",
+                    url=f"{self.base_url}/query",
+                    data=query_data
+                )
+                
+                # Convert db-service response format to expected backend format
+                if response.get("status") == "ok":
+                    return {
+                        "success": True,
+                        "data": response.get("results", [])
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": response.get("detail", "Query failed")
+                    }
+            except Exception as e:
+                # Extract more detailed error information
+                error_str = str(e)
+                
+                # Check for common database constraint violations
+                if "email_address" in error_str and "already exists" in error_str:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": "Email address already exists"
+                    }
+                elif "name" in error_str and "already exists" in error_str:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": "Username already exists"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": f"Database error: {error_str}"
+                    }
 
     # Product-specific methods
     async def get_products_with_filters(
