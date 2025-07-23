@@ -14,7 +14,8 @@ from typing import List, Dict, Optional
 from ..models.stacked_basket_model import StackedBasketModel
 import sys
 sys.path.append('/app')
-from simple_model_wrapper import SimpleStackedBasketModel
+# from simple_model_wrapper import SimpleStackedBasketModel
+from ...simple_model_wrapper import SimpleStackedBasketModel
 from ..services.prediction import EnhancedPredictionService
 from ..features.engineering import UnifiedFeatureEngineer as DatabaseFeatureEngineer
 # from ..core.evaluator import BasketPredictionEvaluator  # Commented out for now
