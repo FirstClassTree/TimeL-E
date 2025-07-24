@@ -25,9 +25,9 @@ export interface ProductsResponse {
   products: Product[];
   total: number;
   page: number;
-  perPage: number;
-  hasNext: boolean;
-  hasPrev: boolean;
+  per_page: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface ProductFilters {
@@ -77,17 +77,17 @@ class ProductService {
 */
 
   // Get single product
-  async getProduct(id: bigint): Promise<Product> {
+  async getProduct(id: number): Promise<Product> {
     return api.get<Product>(`/products/${id}`);
   }
 
   // Get product by department
-  async getProductsByDepartment(departmentId: bigint): Promise<Product> {
+  async getProductsByDepartment(departmentId: number): Promise<Product> {
     return api.get<Product>(`/products/department/${departmentId}`);
   }
 
   // Get product by aisle number
-  async getProductsByAisle(aisleId: bigint): Promise<Product> {
+  async getProductsByAisle(aisleId: number): Promise<Product> {
     return api.get<Product>(`/products/aisle/${aisleId}`);
   }
 
@@ -102,7 +102,7 @@ class ProductService {
   }
 
   // Get product recommendations
-  async getRecommendations(productId: string, limit: number = 4): Promise<Product[]> {
+  async getRecommendations(productId: number, limit: number = 4): Promise<Product[]> {
     return api.get<Product[]>(`/products/${productId}/recommendations?limit=${limit}`);
   }
 
@@ -125,7 +125,7 @@ class ProductService {
   // ============================================================================
 
   // TODO: Track product view - use in admin?
-  async trackProductView(productId: string): Promise<void> {
+  async trackProductView(productId: number): Promise<void> {
     return api.post(`/products/${productId}/view`);
   }
 

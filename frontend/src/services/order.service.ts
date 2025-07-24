@@ -116,7 +116,7 @@ class OrderService {
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.sort) params.append('sort', filters.sort);
 
-    return api.get<OrdersResponse>(`/orders/user/${userId}?${params.toString()}`);
+    return await api.get<OrdersResponse>(`/orders/user/${userId}?${params.toString()}`);
   }
 
   // Get order by ID

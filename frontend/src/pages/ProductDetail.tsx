@@ -8,16 +8,16 @@ import {
 } from 'lucide-react';
 import { productService } from '@/services/product.service';
 import { useCartStore } from '@/stores/cart.store';
-import { useAuthStore } from '@/stores/auth.store';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ProductImage from '@/components/products/ProductImage';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider'
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addItem } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
+  const { addToCart } = useCartStore();
+  const {userId} = useUser();
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -32,15 +32,12 @@ const ProductDetail: React.FC = () => {
   const handleAddToCart = () => {
     if (!product) return;
     
-    addItem({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: product.image,
-      quantity: quantity
-    });
+    addToCart(userId,
+        product.product_id,
+      quantity
+    );
     
-    toast.success(`Added ${quantity} ${product.name} to cart`);
+    toast.success(`Added ${quantity} ${product.product_name} to cart`);
   };
 
   const handleBuyNow = () => {
@@ -94,8 +91,8 @@ const ProductDetail: React.FC = () => {
             className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800"
           >
             <ProductImage
-              src={product.image}
-              alt={product.name}
+              src={product.image_url}
+              alt={product.product_name}
               className="w-full h-full object-cover"
             />
           </motion.div>
@@ -111,7 +108,7 @@ const ProductDetail: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {product.name}
+              {product.product_name}
             </h1>
             
             <div className="flex items-center gap-4 mb-4">
@@ -135,9 +132,9 @@ const ProductDetail: React.FC = () => {
               <span className="text-3xl font-bold text-gray-900 dark:text-white">
                 ${product.price}
               </span>
-              {product.price > 20 && (
+              {(product?.price ?? 0) > 20 && (
                 <span className="text-lg text-gray-500 dark:text-gray-400 line-through">
-                  ${(product.price * 1.2).toFixed(2)}
+                  ${((product?.price ?? 0) * 1.2).toFixed(2)}
                 </span>
               )}
               <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-sm font-medium rounded">
@@ -250,7 +247,7 @@ const ProductDetail: React.FC = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Category:</span>
-                <span className="text-gray-900 dark:text-white">{product.category}</span>
+                <span className="text-gray-900 dark:text-white">{product.department_name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Brand:</span>
@@ -258,7 +255,7 @@ const ProductDetail: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">SKU:</span>
-                <span className="text-gray-900 dark:text-white">PRD-{product.id}</span>
+                <span className="text-gray-900 dark:text-white">PRD-{product.product_id}</span>
               </div>
             </div>
           </div>
