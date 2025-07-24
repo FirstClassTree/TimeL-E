@@ -31,12 +31,29 @@ class AuthService {
   private readonly REFRESH_TOKEN_KEY = 'timele_refresh_token';
   private readonly USER_KEY = 'timele_user';
 
-  // Login
+  // Login - Adapted for demo backend
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/users/login', credentials);
-    this.setTokens(response.accessToken, response.refreshToken);
-    this.setUser(response.user);
-    return response;
+    // Call the demo login endpoint (GET request, ignores credentials)
+    const response = await api.get('/users/login');
+    
+    // Transform backend format to frontend expected format
+    const user = {
+      id: response.user_id,
+      email: response.email_address,
+      name: response.name
+    };
+    
+    // Create mock tokens since backend doesn't provide them
+    const mockAuth = {
+      user,
+      accessToken: `demo_token_${response.user_id}`,
+      refreshToken: `demo_refresh_${response.user_id}`
+    };
+    
+    this.setTokens(mockAuth.accessToken, mockAuth.refreshToken);
+    this.setUser(mockAuth.user);
+    
+    return mockAuth;
   }
 
   // Register

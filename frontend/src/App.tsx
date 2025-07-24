@@ -13,6 +13,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 // Auth components
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminRoute from '@/components/auth/AdminRoute';
+import { UserProvider } from '@/components/auth/UserProvider';
 
 // Loading component
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -49,8 +50,9 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="App">
+      <UserProvider>
+        <Router>
+          <div className="App">
           <AnimatePresence mode="wait">
             <Suspense fallback={<LoadingSpinner fullScreen />}>
               <Routes>
@@ -146,7 +148,8 @@ const App: React.FC = () => {
             />
           )}
         </div>
-      </Router>
+        </Router>
+      </UserProvider>
     </QueryClientProvider>
   );
 };

@@ -31,7 +31,7 @@ const quickLoginUsers: QuickLoginUser[] = [
     {
       id: "688",
       name: "Sarah",
-      email: ",user688@timele-demo.com",
+      email: "user688@timele-demo.com",
       avatar: "👩‍💻"
     },
     {
@@ -70,7 +70,10 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       
       // Fetch cart after successful login
-      await fetchCart(user?.id ?? userId);
+      const loggedInUser = useAuthStore.getState().user;
+      if (loggedInUser?.id) {
+        await fetchCart(loggedInUser.id);
+      }
       
       // Redirect to intended page or home
       navigate(from, { replace: true });
@@ -80,6 +83,25 @@ const Login: React.FC = () => {
       } else {
         toast.error('Login failed. Please try again.');
       }
+    }
+  };
+
+  const handleQuickLogin = async (quickUser: QuickLoginUser) => {
+    try {
+      setUserId(quickUser.id);
+      // Use the demo login which will return a random user
+      await login('demo@timele.com', 'password');
+      
+      // Fetch cart after successful login
+      const loggedInUser = useAuthStore.getState().user;
+      if (loggedInUser?.id) {
+        await fetchCart(loggedInUser.id);
+      }
+      
+      toast.success(`Welcome ${quickUser.name}!`);
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      toast.error('Quick login failed. Please try again.');
     }
   };
 
@@ -261,8 +283,8 @@ const Login: React.FC = () => {
               {quickLoginUsers.map((quickUser) => (
                 <motion.button
                   key={quickUser.id}
-                  onClick={() => setUserId(quickUser.id)}
-                  disabled={setUserId !== null}
+                  onClick={() => handleQuickLogin(quickUser)}
+                  disabled={isLoading}
                   className="w-full p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -276,7 +298,7 @@ const Login: React.FC = () => {
                       {quickUser.email}
                     </p>
                   </div>
-                  {userId === quickUser.id && (
+                  {isLoading && userId === quickUser.id && (
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                   )}
                 </motion.button>
