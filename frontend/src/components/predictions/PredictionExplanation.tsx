@@ -23,7 +23,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
 
   const { data: explanation, isLoading } = useQuery(
     ['prediction-explanation', basketId, productId],
-    () => predictionService.getPredictionExplanation(basketId, productId),
+    () => predictionService.getPredictionExplanation(basketId),
     {
       staleTime: 10 * 60 * 1000, // 10 minutes
       enabled: !compact || isExpanded
@@ -66,22 +66,6 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
           </div>
         ) : explanation ? (
           <div className="space-y-3">
-            {/* Confidence Score */}
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600 dark:text-gray-400">Prediction Confidence</span>
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${explanation.confidence * 100}%` }}
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
-                  />
-                </div>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {Math.round(explanation.confidence * 100)}%
-                </span>
-              </div>
-            </div>
 
             {/* Key Factors */}
             <div>
