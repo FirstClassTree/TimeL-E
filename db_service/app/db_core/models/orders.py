@@ -8,8 +8,6 @@ shopping carts, and cart items. Models define business logic constraints, relati
 and metadata for use in API, admin, and business logic layers.
 """
 
-import datetime
-
 from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
@@ -17,6 +15,7 @@ from .base import Base
 from . import User, Product
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 import enum
+from datetime import datetime, UTC
 
 class OrderStatus(enum.Enum):
     """
@@ -109,14 +108,14 @@ class Order(Base):
     tracking_url:  Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     invoice:  Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)  # e.g. PDF or image blob
 
-    created_at: Mapped[datetime.datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),   # ensures it maps to PostgreSQL's `timestamptz`
-        default=lambda: datetime.datetime.now(datetime.UTC),
+        default=lambda: datetime.now(UTC),
         nullable=False)
-    updated_at: Mapped[datetime.datetime] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
-        default=lambda: datetime.datetime.now(datetime.UTC),
-        onupdate=lambda: datetime.datetime.now(datetime.UTC),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
         nullable = False)
 
     # Enables accessing the user associated with the order through ORM relationship
@@ -212,12 +211,12 @@ class Cart(Base):
     cart_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True) #  rendered as PostgreSQL SERIAL
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.users.user_id'), index=True, nullable=False)
     total_items: Mapped[int] = mapped_column(Integer, nullable=False)
-    created_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True),
-                                                          default=lambda: datetime.datetime.now(datetime.UTC),
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True),
+                                                          default=lambda: datetime.now(UTC),
                                                           nullable=False)
-    updated_at: Mapped[datetime.datetime] = mapped_column(TIMESTAMP(timezone=True),
-                                                          default=lambda: datetime.datetime.now(datetime.UTC),
-                                                          onupdate=lambda: datetime.datetime.now(datetime.UTC),
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True),
+                                                          default=lambda: datetime.now(UTC),
+                                                          onupdate=lambda: datetime.now(UTC),
                                                           nullable = False)
 
     # Enables accessing the user associated with the cart through ORM relationship

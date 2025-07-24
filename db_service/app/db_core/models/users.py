@@ -14,9 +14,10 @@ OpenAPI Description:
     and relationships to order and cart records.
 """
 
-from sqlalchemy import String, Integer
-from .base import Base
+from sqlalchemy import String, Integer,TIMESTAMP, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import datetime, UTC
+from .base import Base
 from typing import List, Optional
 
 class User(Base):
@@ -75,6 +76,21 @@ class User(Base):
     city: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     postal_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    # Notification and scheduling settings
+    days_between_order_notifications: Mapped[Optional[int]] = mapped_column(Integer, default=7, nullable=True)
+    order_notifications_start_date_time: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
+                                                      default=lambda: datetime.now(UTC),
+                                                      nullable=True)
+
+    order_notifications_next_scheduled_time: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
+                                                          default=lambda: datetime.now(UTC),
+                                                          nullable=True)
+    last_notification_sent_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
+                                                          default=lambda: datetime.now(UTC),
+                                                          nullable=True)
+    pending_order_notification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    order_notifications_via_email: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Enables accessing all orders by this user
     orders: Mapped[List["Order"]]  = relationship("Order", back_populates="user")

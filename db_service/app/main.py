@@ -19,6 +19,8 @@ import datetime
 from .populate_from_csv import populate_tables
 from .populate_enriched_data import populate_enriched_data
 from .db_core.config import settings
+from .scheduler import process_scheduled_user_notifications
+from apscheduler.schedulers.background import BackgroundScheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,8 +57,23 @@ async def lifespan(app: FastAPI):
     
     print(f"Database Service ready! ({datetime.datetime.now().isoformat(timespec='seconds')})")
 
-    yield       # App runs
-    # Optionally add shutdown logic after yield
+    print("Starting notifications scheduler...")
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(
+        process_scheduled_user_notifications,
+        "interval",
+        hours=1,
+        id="user_notifications",
+        replace_existing=True
+    )
+    scheduler.start()
+
+    try:
+        yield       # App runs
+    # shutdown logic after yield
+    finally:
+        print("Shutting down notifications scheduler...")
+        scheduler.shutdown(wait=False)
 
 app = FastAPI(
     title="Database Service Api and Database Description",
