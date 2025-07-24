@@ -6,6 +6,7 @@ import { Mail, Lock, Eye, EyeOff, ShoppingCart, Brain, Loader2 } from 'lucide-re
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 interface LoginFormData {
   email: string;
@@ -16,9 +17,10 @@ interface LoginFormData {
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading } = useAuthStore();
+  const { user, login, isLoading } = useAuthStore();
   const { fetchCart } = useCartStore();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
+  const { userId } = useUser();
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -40,7 +42,7 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       
       // Fetch cart after successful login
-      await fetchCart();
+      await fetchCart(user?.id ?? userId);
       
       // Redirect to intended page or home
       navigate(from, { replace: true });
@@ -54,7 +56,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,7 +66,7 @@ const Login: React.FC = () => {
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center gap-2 mb-6">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl">
+            <div className="p-3 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl">
               <ShoppingCart className="w-8 h-8 text-white" />
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white">TimeL-E</span>
@@ -185,7 +187,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
+              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -218,6 +220,7 @@ const Login: React.FC = () => {
             </Link>
           </form>
 
+          //TODO: Replace with quick login
           {/* Demo Credentials */}
           <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
             <div className="flex items-start gap-3">

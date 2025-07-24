@@ -15,7 +15,7 @@ const Home: React.FC = () => {
       icon: Brain,
       title: 'AI-Powered Predictions',
       description: 'Our ML algorithm learns your shopping habits and predicts your weekly needs with remarkable accuracy.',
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-blue-500 to-blue-700'
     },
     {
       icon: Clock,
@@ -69,7 +69,7 @@ const Home: React.FC = () => {
 
       {/* CTA Section for logged-in users */}
       {user && (
-        <section className="py-16 px-4 bg-gradient-to-r from-indigo-600 to-purple-600">
+        <section className="py-16 px-4 bg-gradient-to-r from-indigo-600 to-blue-600">
           <div className="max-w-4xl mx-auto text-center text-white">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}

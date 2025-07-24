@@ -1,53 +1,33 @@
 import { api } from '@/services/api.client';
 
 export interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  description: string;
-  price: number;
-  compareAtPrice?: number;
-  unit?: string;
-  unitValue?: number;
-  brand?: string;
-  tags: string[];
-  imageUrl?: string;
-  additionalImages: string[];
-  categoryId: string;
-  category?: Category;
-  stock: number;
-  trackInventory: boolean;
-  isActive: boolean;
-  isFeatured: boolean;
-  isOnSale: boolean;
-  salePercentage: number;
-  salePrice: number;
-  inStock: boolean;
-  nutritionalInfo: Record<string, any>;
-  metadata: Record<string, any>;
-  viewCount: number;
-  purchaseCount: number;
-  avgRating: number;
-  reviewCount: number;
-  createdAt: string;
-  updatedAt: string;
+  product_id: number;
+  product_name: string;
+  aisle_id: number;
+  department_id: number;
+  aisle_name: string;
+  department_name: string;
+  description: string | null;
+  price: number | null;
+  image_url: string | null;
 }
 
-export interface Category {
+export interface Department {
   id: string;
   name: string;
   description?: string;
   imageUrl?: string;
   parentId?: string;
   isActive: boolean;
-  productCount?: number;
 }
 
 export interface ProductsResponse {
   products: Product[];
   total: number;
-  offset: number;
-  hasMore: boolean;
+  page: number;
+  perPage: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface ProductFilters {
@@ -60,7 +40,6 @@ export interface ProductFilters {
   maxPrice?: number;
   inStock?: boolean;
   onSale?: boolean;
-  featured?: boolean;
 }
 
 class ProductService {
@@ -132,13 +111,13 @@ class ProductService {
   // ============================================================================
 
   // Get categories
-  async getCategories(): Promise<Category[]> {
-    return api.get<Category[]>('/products/categories');
+  async getDepartments(): Promise<Department[]> {
+    return api.get<Department[]>('/products/departments');
   }
 
   // Get category by ID
-  async getCategory(id: string): Promise<Category> {
-    return api.get<Category>(`/products/categories/${id}`);
+  async getDepartment(id: string): Promise<Department> {
+    return api.get<Department>(`/products/department/${id}`);
   }
 
   // ============================================================================
@@ -165,12 +144,6 @@ class ProductService {
       style: 'currency',
       currency: 'USD'
     }).format(price);
-  }
-
-  //  TODO: Calculate discount percentage - use and show!
-  calculateDiscount(price: number, compareAtPrice?: number): number {
-    if (!compareAtPrice || compareAtPrice <= price) return 0;
-    return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
   }
 }
 

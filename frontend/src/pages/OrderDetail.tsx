@@ -1,25 +1,21 @@
-// frontend/src/pages/OrderDetail.tsx
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from 'react-query';
-import { motion } from 'framer-motion';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft, Package, Truck, CheckCircle, Clock, 
   MapPin, Calendar, DollarSign, Phone,
   Download, RefreshCcw, Star
 } from 'lucide-react';
-import { orderService } from '@/services/order.service';
+import {Delivery, orderService} from '@/services/order.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 interface OrderDetail {
   id: string;
   orderNumber: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   total: number;
-  subtotal: number;
   tax: number;
-  shipping: number;
   items: Array<{
     id: string;
     name: string;
@@ -30,32 +26,13 @@ interface OrderDetail {
   }>;
   createdAt: string;
   estimatedDelivery?: string;
-  deliveredAt?: string;
+  delivery?: Delivery;
   trackingNumber?: string;
-  shippingAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
-  billingAddress: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
   paymentMethod: {
     type: 'card' | 'paypal';
     last4?: string;
     brand?: string;
   };
-  statusHistory: Array<{
-    status: string;
-    timestamp: string;
-    description: string;
-  }>;
 }
 
 const OrderDetail: React.FC = () => {
@@ -64,7 +41,7 @@ const OrderDetail: React.FC = () => {
 
   const { data: order, isLoading, error } = useQuery<OrderDetail>(
     ['order', id],
-    () => orderService.getOrder(id),
+    () => orderService.getOrder(id!),
     {
       enabled: !!id,
     }
@@ -238,44 +215,6 @@ const OrderDetail: React.FC = () => {
                 </div>
               ))}
             </div>
-          </div>
-
-          {/* Order Timeline */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
-              Order Timeline
-            </h3>
-            
-            <div className="space-y-4">
-              {order.statusHistory.map((event, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-4"
-                >
-                  <div className="w-8 h-8 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
-                    {getStatusIcon(event.status)}
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium text-gray-900 dark:text-white capitalize">
-                        {event.status}
-                      </h4>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(event.timestamp).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {event.description}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Sidebar */}
@@ -286,17 +225,7 @@ const OrderDetail: React.FC = () => {
               Order Summary
             </h3>
             
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Subtotal</span>
-                <span className="text-gray-900 dark:text-white">${order.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Shipping</span>
-                <span className="text-gray-900 dark:text-white">
-                  {order.shipping === 0 ? 'Free' : `$${order.shipping.toFixed(2)}`}
-                </span>
-              </div>
+            <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Tax</span>
                 <span className="text-gray-900 dark:text-white">${order.tax.toFixed(2)}</span>
@@ -352,9 +281,8 @@ const OrderDetail: React.FC = () => {
                     Shipping Address
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {order.shippingAddress.street}<br />
-                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}<br />
-                    {order.shippingAddress.country}
+                    {order.delivery?.street}, {order.delivery?.city}, {order.delivery?.zipCode}<br />
+                    {order.delivery?.country}
                   </p>
                 </div>
               </div>
@@ -430,6 +358,7 @@ const OrderDetail: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

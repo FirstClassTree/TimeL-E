@@ -1,27 +1,22 @@
-// frontend/src/pages/PredictedBasket.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Brain, ShoppingCart, TrendingUp, Info, Check, X, 
-  RefreshCw, Calendar, Clock, Sparkles, AlertCircle,
-  ChevronRight, Plus, Minus, Trash2
+  RefreshCw, Calendar, Clock, Sparkles, AlertCircle, Plus, Minus
 } from 'lucide-react';
 import { predictionService } from '@/services/prediction.service';
-import { cartService } from '@/services/cart.service';
-import { useCartStore } from '@/stores/cart.store';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ProductImage from '@/components/products/ProductImage';
 import ConfidenceIndicator from '@/components/predictions/ConfidenceIndicator';
 import PredictionExplanation from '@/components/predictions/PredictionExplanation';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import {useUser} from "@/components/auth/UserProvider.tsx";
 
 const PredictedBasket: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { syncWithPredictedBasket } = useCartStore();
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [showExplanations, setShowExplanations] = useState(false);
 
   // Fetch current predicted basket
@@ -45,7 +40,7 @@ const PredictedBasket: React.FC = () => {
 
   // Generate new prediction mutation
   const generateMutation = useMutation(
-    () => predictionService.generatePrediction({ forceRegenerate: true }),
+    () => predictionService.getUserPredictedBaskets(useUser().userId),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('predicted-basket');
@@ -59,37 +54,11 @@ const PredictedBasket: React.FC = () => {
 
   // Update item mutation
   const updateItemMutation = useMutation(
-    ({ itemId, data }: { itemId: string; data: any }) => 
+    ({ itemId, data }: { itemId: number; data: any }) =>
       predictionService.updateBasketItem(basket!.id, itemId, data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('predicted-basket');
-      }
-    }
-  );
-
-  // Remove item mutation
-  const removeItemMutation = useMutation(
-    (itemId: string) => predictionService.removeBasketItem(basket!.id, itemId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('predicted-basket');
-        toast.success('Item removed from prediction');
-      }
-    }
-  );
-
-  // Accept basket mutation
-  const acceptBasketMutation = useMutation(
-    () => predictionService.acceptBasket(basket!.id),
-    {
-      onSuccess: async (data) => {
-        await syncWithPredictedBasket(basket!.id);
-        toast.success('Basket accepted! Redirecting to cart...');
-        setTimeout(() => navigate('/cart'), 1500);
-      },
-      onError: () => {
-        toast.error('Failed to accept basket');
       }
     }
   );
@@ -99,7 +68,7 @@ const PredictedBasket: React.FC = () => {
     totalItems: basket.items.filter(item => item.isAccepted).length,
     totalValue: basket.items
       .filter(item => item.isAccepted)
-      .reduce((sum, item) => sum + (item.product.salePrice * item.quantity), 0),
+      .reduce((sum, item) => sum + ((item.product.price ?? 0) * item.quantity), 0),
     avgConfidence: basket.items.length > 0
       ? basket.items.reduce((sum, item) => sum + item.confidenceScore, 0) / basket.items.length
       : 0,
@@ -163,7 +132,7 @@ const PredictedBasket: React.FC = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg">
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -243,7 +212,7 @@ const PredictedBasket: React.FC = () => {
                     {((stats?.avgConfidence || 0) * 100).toFixed(0)}%
                   </p>
                 </div>
-                <Sparkles className="w-8 h-8 text-purple-500" />
+                <Sparkles className="w-8 h-8 text-blue-500" />
               </div>
             </motion.div>
 
@@ -260,7 +229,7 @@ const PredictedBasket: React.FC = () => {
                     {stats?.acceptanceRate.toFixed(0) || 0}%
                   </p>
                 </div>
-                <Brain className="w-8 h-8 text-pink-500" />
+                <Brain className="w-8 h-8 text-green-500" />
               </div>
             </motion.div>
           </div>
@@ -308,15 +277,10 @@ const PredictedBasket: React.FC = () => {
                     {/* Product Image */}
                     <div className="relative">
                       <ProductImage
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
+                        src={item.product.image_url}
+                        alt={item.product.product_name}
                         className="w-24 h-24 object-cover rounded-lg"
                       />
-                      {item.product.isOnSale && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                          -{item.product.salePercentage}%
-                        </span>
-                      )}
                     </div>
 
                     {/* Product Details */}
@@ -324,10 +288,10 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {item.product.name}
+                            {item.product.product_name}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.product.brand} • {item.product.unit}
+                            {item.product.department_name} • {item.product.aisle_name}
                           </p>
                         </div>
                         <button
@@ -345,10 +309,10 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-lg font-bold text-gray-900 dark:text-white">
-                            ${item.product.salePrice.toFixed(2)}
-                            {item.product.compareAtPrice && (
+                            ${item.product.price?.toFixed(2)}
+                            {item.product.price && (
                               <span className="ml-2 text-sm text-gray-500 line-through">
-                                ${item.product.compareAtPrice.toFixed(2)}
+                                ${item.product.price.toFixed(2)}
                               </span>
                             )}
                           </p>
@@ -373,12 +337,6 @@ const PredictedBasket: React.FC = () => {
                             className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30"
                           >
                             <Plus size={16} />
-                          </button>
-                          <button
-                            onClick={() => removeItemMutation.mutate(item.id)}
-                            className="ml-2 p-1 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                          >
-                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -408,24 +366,6 @@ const PredictedBasket: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button
-            onClick={() => acceptBasketMutation.mutate()}
-            disabled={acceptBasketMutation.isLoading || stats?.totalItems === 0}
-            className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-full hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {acceptBasketMutation.isLoading ? (
-              <>
-                <LoadingSpinner size="small" className="text-white" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <ShoppingCart size={20} />
-                Accept & Add to Cart
-                <ChevronRight size={20} />
-              </>
-            )}
-          </button>
 
           <button
             onClick={() => navigate('/products')}

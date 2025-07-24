@@ -1,10 +1,15 @@
-// frontend/src/services/api.client.ts
-
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import toast from 'react-hot-toast';
 import { authService } from '@/services/auth.service';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
+export interface GeneralResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  timestamp: string;
+}
 
 // ============================================================================
 // SINGLE API CLIENT - Backend Gateway
@@ -59,8 +64,6 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       }
     }
-
-    // Handle other errors
     const errorMessage = error.response?.data?.error || error.message || 'An error occurred';
     
     // Don't show toast for cancelled requests
@@ -77,18 +80,23 @@ apiClient.interceptors.response.use(
 // ============================================================================
 
 export const api = {
-  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => 
-    apiClient.get(url, config).then(response => response.data),
+  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+    apiClient.get<GeneralResponse<T>>(url, config)
+        .then(response => response.data.data),
     
-  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    apiClient.post(url, data, config).then(response => response.data),
+  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
+    apiClient.post<GeneralResponse<T>>(url, data, config)
+        .then(response => response.data.data),
     
-  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    apiClient.put(url, data, config).then(response => response.data),
+  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
+    apiClient.put<GeneralResponse<T>>(url, data, config)
+        .then(response => response.data.data),
     
-  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    apiClient.patch(url, data, config).then(response => response.data),
+  patch: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
+    apiClient.patch<GeneralResponse<T>>(url, data, config)
+        .then(response => response.data.data),
     
-  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> => 
-    apiClient.delete(url, config).then(response => response.data),
+  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+    apiClient.delete<GeneralResponse<T>>(url, config)
+        .then(response => response.data.data),
 };

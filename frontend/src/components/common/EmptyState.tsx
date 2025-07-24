@@ -46,8 +46,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         className="mb-6"
       >
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-full blur-xl" />
-          <div className="relative p-6 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-full">
+          <div className="absolute inset-0 bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-900/20 dark:to-blue-900/20 rounded-full blur-xl" />
+          <div className="relative p-6 bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/30 dark:to-blue-900/30 rounded-full">
             <Icon className="w-16 h-16 text-indigo-600 dark:text-indigo-400" />
           </div>
         </div>
@@ -86,7 +86,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
               className={`px-6 py-3 font-semibold rounded-lg transition-all transform hover:scale-105 ${
                 action.variant === 'secondary'
                   ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600'
-                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700'
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-cyan-700 hover:to-blue-700'
               }`}
             >
               {action.label}
@@ -96,7 +96,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           {secondaryAction && (
             <button
               onClick={secondaryAction.onClick}
-              className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              className="px-6 py-3 font-semibold text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
             >
               {secondaryAction.label}
             </button>

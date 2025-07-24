@@ -6,7 +6,7 @@ import { ShoppingCart } from 'lucide-react';
 
 const AuthLayout: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="min-h-screen flex">
         {/* Left Side - Branding */}
         <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-20 xl:px-24">
@@ -17,7 +17,7 @@ const AuthLayout: React.FC = () => {
             className="max-w-sm mx-auto"
           >
             <Link to="/" className="flex items-center gap-3 mb-8">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-xl">
                 <ShoppingCart className="w-8 h-8 text-white" />
               </div>
               <span className="text-3xl font-bold text-gray-900 dark:text-white">TimeL-E</span>
@@ -38,7 +38,7 @@ const AuthLayout: React.FC = () => {
                 <span className="text-gray-700 dark:text-gray-300">Personalized predictions</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                 <span className="text-gray-700 dark:text-gray-300">Smart shopping recommendations</span>
               </div>
               <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ const AuthLayout: React.FC = () => {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8">
             <Link to="/" className="flex items-center justify-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-lg">
                 <ShoppingCart className="w-6 h-6 text-white" />
               </div>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">TimeL-E</span>

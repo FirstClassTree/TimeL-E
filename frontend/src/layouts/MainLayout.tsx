@@ -1,9 +1,8 @@
-// frontend/src/layouts/MainLayout.tsx
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ShoppingCart, Search, Menu, X, User, Heart, Package,
+  ShoppingCart, Search, Menu, X, User, Package,
   LogOut, Settings, ChevronDown, Brain, Sun, Moon,
   Bell, Home
 } from 'lucide-react';
@@ -26,43 +25,72 @@ const MainLayout: React.FC = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  
+  const [isClient, setIsClient] = useState(false);
+
   const cartItemCount = getItemCount();
+
+  // Client-side mounting check
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll);
+      return () => window.removeEventListener('scroll', handleScroll);
+    }
   }, []);
 
   useEffect(() => {
-    // Check for saved theme preference or default to light
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
+    // Only run on client side
+    if (!isClient || typeof window === 'undefined') return;
+
+    try {
+      // Check for saved theme preference or default to light
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        setIsDarkMode(true);
+        document.documentElement.classList.add('dark');
+      }
+    } catch (error) {
+      console.warn('Error accessing localStorage or matchMedia:', error);
+      // Fallback to light theme
+      setIsDarkMode(false);
     }
-  }, []);
+  }, [isClient]);
 
   const toggleDarkMode = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
+    if (typeof window === 'undefined') return;
+
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      } else {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      }
+      setIsDarkMode(!isDarkMode);
+    } catch (error) {
+      console.warn('Error toggling dark mode:', error);
+      // Still toggle the visual state even if localStorage fails
+      setIsDarkMode(!isDarkMode);
     }
-    setIsDarkMode(!isDarkMode);
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   };
 
   const navLinks = [
@@ -88,7 +116,7 @@ const MainLayout: React.FC = () => {
               to="/"
               className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white"
             >
-              <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
                 <ShoppingCart className="w-6 h-6 text-white" />
               </div>
               <span>TimeL-E</span>
@@ -98,15 +126,15 @@ const MainLayout: React.FC = () => {
             <nav className="hidden md:flex items-center gap-6">
               {navLinks.map((link) => {
                 if (link.authRequired && !isAuthenticated) return null;
-                
+
                 return (
                   <Link
                     key={link.path}
                     to={link.path}
                     className={`flex items-center gap-2 text-sm font-medium transition-colors ${
                       location.pathname === link.path
-                        ? 'text-indigo-600 dark:text-indigo-400'
-                        : 'text-gray-700 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400'
+                        ? 'text-cyan-600 dark:text-cyan-400'
+                        : 'text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400'
                     }`}
                   >
                     <link.icon size={18} />
@@ -150,13 +178,13 @@ const MainLayout: React.FC = () => {
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-cyan-600 text-white text-xs font-bold rounded-full flex items-center justify-center"
                     >
                       {cartItemCount}
                     </motion.span>
                   )}
                 </button>
-                
+
                 <AnimatePresence>
                   {isCartOpen && (
                     <CartDropdown onClose={() => setIsCartOpen(false)} />
@@ -171,9 +199,9 @@ const MainLayout: React.FC = () => {
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                     className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white font-bold">
-                        {user?.firstName?.[0]?.toUpperCase() || 'U'}
+                        {user?.name?.[0]?.toUpperCase() || 'U'}
                       </span>
                     </div>
                     <ChevronDown size={16} />
@@ -189,7 +217,7 @@ const MainLayout: React.FC = () => {
                       >
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                           <p className="font-medium text-gray-900 dark:text-white">
-                            {user?.firstName} {user?.lastName}
+                            {user?.name}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             {user?.email}
@@ -213,24 +241,6 @@ const MainLayout: React.FC = () => {
                             <Package size={16} />
                             My Orders
                           </Link>
-                          <Link
-                            to="/favorites"
-                            onClick={() => setIsUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                          >
-                            <Heart size={16} />
-                            Favorites
-                          </Link>
-                          {user?.role === 'admin' && (
-                            <Link
-                              to="/admin"
-                              onClick={() => setIsUserMenuOpen(false)}
-                              className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                              <Settings size={16} />
-                              Admin Dashboard
-                            </Link>
-                          )}
                         </div>
 
                         <div className="border-t border-gray-200 dark:border-gray-700 py-2">
@@ -252,14 +262,14 @@ const MainLayout: React.FC = () => {
               ) : (
                 <div className="flex items-center gap-2">
                   <Link
-                    to="/login"
+                    to="/auth/login"
                     className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                   >
                     Sign In
                   </Link>
                   <Link
-                    to="/register"
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+                    to="/auth/register"
+                    className="px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg transition-colors"
                   >
                     Sign Up
                   </Link>
@@ -304,11 +314,11 @@ const MainLayout: React.FC = () => {
       {/* Footer */}
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Company Info */}
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
                   <ShoppingCart className="w-6 h-6 text-white" />
                 </div>
                 <span className="text-lg font-bold text-gray-900 dark:text-white">TimeL-E</span>
@@ -320,17 +330,17 @@ const MainLayout: React.FC = () => {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Quick Links</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/about" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/about" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     About Us
                   </Link>
                 </li>
                 <li>
-                  <Link to="/contact" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/contact" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     Contact
                   </Link>
                 </li>
                 <li>
-                  <Link to="/faq" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/faq" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     FAQ
                   </Link>
                 </li>
@@ -342,22 +352,22 @@ const MainLayout: React.FC = () => {
               <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Customer Service</h3>
               <ul className="space-y-2">
                 <li>
-                  <Link to="/shipping" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/shipping" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     Shipping Info
                   </Link>
                 </li>
                 <li>
-                  <Link to="/returns" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/returns" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     Returns
                   </Link>
                 </li>
                 <li>
-                  <Link to="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/privacy" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link to="/terms" className="text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400">
+                  <Link to="/terms" className="text-gray-600 dark:text-gray-400 hover:text-cyan-600 dark:hover:text-cyan-400">
                     Terms of Service
                   </Link>
                 </li>
@@ -374,11 +384,11 @@ const MainLayout: React.FC = () => {
                 <input
                   type="email"
                   placeholder="Your email"
-                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
                 >
                   Subscribe
                 </button>

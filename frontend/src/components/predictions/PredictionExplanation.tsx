@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, ChevronDown, Calendar, ShoppingCart, TrendingUp } from 'lucide-react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { predictionService } from '@/services/prediction.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 interface PredictionExplanationProps {
   basketId: string;
-  productId: string;
+  productId: number;
   compact?: boolean;
   className?: string;
 }
@@ -74,7 +74,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${explanation.confidence * 100}%` }}
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
                   />
                 </div>
                 <span className="font-medium text-gray-900 dark:text-white">

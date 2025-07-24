@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Grid, List } from 'lucide-react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { productService } from '@/services/product.service';
 import ProductCard from '@/components/products/ProductCard';
 import ProductListItem from '@/components/products/ProductListItem';
@@ -15,8 +15,6 @@ import SortDropdown, {SortOption} from "@/components/products/SortDropdown.tsx";
 interface FilterState {
   categories: string[];
   priceRange: [number, number];
-  inStock: boolean;
-  onSale: boolean;
 }
 
 const Products: React.FC = () => {
@@ -29,9 +27,7 @@ const Products: React.FC = () => {
   
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
-    priceRange: [0, 100],
-    inStock: false,
-    onSale: false
+    priceRange: [0, 300]
   });
 
   const itemsPerPage = 25;
@@ -46,9 +42,7 @@ const Products: React.FC = () => {
       search: searchQuery,
       categories: filters.categories,
       minPrice: filters.priceRange[0],
-      maxPrice: filters.priceRange[1],
-      inStock: filters.inStock,
-      onSale: filters.onSale
+      maxPrice: filters.priceRange[1]
     }),
     { 
       keepPreviousData: true,
@@ -59,7 +53,7 @@ const Products: React.FC = () => {
   // Fetch categories for filter
   const { data: categories } = useQuery(
     'categories',
-    () => productService.getCategories(),
+    () => productService.getDepartments(),
     { staleTime: 10 * 60 * 1000 }
   );
 
@@ -80,9 +74,7 @@ const Products: React.FC = () => {
   const clearFilters = () => {
     setFilters({
       categories: [],
-      priceRange: [0, 100],
-      inStock: false,
-      onSale: false
+      priceRange: [0, 100]
     });
     setCurrentPage(1);
   };
@@ -101,9 +93,7 @@ const Products: React.FC = () => {
 
   // Calculate active filter count
   const activeFilterCount = 
-    filters.categories.length + 
-    (filters.inStock ? 1 : 0) + 
-    (filters.onSale ? 1 : 0) +
+    filters.categories.length +
     (filters.priceRange[0] > 0 || filters.priceRange[1] < 100 ? 1 : 0);
 
   return (
@@ -210,32 +200,6 @@ const Products: React.FC = () => {
                       onChange={(priceRange) => handleFilterChange({ priceRange })}
                     />
 
-                    {/* Stock & Sale Filters */}
-                    <div className="space-y-3">
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.inStock}
-                          onChange={(e) => handleFilterChange({ inStock: e.target.checked })}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          In Stock Only
-                        </span>
-                      </label>
-
-                      <label className="flex items-center gap-3 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.onSale}
-                          onChange={(e) => handleFilterChange({ onSale: e.target.checked })}
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          On Sale
-                        </span>
-                      </label>
-                    </div>
                   </div>
                 </div>
               </motion.aside>
@@ -287,7 +251,7 @@ const Products: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {products.map((product, index) => (
                           <motion.div
-                            key={product.id}
+                            key={product.product_id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
@@ -300,7 +264,7 @@ const Products: React.FC = () => {
                       <div className="space-y-4">
                         {products.map((product, index) => (
                           <motion.div
-                            key={product.id}
+                            key={product.product_id}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
