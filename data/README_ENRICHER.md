@@ -26,12 +26,12 @@ pip3 install -r enricher_requirements.txt
 ### 2. Run the Script
 To process **all departments**:
 ```bash
-python3 product_enricher.py
+python3 product_enricher_from_db.py
 ```
 
 To process a **single department** (for example, department 3):
 ```bash
-python3 product_enricher.py --department 3
+python3 product_enricher_from_db.py --department 3
 ```
 
 ### 3. Check Results
@@ -73,12 +73,12 @@ The enriched CSV contains:
 To process a specific department, use the `--department` argument:
 
 ```bash
-python3 product_enricher.py --department 2
+python3 product_enricher_from_db.py --department 2
 ```
 To process all departments at once, simply run:
 
 ```bash
-python3 product_enricher.py
+python3 product_enricher_from_db.py
 ```
 
 ## Estimated Processing Time
@@ -100,7 +100,7 @@ python3 product_enricher.py
 Ensure the script is executed from the `data/` directory:
 ```bash
 cd data
-python product_enricher.py
+python product_enricher_from_db.py
 ```
 
 ### "No products found for department_id"

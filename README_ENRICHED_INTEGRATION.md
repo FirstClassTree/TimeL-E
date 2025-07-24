@@ -106,7 +106,7 @@ To create enriched data for all products:
 ```bash
 # From the data directory
 cd data
-python product_enricher.py
+python product_enricher_from_db.py
 # Then restart services
 ```
 
