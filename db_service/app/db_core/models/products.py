@@ -14,7 +14,7 @@ OpenAPI Description:
 """
 
 from sqlalchemy import Integer, String, ForeignKey, Numeric, Text
-from ..models.base import Base
+from .base import Base
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional, List
 

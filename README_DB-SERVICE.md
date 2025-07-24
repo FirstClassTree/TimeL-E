@@ -6,6 +6,9 @@ The backend sends HTTP requests to this service for database operations (CRUD + 
 and the db-service translates them to SQLAlchemy operations.    
 This allows backend to remain DB-agnostic, and enables swapping/replicating DBs via internal services.
 
+In developement access `http://localhost:7000/docs#` or `http://localhost:7000/redoc`  
+for a FastAPI web server that automatically generates and serves interactive API documentation for DB Service.
+
 ## Responsibilities
 
 - Connects to the PostgreSQL instance

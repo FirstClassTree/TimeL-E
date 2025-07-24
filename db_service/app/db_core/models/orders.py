@@ -13,8 +13,8 @@ import datetime
 from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
-from ..models.base import Base
-from ..models import User, Product
+from .base import Base
+from . import User, Product
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 import enum
 

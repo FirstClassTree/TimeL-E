@@ -12,6 +12,7 @@ from .database_service import router
 from .users_routers import router as users_router
 from .orders_routers import router as orders_router
 from .carts_routers import router as carts_router
+from .inject_schema_docs import router as schema_doc_router
 import os
 import sys
 import datetime
@@ -58,13 +59,17 @@ async def lifespan(app: FastAPI):
     # Optionally add shutdown logic after yield
 
 app = FastAPI(
+    title="Database Service Api and Database Description",
     description="Database Service - exposes a RESTful API and internally communicates with a PostgreSQL database",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 app.include_router(router)
 app.include_router(users_router)
 app.include_router(orders_router)
 app.include_router(carts_router)
+app.include_router(schema_doc_router)
 
 @app.get("/health")
 def health():

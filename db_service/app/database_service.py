@@ -1,14 +1,13 @@
 # app/database_service.py
 
-from fastapi import APIRouter, Query, HTTPException, Request
+from fastapi import APIRouter, Query, HTTPException, Request, Depends
 import os
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from app.db_core.database import SessionLocal
+from .db_core.database import SessionLocal
 import asyncpg
-from app.db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
-from app.db_core.config import settings
+from .db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User, ProductEnriched
+from .db_core.config import settings
 from pydantic import BaseModel
 from typing import List, Optional
 # Removed UUID imports since we're using integer user_ids and order_ids
