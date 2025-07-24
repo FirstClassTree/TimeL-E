@@ -33,6 +33,13 @@ const Profile: React.FC = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
 
+  // Create a mock user if none exists
+  const currentUser = user || {
+    id: userId,
+    name: 'Demo User',
+    email: 'demo@example.com'
+  };
+
   const {
     register: registerProfile,
     handleSubmit: handleSubmitProfile,
@@ -40,9 +47,9 @@ const Profile: React.FC = () => {
     reset: resetProfile
   } = useForm<ProfileFormData>({
     defaultValues: {
-      id: user?.id || userId,
-      name: user?.name || '',
-      email: user?.email || '',
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
     }
   });
 
@@ -109,15 +116,13 @@ const Profile: React.FC = () => {
   const handleCancelEdit = () => {
     setIsEditing(false);
     resetProfile({
-      id: user?.id || '',
-      name: user?.name || '',
-      email: user?.email || '',
+      id: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
     });
   };
 
-  if (!user) {
-    return <LoadingSpinner fullScreen />;
-  }
+  // Always render the profile page now since we have currentUser fallback
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -140,14 +145,14 @@ const Profile: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-xl">
-                      {user.name?.charAt(0)}
+                      {currentUser.name?.charAt(0) || 'D'}
                     </span>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {user.name}
+                      {currentUser.name}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
+                    <p className="text-gray-600 dark:text-gray-400">{currentUser.email}</p>
                   </div>
                 </div>
                 
@@ -180,7 +185,7 @@ const Profile: React.FC = () => {
                   ) : (
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                       <User size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">{user.name}</span>
+                      <span className="text-gray-900 dark:text-white">{currentUser.name}</span>
                     </div>
                   )}
                   {profileErrors.name && (
@@ -195,7 +200,7 @@ const Profile: React.FC = () => {
                   </label>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                     <Mail size={16} className="text-gray-500 dark:text-gray-400" />
-                    <span className="text-gray-900 dark:text-white">{user.email}</span>
+                    <span className="text-gray-900 dark:text-white">{currentUser.email}</span>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Email cannot be changed in demo mode
