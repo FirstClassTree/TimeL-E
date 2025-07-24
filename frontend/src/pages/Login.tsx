@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Mail, Lock, Eye, EyeOff, ShoppingCart, Brain, Loader2 } from 'lucide-react';
+import {Mail, Lock, Eye, EyeOff, ShoppingCart, Loader2, User} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
@@ -14,13 +14,41 @@ interface LoginFormData {
   rememberMe: boolean;
 }
 
+interface QuickLoginUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+const quickLoginUsers: QuickLoginUser[] = [
+    {
+      id: "39993",
+      name: "John",
+      email: "user39993@timele-demo.com",
+      avatar: "👨‍💼"
+    },
+    {
+      id: "688",
+      name: "Sarah",
+      email: ",user688@timele-demo.com",
+      avatar: "👩‍💻"
+    },
+    {
+      id: "82420",
+      name: "Mike",
+      email: "user82420@timele-demo.com",
+      avatar: "👨‍🎨"
+    }
+  ];
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, login, isLoading } = useAuthStore();
   const { fetchCart } = useCartStore();
   const [showPassword, setShowPassword] = useState(false)
-  const { userId } = useUser();
+  const { userId, setUserId } = useUser();
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -220,20 +248,39 @@ const Login: React.FC = () => {
             </Link>
           </form>
 
-          //TODO: Replace with quick login
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Brain className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
-                  Demo Credentials
-                </p>
-                <p className="text-blue-700 dark:text-blue-300">
-                  Email: user@timele.com<br />
-                  Password: user123
-                </p>
-              </div>
+          {/* Quick Login Users */}
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Quick Login
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {quickLoginUsers.map((quickUser) => (
+                <motion.button
+                  key={quickUser.id}
+                  onClick={() => setUserId(quickUser.id)}
+                  disabled={setUserId !== null}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="text-2xl">{quickUser.avatar}</div>
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {quickUser.name}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {quickUser.email}
+                    </p>
+                  </div>
+                  {userId === quickUser.id && (
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  )}
+                </motion.button>
+              ))}
             </div>
           </div>
         </motion.div>

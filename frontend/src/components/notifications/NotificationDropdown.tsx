@@ -1,7 +1,6 @@
-// frontend/src/components/notifications/NotificationDropdown.tsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Package, Heart, ShoppingCart, Settings, Check, X } from 'lucide-react';
+import { Bell, Package, ShoppingCart, Settings, Check, X } from 'lucide-react';
 
 interface Notification {
   id: string;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Sparkles } from 'lucide-react';
+import {Clock, ShoppingCart, Sparkles} from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
@@ -25,12 +25,11 @@ const Hero: React.FC = () => {
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-              Shop smarter
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
+              <div>Shop smarter</div>
+              <div className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
                 {" "}Shop faster
-              </span>
-              <br />
-              With TimeL-E
+              </div>
+              <div>With TimeL-E</div>
             </h1>
             
             <p className="text-xl text-gray-600 mb-8 max-w-2xl">
@@ -58,7 +57,7 @@ const Hero: React.FC = () => {
                 to="/"
                 className="inline-flex items-center px-8 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <ShoppingCart className="h-5 w-5 mr-2" />
+                <Clock className="h-5 w-5 mr-2" />
                 Schedule Your Shopping
               </Link>
             </div>

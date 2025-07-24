@@ -23,7 +23,7 @@ const ProductDetail: React.FC = () => {
 
   const { data: product, isLoading, error } = useQuery(
     ['product', id],
-    () => productService.getProduct(id!),
+    () => productService.getProduct(product?.product_id ?? Number(id)),
     {
       enabled: !!id,
     }
