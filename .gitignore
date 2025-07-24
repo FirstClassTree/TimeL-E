@@ -15,3 +15,7 @@ db_service/data/*enriched_products*.csv
 
 # Also ignore enriched files in backend/app/enriched/
 backend/app/enriched/
+
+__pycache__/
+*.pyc
+

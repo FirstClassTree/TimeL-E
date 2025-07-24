@@ -85,7 +85,7 @@ class User(BaseModel):
     country: Optional[str] = Field(None, description="Country for delivery address. Nullable")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----- Product -----
 class Product(BaseModel):
@@ -112,7 +112,7 @@ class Product(BaseModel):
     department_id: int = Field(..., description="Foreign key to department")
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Department(BaseModel):
     """
@@ -126,7 +126,7 @@ class Department(BaseModel):
     department: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Aisle(BaseModel):
     """
@@ -146,7 +146,7 @@ class Aisle(BaseModel):
     aisle: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ProductEnriched(BaseModel):
     """
@@ -170,7 +170,7 @@ class ProductEnriched(BaseModel):
     image_url: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # ----- Orders -----
 class OrderItem(BaseModel):
@@ -198,7 +198,7 @@ class OrderItem(BaseModel):
     quantity: int = 1
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CartItem(BaseModel):
     """
@@ -225,7 +225,7 @@ class CartItem(BaseModel):
     quantity: int = 1
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Cart(BaseModel):
     """
@@ -253,7 +253,7 @@ class Cart(BaseModel):
     cart_items: Optional[List[CartItem]] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class Order(BaseModel):
     """
@@ -314,4 +314,4 @@ class Order(BaseModel):
     order_items: Optional[List[OrderItem]] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

@@ -165,6 +165,13 @@ products_result = await db_service.list_entities(
 )
 ```
 
+```python
+products_result = await db_service.list_entities(
+    "products",
+    {"limit": limit, "offset": offset, "categories": categories}
+)
+```
+
 ### ORDER API Endpoints
 
 ### Create Order ```POST /orders```
