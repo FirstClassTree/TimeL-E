@@ -53,7 +53,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
           <ProductImage
             src={product.image_url}
             alt={product.product_name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+            department={product.department_name}
+            className="w-full h-full"
           />
 
           {/* Quick Actions */}

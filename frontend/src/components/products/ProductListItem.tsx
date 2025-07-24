@@ -52,6 +52,7 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
             <ProductImage
               src={product.image_url}
               alt={product.product_name}
+              department={product.department_name}
               className="w-full h-full"
             />
           </div>
