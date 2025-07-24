@@ -1,4 +1,7 @@
-data/*.csv
+data/orders.csv
+data/order_products__prior.csv
+data/order_products__train.csv
+data/stats/
 
 # Python cache and bytecode
 __pycache__/

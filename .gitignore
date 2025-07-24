@@ -1,5 +1,4 @@
-/data/
-data/
-./data/
-data/*.csv
-!data/enriched_products_dept1.csv
+orders.csv
+order_products__prior.csv
+order_products__train.csv
+stats/
