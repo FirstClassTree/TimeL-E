@@ -4,9 +4,9 @@ from fastapi import APIRouter, Query, HTTPException, status, Body, Path
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-from app.db_core.database import SessionLocal
+from .db_core.database import SessionLocal
 import asyncpg
-from app.db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
+from .db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 # Removed UUID imports since we're using integer user_ids and order_ids
@@ -26,6 +26,7 @@ class CartItem(BaseModel):
     image_url: Optional[str] = None
 
 class Cart(BaseModel):
+    cart_id: Optional[int] = None      # used when db returns cart with cart_id
     user_id: int
     items: List[CartItem] = []
     updated_at: Optional[datetime.datetime] = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
@@ -43,6 +44,8 @@ class AddCartItemRequest(BaseModel):
     """Add item to cart request"""
     product_id: int
     quantity: int = 1
+    add_to_cart_order: Optional[int] = 0
+    reordered: int = 0
 
 class UpdateCartItemRequest(BaseModel):
     """Update cart item request"""
@@ -155,7 +158,7 @@ def get_enriched_product_info(session: Session, product_id: int):
 @router.get("/{user_id}", response_model=CartResponse)
 def get_user_cart(user_id: int):
     """
-    Get cart for user_id.
+    Get cart for user_id. If no cart exists, return an empty cart with no cart_id.
     """
     session = SessionLocal()
     try:
@@ -251,6 +254,8 @@ def create_cart(cart: Cart):
         if cart.user_id in carts_db:    # TODO: check in DB
             raise HTTPException(status_code=409, detail="Cart already exists for user")
 
+        cart.cart_id = len(carts_db) + 1    # TODO: remove for db
+
         # --- Set updated_at ---
         cart.updated_at = datetime.datetime.now(datetime.UTC)
 
@@ -302,19 +307,18 @@ def delete_cart(user_id: int):
     finally:
         session.close()
 
-# Utility: get cart or create empty
+# Utility: get cart
 def get_cart(session: Session, user_id: int) -> Cart:
-    cart = carts_db.get(user_id, Cart(user_id=user_id, items=[]))
+    cart = carts_db.get(user_id)
     # TODO: change to DB call
     # cart = session.query(Cart).filter(Cart.user_id == user_id).first()
-    # if not cart:
-    #     cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
     return cart
 
 # POST /carts/{user_id}/items
 @router.post("/{user_id}/items", response_model=CartResponse)
 def add_cart_item(user_id: int, item: AddCartItemRequest):
-    """Add an item to user's cart, or increment if exists."""
+    """Add an item to user's cart, or increment if exists.
+       Initializes a new cart if it doesn't exist."""
     session = SessionLocal()
     try:
         # Validate user and product
@@ -323,6 +327,9 @@ def add_cart_item(user_id: int, item: AddCartItemRequest):
 
         # Fetch cart (or create)
         cart = get_cart(session, user_id)
+        if not cart:
+            cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
+
         found = False
         for cart_item in cart.items:
             if cart_item.product_id == item.product_id:
@@ -330,6 +337,11 @@ def add_cart_item(user_id: int, item: AddCartItemRequest):
                 found = True
                 break
         if not found:
+            # Determine next add_to_cart_order
+            current_count = len(carts_db[user_id].items())  #TODO: DB
+            # current_count = session.query(CartItem).filter_by(cart_id=cart.cart_id).count()
+            next_cart_order = current_count + 1
+
             cart.items.append(CartItem(product_id=item.product_id, quantity=item.quantity))
         cart.updated_at = datetime.datetime.now(datetime.UTC)
         carts_db[user_id] = cart  # TODO: Replace with DB store

@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from app.db_core.database import SessionLocal
-from app.db_core.models import User
+from .db_core.database import SessionLocal
+from .db_core.models import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 # Removed UUID imports since we're using integer user_ids
@@ -34,11 +34,11 @@ class CreateUserRequest(BaseModel):
     name: str
     email_address: EmailStr
     password: str
-    phone_number: str
-    street_address: str
-    city: str
-    postal_code: str
-    country: str
+    phone_number: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
