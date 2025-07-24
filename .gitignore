@@ -1,19 +1,13 @@
-# Ignore data directories and CSV files by default
-/data/
-data/*.csv
+# Ignore big CSV files in data directories by default
+orders.csv
+order_products__prior.csv
+order_products__train.csv
+stats/
 
-# But allow specific data directories we need
-!/db_service/data/
+# But allow ml data directory that is needed
 !/ml-service/src/data/
 
-# In db_service/data/, ignore all enriched product CSVs by default
-db_service/data/*enriched_products*.csv
-
-# But include these specific files we want to track
-!db_service/data/enriched_products_dept1.csv
-!db_service/data/dataenriched_products_ALL_DEPARTMENTS.csv
-
-# Also ignore enriched files in backend/app/enriched/
+# Ignore enriched files in backend/app/enriched/
 backend/app/enriched/
 
 __pycache__/
