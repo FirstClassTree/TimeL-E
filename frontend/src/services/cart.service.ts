@@ -43,27 +43,95 @@ class CartService {
 
   // Get current cart
   async getCart(userId: string): Promise<Cart> {
-    return api.get<Cart>(`/cart/${userId}`);
+    const response = await api.get(`/cart/${userId}`);
+    return this.transformBackendCart(response.data);
   }
 
   // Add item to cart
   async addToCart(userId: string, data: AddToCartData): Promise<Cart> {
-    return api.post<Cart>(`/cart/${userId}`, data);
+    const requestData = {
+      product_id: data.productId,
+      quantity: data.quantity
+    };
+    const response = await api.post(`/cart/${userId}/items`, requestData);
+    // After adding item, fetch updated cart
+    return this.getCart(userId);
   }
 
   // Update cart item
-  async updateCartItem(userId : string, itemId: number, data: UpdateCartItemData): Promise<Cart> {
-    return api.put<Cart>(`/cart/${userId}/items/${itemId}`, data);
+  async updateCartItem(userId: string, itemId: number, data: UpdateCartItemData): Promise<Cart> {
+    const response = await api.put(`/cart/${userId}/items/${itemId}`, data);
+    // After updating, fetch updated cart
+    return this.getCart(userId);
   }
 
   // Remove item from cart
-  async removeFromCart(userId : string, itemId: number): Promise<Cart> {
-    return api.delete<Cart>(`/cart/${userId}/items/${itemId}`);
+  async removeFromCart(userId: string, itemId: number): Promise<Cart> {
+    const response = await api.delete(`/cart/${userId}/items/${itemId}`);
+    // After removing, fetch updated cart
+    return this.getCart(userId);
   }
 
-  // Clear entire cart - Not supported in backend yet
-  async clearCart(userId : string): Promise<Cart> {
-    return api.post<Cart>(`/cart/${userId}/clear`);
+  // Clear entire cart
+  async clearCart(userId: string): Promise<Cart> {
+    const response = await api.delete(`/cart/${userId}`);
+    return this.transformBackendCart(response.data);
+  }
+
+  // Transform backend cart response to frontend format
+  private transformBackendCart(backendCart: any): Cart {
+    if (!backendCart || !backendCart.items) {
+      return {
+        id: `cart_${Date.now()}`,
+        userId: backendCart?.user_id || '',
+        items: [],
+        itemCount: 0,
+        subtotal: 0,
+        estimatedTax: 0,
+        estimatedTotal: 0,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    const transformedItems: CartItem[] = backendCart.items.map((item: any, index: number) => ({
+      id: index + 1,
+      cartId: `cart_${backendCart.user_id}`,
+      productId: item.product_id,
+      product: {
+        product_id: item.product_id,
+        product_name: item.product_name || 'Unknown Product',
+        aisle_id: 0,
+        department_id: 0,
+        aisle_name: item.aisle_name || '',
+        department_name: item.department_name || '',
+        description: null,
+        price: 0,
+        image_url: null
+      },
+      quantity: item.quantity,
+      price: 0, // Backend doesn't provide price, would need to fetch
+      total: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }));
+
+    const itemCount = transformedItems.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
+
+    return {
+      id: `cart_${backendCart.user_id}`,
+      userId: backendCart.user_id,
+      items: transformedItems,
+      itemCount: itemCount,
+      subtotal: subtotal,
+      estimatedTax: subtotal * 0.08,
+      estimatedTotal: subtotal * 1.08,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
   }
 
   // ============================================================================

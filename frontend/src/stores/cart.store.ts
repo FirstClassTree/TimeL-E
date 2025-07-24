@@ -61,14 +61,14 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      updateQuantity: async (userId: string, itemId: number, quantity: number) => {
+      updateQuantity: async (userId: string, productId: number, quantity: number) => {
         if (quantity < 1) {
-          return get().removeItem(userId, itemId);
+          return get().removeItem(userId, productId);
         }
 
         set({ isUpdating: true });
         try {
-          const cart = await cartService.updateCartItem(userId, itemId, { quantity });
+          const cart = await cartService.updateCartItem(userId, productId, { quantity });
           set({ cart, isUpdating: false });
         } catch (error) {
           set({ isUpdating: false });
@@ -77,14 +77,14 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      removeItem: async (userId: string, itemId: number) => {
+      removeItem: async (userId: string, productId: number) => {
         set({ isUpdating: true });
 
         // Optimistically update UI
         const currentCart = get().cart;
         if (currentCart) {
-          const removedItem = currentCart.items.find(item => item.id === itemId);
-          const updatedItems = currentCart.items.filter(item => item.id !== itemId);
+          const removedItem = currentCart.items.find(item => item.productId === productId);
+          const updatedItems = currentCart.items.filter(item => item.productId !== productId);
           const updatedCart = {
             ...currentCart,
             items: updatedItems,
@@ -99,7 +99,7 @@ export const useCartStore = create<CartState>()(
         }
 
         try {
-          const cart = await cartService.removeFromCart(userId, itemId);
+          const cart = await cartService.removeFromCart(userId, productId);
           set({ cart, isUpdating: false });
         } catch (error) {
           // Revert optimistic update on error

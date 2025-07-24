@@ -48,13 +48,6 @@ class ProductService {
   // CORE PRODUCT BROWSING (Read-only operations)
   // ============================================================================
 
-    async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
-    const params = new URLSearchParams();
-    if (filters.offset) params.append('offset', filters.offset.toString());
-    if (filters.limit) params.append('limit', filters.limit.toString());
-        return api.get<ProductsResponse>(`/products?${params.toString()}`);
-  }
-  /*
   // Get all products with filters
   async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
     const params = new URLSearchParams();
@@ -64,17 +57,15 @@ class ProductService {
     if (filters.sort) params.append('sort', filters.sort);
     if (filters.search) params.append('search', filters.search);
     if (filters.categories?.length) {
-      filters.categories.forEach(cat => params.append('categories[]', cat));
+      filters.categories.forEach(cat => params.append('categories', cat));
     }
     if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString());
     if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString());
     if (filters.inStock) params.append('inStock', 'true');
     if (filters.onSale) params.append('onSale', 'true');
-    //if (filters.featured) params.append('featured', 'true');
 
     return api.get<ProductsResponse>(`/products?${params.toString()}`);
   }
-*/
 
   // Get single product
   async getProduct(id: number): Promise<Product> {
@@ -110,9 +101,10 @@ class ProductService {
   // CATEGORY OPERATIONS (Read-only)
   // ============================================================================
 
-  // Get categories
+  // Get departments
   async getDepartments(): Promise<Department[]> {
-    return api.get<Department[]>('/products/departments');
+    const response = await api.get('/departments');
+    return response.data.departments || [];
   }
 
   // Get category by ID
