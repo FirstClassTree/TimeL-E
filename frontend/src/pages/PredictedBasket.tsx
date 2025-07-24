@@ -281,7 +281,8 @@ const PredictedBasket: React.FC = () => {
                       <ProductImage
                         src={item.product.image_url}
                         alt={item.product.product_name}
-                        className="w-24 h-24 object-cover rounded-lg"
+                        department={item.product.department_name}
+                        className="w-24 h-24 rounded-lg"
                       />
                     </div>
 
@@ -368,6 +369,18 @@ const PredictedBasket: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <button
+            onClick={() => {
+              toast.success('Shopping scheduled for this week!');
+              // TODO: Integrate with scheduling system
+            }}
+            className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Calendar className="w-5 h-5" />
+              Schedule Your Shopping
+            </div>
+          </button>
 
           <button
             onClick={() => navigate('/products')}
