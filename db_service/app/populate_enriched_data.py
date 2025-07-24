@@ -20,8 +20,8 @@ def populate_enriched_data():
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     
     # CSV file path - check both possible locations
-    csv_file_local = Path(__file__).parent.parent / "data" / "enriched_products_dept1.csv"
-    csv_file_docker = Path("/app/csv_data/enriched_products_dept1.csv")
+    csv_file_local = Path(__file__).parent.parent / "data" / "dataenriched_products_ALL_DEPARTMENTS.csv"
+    csv_file_docker = Path("/app/csv_data/dataenriched_products_ALL_DEPARTMENTS.csv")
     
     # Use docker path if it exists, otherwise use local path
     csv_file = csv_file_docker if csv_file_docker.exists() else csv_file_local
