@@ -25,12 +25,12 @@ const Hero: React.FC = () => {
             </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
-              Your Weekly
+              Shop smarter
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
-                {" "}Grocery List
+                {" "}Shop faster
               </span>
               <br />
-              Predicted Smart
+              With TimeL-E
             </h1>
             
             <p className="text-xl text-gray-600 mb-8 max-w-2xl">

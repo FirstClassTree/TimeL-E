@@ -4,8 +4,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func
-from app.database import SessionLocal
-from app.models import User
+from .db_core.database import SessionLocal
+from .db_core.models import User
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 # Removed UUID imports since we're using integer user_ids
@@ -34,11 +34,11 @@ class CreateUserRequest(BaseModel):
     name: str
     email_address: EmailStr
     password: str
-    phone_number: str
-    street_address: str
-    city: str
-    postal_code: str
-    country: str
+    phone_number: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -48,8 +48,8 @@ def create_user(user_request: CreateUserRequest):
         # Check for duplicate email or name
         if session.query(User).filter_by(email_address=user_request.email_address).first():
             raise HTTPException(status_code=409, detail="Email address already exists")
-        if session.query(User).filter_by(name=user_request.name).first():
-            raise HTTPException(status_code=409, detail="Username already exists")
+        # if session.query(User).filter_by(name=user_request.name).first():
+        #     raise HTTPException(status_code=409, detail="Username already exists")
 
         hashed_pw = hash_password(user_request.password)
         # Get next available user_id (auto-increment would be better but this works)
@@ -130,6 +130,53 @@ def update_user_password(
     finally:
         session.close()
 
+class UpdateEmailRequest(BaseModel):
+    current_password: str
+    new_email_address: EmailStr
+
+@router.post("/{user_id}/email", status_code=status.HTTP_200_OK)
+def update_user_email(
+        user_id: int,
+        payload: UpdateEmailRequest
+):
+    session = SessionLocal()
+    try:
+        # Fetch user
+        user = session.query(User).filter_by(user_id=user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Verify current password
+        if not verify_password(payload.current_password, user.hashed_password):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+        # Check for duplicate email (must not already exist)
+        existing = session.query(User).filter(
+            User.email_address == payload.new_email_address,
+            User.user_id != user_id  # Exclude current user
+        ).first()
+        if existing:
+            print("Email address already in use by another user.")
+            raise HTTPException(status_code=409, detail="Invalid update request.")
+
+        # Update email
+        user.email_address = payload.new_email_address
+        session.commit()
+        return {"message": "Email address updated successfully"}
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
+    except HTTPException:
+        session.rollback()
+        raise
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating email: {e}")
+        raise HTTPException(status_code=500, detail="Error updating email address")
+    finally:
+        session.close()
+
 @router.get("/{user_id}")
 def get_user(user_id: int):
     session = SessionLocal()
@@ -170,7 +217,8 @@ class UpdateUserRequest(BaseModel):
     postal_code: Optional[str] = None
     country: Optional[str] = None
 
-
+# Only non-credential fields can be updated here.
+# Attempting to update email/password will have no effect.
 @router.patch("/{user_id}")
 def update_user(user_id: int, payload: UpdateUserRequest):
     session = SessionLocal()
@@ -178,7 +226,11 @@ def update_user(user_id: int, payload: UpdateUserRequest):
         user = session.query(User).filter_by(user_id=user_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        for field, value in payload.model_dump(exclude_unset=True).items():
+
+        update_data = payload.model_dump(exclude_unset=True)
+
+        # Update allowed fields
+        for field, value in update_data.items():
             setattr(user, field, value)
         session.commit()
         return {"message": "User updated successfully"}

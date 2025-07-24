@@ -158,7 +158,7 @@ export const useCartStore = create<CartState>()(
       getCartItem: (userId: string, productId: number) => {
         const { cart } = get();
         if (!cart) return undefined;
-        return cartService.getCartItem(userId, cart, productId);
+        return cartService.getCartItem(cart, productId);
       }
     })),
     {

@@ -1,4 +1,5 @@
-#  run on host
+# Demo Data Extraction Script - Run in /data/ with source CSVs present
+# run on host
 
 import pandas as pd
 import numpy as np
@@ -7,9 +8,9 @@ import random
 import bcrypt
 
 # Configs
-ORDERS_CSV = '../../data/orders.csv'
-ORDER_PRIOR_CSV = '../../data/order_products__prior.csv'
-ORDER_TRAIN_CSV = '../../data/order_products__train.csv'
+ORDERS_CSV = 'orders.csv'
+ORDER_PRIOR_CSV = 'order_products__prior.csv'
+# ORDER_TRAIN_CSV = 'order_products__train.csv'
 ORDERS_DEMO_CSV = 'orders_demo.csv'
 ORDER_ITEMS_DEMO_CSV = 'order_items_demo.csv'
 USERS_DEMO_CSV = 'users_demo.csv'
@@ -44,6 +45,7 @@ order_items_demo.to_csv(ORDER_ITEMS_DEMO_CSV, index=False)
 # Step 4: Generate fake user info
 fake = Faker()
 users_info = []
+used_emails = set()
 
 for user_id in selected_users:
     name = fake.name()
@@ -51,7 +53,12 @@ for user_id in selected_users:
     password = 'password123'
     # Use bcrypt instead of sha256
     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    email_address = fake.email()
+    # Ensure email uniqueness
+    while True:
+        email_address = fake.email()
+        if email_address not in used_emails:
+            used_emails.add(email_address)
+            break
     phone_number = fake.phone_number()
     street_address = fake.street_address()
     city = fake.city()
@@ -75,3 +82,4 @@ print("  Demo CSVs generated:")
 print(f"  Users: {USERS_DEMO_CSV} ({len(users_demo_df)})")
 print(f"  Orders: {ORDERS_DEMO_CSV} ({len(orders_demo)})")
 print(f"  Order Items: {ORDER_ITEMS_DEMO_CSV} ({len(order_items_demo)})")
+

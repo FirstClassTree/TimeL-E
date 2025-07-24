@@ -6,7 +6,7 @@ import {
   Package, Clock, CheckCircle, XCircle, Truck,
   Eye, RefreshCcw, Calendar, DollarSign
 } from 'lucide-react';
-import { orderService } from '@/services/order.service';
+import {orderService} from '@/services/order.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import { useUser } from '@/components/auth/UserProvider'
@@ -33,7 +33,7 @@ const Orders: React.FC = () => {
   const { userId } = useUser();
   const { data: orders, isLoading, error, refetch } = useQuery<Order[]>(
     ['orders', userId],
-      () => orderService.getOrders(userId),
+      async () => (await orderService.getOrders(userId)).orders,
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
       enabled: !!userId, // Only run query when userId is available
@@ -74,7 +74,7 @@ const Orders: React.FC = () => {
     }
   };
 
-  const filteredOrders = orders?.filter(order => 
+  const filteredOrders = orders?.filter(order =>
     filter === 'all' || order.status === filter
   ) || [];
 

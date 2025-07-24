@@ -6,6 +6,9 @@ The backend sends HTTP requests to this service for database operations (CRUD + 
 and the db-service translates them to SQLAlchemy operations.    
 This allows backend to remain DB-agnostic, and enables swapping/replicating DBs via internal services.
 
+In developement access `http://localhost:7000/docs#` or `http://localhost:7000/redoc`  
+for a FastAPI web server that automatically generates and serves interactive API documentation for DB Service.
+
 ## Responsibilities
 
 - Connects to the PostgreSQL instance
@@ -21,16 +24,18 @@ This allows backend to remain DB-agnostic, and enables swapping/replicating DBs 
 ```text
 db_service/
 ├── app/
-│   ├── main.py                 # FastAPI entrypoint with health check
-│   ├── init_db.py              # Initializes the PostgreSQL schemas
-│   ├── database_service.py     # Defines API endpoints for DB access
-│   ├── database.py             # SQLAlchemy engine/session setup
-│   ├── config.py               # Environment/config loading
-│   ├── populate_from_csv.py    # populate empty db with data from products.csv, aisles.csv, departments.csv
-│   ├── order_routs.py          # Defines API endpoints for DB access to orders
-│   ├── user_routs.py           # Defines API endpoints for DB access to users
+│   ├── main.py                     # FastAPI entrypoint with health check
+│   ├── init_db.py                  # Initializes the PostgreSQL schemas
+│   ├── database_service.py         # Defines API endpoints for DB access
+│   ├── database.py                 # SQLAlchemy engine/session setup
+│   ├── config.py                   # Environment/config loading
+│   ├── populate_from_csv.py        # populate empty db with data from products.csv, aisles.csv, departments.csv
+│   ├── populate_enriched_data.py   # populate db with enriched products data
+│   ├── order_routs.py              # Defines API endpoints for DB access to orders
+│   ├── user_routs.py               # Defines API endpoints for DB access to users
+│   ├── reset_database.py           # drop all schemas with all tables
 │   ├── __init__.py
-│   └── models/                 # SQLAlchemy models
+│   └── models/                     # SQLAlchemy models
 │       ├── __init__.py
 │       └── base.py
 │       └──orders.py
@@ -38,7 +43,8 @@ db_service/
 │       └──users.py
 ├── Dockerfile
 ├── .dockerignore
-└── requirements.txt
+├── requirements.txt
+└── update_schema.sql
 ```
 
 ## How It Works
@@ -68,6 +74,16 @@ Docker Compose healthcheck is defined as:
       timeout: 3s
       retries: 5
 ```
+
+## Configuration
+
+- CSV data population always runs at startup: The service will attempt to populate data from CSV files on each startup.  
+If the tables already contain data, the process is skipped.
+- For enriched products data, the script looks for all matching /data/products_enriched/enriched_products_dept*.csv files  
+and only populates if the table is empty.
+- Database reset is controlled via the environment variable `RESET_DATABASE_ON_STARTUP`:  
+  Set `RESET_DATABASE_ON_STARTUP=true` in the `.env` to drop and fully recreate all schemas/tables on startup,  
+ensuring a fresh state before loading CSV data. If false or unset, the existing database is preserved.
 
 ## Testing the API (Example)
 
@@ -151,7 +167,7 @@ products_result = await db_service.list_entities(
 
 ### ORDER API Endpoints
 
-```POST /orders```
+### Create Order ```POST /orders```
 
 Creates a new order in the database.  
 **User IDs use UUIDv7. (See below).
@@ -215,7 +231,7 @@ order_request = {
 order_result = await db_service.create_order(order_request)
 ```
 
-```POST /orders/{order_id}/items```
+### Add Product to Order ```POST /orders/{order_id}/items```
 
 Adds new products to an existing order.
 
@@ -243,7 +259,7 @@ Full address for other containers:
 ]
 ```
 
-Response:
+#### Response:
 
 ```json
 {
@@ -299,7 +315,8 @@ Note:
 
 ### Create User ```POST /users```
 
-Creates new user with unique email and username.  
+Creates new user with unique email address.
+Names do not have to be unique and may be repeated.  
 Password is hashed using bcrypt.
 
 **User IDs use UUIDv7:**  
@@ -333,7 +350,7 @@ user = db_service.create_entity(
 ```
 
 
-### Update Password ```POST /{user_id}/password```
+### Update Password ```POST /users/{user_id}/password```
 
 Updates the user's password. Requires current password for validation.
 
@@ -346,7 +363,27 @@ db_service.create_entity(
 )
 ```
 
-### Fetch details ```GET /{user_id}```
+### Update Email ```POST /users/{user_id}/email```
+
+Updates the user's email address.  
+Requires current password for validation and ensures the new email is unique.
+
+#### Example Request (Backend usage):
+
+```python
+db_service.create_entity(
+    endpoint=f"/users/{user_id}/email",
+    data={"current_password": "pw", "new_email_address": "new@email.com"}
+)
+```
+
+Notes:
+* If the current password is incorrect, the request will fail.
+* The new email must not already exist in the database.
+* For user security, email changes are not allowed via the general update endpoint (PATCH /users/{user_id});  
+this dedicated endpoint must be used.
+
+### Fetch details ```GET /users/{user_id}```
 
 Fetches user details by user_id (uuid7).
 
@@ -356,9 +393,10 @@ Fetches user details by user_id (uuid7).
 user = db_service.get_entity(endpoint=f"/users/{user_id}")
 ```
 
-### Update ```PATCH /{user_id}```
+### Update ```PATCH /users/{user_id}```
 
-Partially updates user fields. Only the provided fields will be updated.
+Partially updates user fields. Only the provided fields will be updated.  
+Cannot update email_address or password through this endpoint by default.  
 
 #### Example Request (Backend usage):
 
@@ -369,7 +407,7 @@ db_service.update_entity(
 )
 ```
 
-### Delete User ```DELETE /{user_id}```
+### Delete User ```DELETE /users/{user_id}```
 
 Deletes a user. Requires current password for validation to prevent unauthorized deletion.
 
@@ -380,4 +418,276 @@ db_service.delete_entity(
     endpoint=f"/users/{user_id}",
     data={"password": "currentpw"}
 )
+```
+
+### Cart API Endpoints
+
+These endpoints provide full CRUD (create, retrieve, update, delete) operations for user shopping carts.  
+Each cart belongs to a specific user and contains a list of items (products with quantity).  
+All product IDs must be valid (exist in the products table).  
+The backend is responsible for ensuring only authenticated users can access their own carts.    
+
+Note:
+* All endpoints validate that the user exists.  
+* All product IDs in requests are validated for existence.  
+* Cart responses always return enriched product details (name, aisle, department, price, etc).  
+* All changes update the cart’s updated_at timestamp (exposed in API, ISO8601 UTC).  
+* All cart responses include `updated_at` timestamp.  
+Clients can display or use this value to track last updates.  
+* All Cart CRUD endpoints respond with the full Cart (including `updated_at`) except for DELETE, which returns a simple message.  
+`updated_at` is always UTC and ISO8601 formatted.
+
+
+### Create Cart ```POST /carts```
+
+Creates a new cart for the given user. Fails if user does not exist or a cart already exists for that user  
+or the new cart contains product_ids that do not exist in the products table.  
+Returns HTTP `409` if cart already exists for the user.  
+
+#### Request Body (JSON):
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3
+    },
+    {
+      "product_id": 99,
+      "quantity": 1
+    }
+  ]
+}
+```
+
+#### Response:
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3,
+      "product_name": "Banana",
+      "aisle_name": "Fruit",
+      "department_name": "Produce",
+      "description": "Fresh bananas",
+      "price": 0.25,
+      "image_url": "https://img/banana.png"
+    },
+    {
+      "product_id": 99,
+      "quantity": 1,
+      "product_name": "Milk",
+      "aisle_name": "Dairy",
+      "department_name": "Dairy",
+      "description": "Whole milk",
+      "price": 2.99,
+      "image_url": "https://img/milk.png"
+    }
+  ],
+  "total_items": 2,
+  "total_quantity": 4,
+  "updated_at": "2024-07-16T17:20:10.532588+00:00"
+}
+```
+
+#### Example Request (Backend usage):
+
+```python
+from ..models.base import Cart, CartItem
+
+# Build the Cart object in backend
+cart = Cart(
+    user_id=1234,
+    items=[
+        CartItem(product_id=42, quantity=3),
+        CartItem(product_id=99, quantity=1),
+    ]
+)
+# Create the cart for the user
+result = await db_service.create_entity(
+    endpoint="/carts/",
+    data=cart.model_dump()
+)
+```
+
+### Get Cart ```GET /carts/{user_id}```
+
+Fetches the cart for a specific user.  
+If no cart exists, returns empty cart with the current timestamp. 
+
+#### Response:
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 3,
+      "product_name": "Banana",
+      "aisle_name": "Fruit",
+      "department_name": "Produce",
+      "description": "Fresh bananas",
+      "price": 0.25,
+      "image_url": "https://img/banana.png"
+    }
+  ],
+  "total_items": 1,
+  "total_quantity": 3,
+  "updated_at": "2024-07-16T17:20:10.532588+00:00"
+}
+```
+
+#### Example Request (Backend usage):
+
+```python
+user_id = 1234
+cart = await db_service.get_entity("carts", user_id)
+# cart is a dict matching the CartResponse model
+```
+
+#### Example Request (curl):
+
+```bash
+curl -X GET http://localhost:7000/carts/1234
+```
+
+### Update/Replace Cart ```PUT /carts/{user_id}```
+
+Replaces the entire cart for a user (full upsert/replace operation).  
+If a cart does not exist, creates a new one. Returns enriched product details and the latest `updated_at`.  
+
+#### Request Body (JSON):
+
+```json
+{
+  "user_id": 1234,
+  "items": [
+    {
+      "product_id": 42,
+      "quantity": 2
+    }
+  ]
+}
+```
+
+#### Response:  
+same format as "Get Cart" above, with `updated_at`.
+
+#### Example Request (Backend usage):
+
+```python
+from ..models.base import Cart, CartItem
+
+cart = Cart(
+    user_id=1234,
+    items=[
+        CartItem(product_id=42, quantity=2),
+    ]
+)
+result = await db_service.update_entity(
+    "carts", 1234, cart.model_dump()
+)
+```
+
+### Delete Cart ```DELETE /carts/{user_id}```
+Deletes a user's cart.  
+Returns HTTP 404 if the user or the cart do not exist.  
+
+#### Response:
+
+```json
+{ "message": "Cart deleted successfully for user 1234" }
+```
+
+#### Example Request (Backend usage):
+
+```python
+await db_service.delete_entity("carts", user_id)
+```
+
+##########################################################
+
+\# TODO:
+
+add_cart_item(user_id, item) → POST /carts/{user_id}/items – add an item (or increment if exists)
+
+
+update_cart_item(user_id, product_id, qty) → PUT /carts/{user_id}/items/{product_id} – set quantity for item (update/remove)
+
+
+remove_cart_item(user_id, product_id) → DELETE /carts/{user_id}/items/{product_id} – remove item
+
+
+clear_user_cart(user_id) → DELETE /carts/{user_id}} – clear cart
+
+
+checkout_cart(user_id) → POST /carts/{user_id}/checkout – convert cart to order
+
+
+### Create Cart ```POST /carts```
+
+...
+
+#### Request Body (JSON):
+
+```json
+```
+
+#### Response:
+
+```json
+```
+
+#### Example Request (Backend usage):
+
+```python
+```
+
+### Create Cart ```POST /carts```
+
+...
+
+#### Request Body (JSON):
+
+```json
+```
+
+#### Response:
+
+```json
+```
+
+#### Example Request (Backend usage):
+
+```python
+```
+
+### Full Example for Cart API (Backend usage):
+
+```python
+# Create a new cart for user
+cart_data = {
+    "user_id": 1234,
+    "items": [
+        {"product_id": 1, "quantity": 2},
+        {"product_id": 4, "quantity": 1}
+    ]
+}
+resp = await db_service.create_entity(endpoint="/carts/", data=cart_data)
+
+# Get cart
+resp = await db_service.get_entity("carts", user_id)
+
+# Update (replace) cart
+cart_data["items"].append({"product_id": 7, "quantity": 3})
+resp = await db_service.update_entity("carts", user_id, cart_data)
+
+# Delete cart
+await db_service.delete_entity("carts", user_id)
 ```
