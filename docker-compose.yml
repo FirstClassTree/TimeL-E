@@ -41,31 +41,31 @@ services:
       - timele-network
     restart: unless-stopped
 
-  ml-service:
-    build:
-      context: ./ml-service
-      dockerfile: Dockerfile
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - PYTHONPATH=/app
-      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
-      - MODEL_PATH_BASE=/app/models
-      - PROCESSED_DATA_PATH=/app/training-data/processed
-      - RAW_DATA_PATH=/app/training-data
-    ports:
-      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
-    depends_on:
-      db-service:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    volumes:
-      - ./data:/app/training-data
-#      - ../db_service/app/db_core:/app/src/data:ro
-      - ml_models:/app/models
-    networks:
-      - timele-network
-    restart: unless-stopped
+#  ml-service:
+#    build:
+#      context: ./ml-service
+#      dockerfile: Dockerfile
+#    environment:
+#      - DATABASE_URL=${DATABASE_URL}
+#      - PYTHONPATH=/app
+#      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
+#      - MODEL_PATH_BASE=/app/models
+#      - PROCESSED_DATA_PATH=/app/training-data/processed
+#      - RAW_DATA_PATH=/app/training-data
+#    ports:
+#      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
+#    depends_on:
+#      db-service:
+#        condition: service_healthy
+#      postgres:
+#        condition: service_healthy
+#    volumes:
+#      - ./data:/app/training-data
+##      - ../db_service/app/db_core:/app/src/data:ro
+#      - ml_models:/app/models
+#    networks:
+#      - timele-network
+#    restart: unless-stopped
 
   db-service:
     build:

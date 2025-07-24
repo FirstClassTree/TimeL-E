@@ -98,12 +98,17 @@ def populate_enriched_data(force_reset=False):
                     print(f"   Processed {success_count} products...")
             except Exception as batch_err:
                 session.rollback()
-                error_count += len(objects)
                 print(f"   ERROR: Batch insert failed: {batch_err} (will try individual rows)")
                 # Fallback: try each row individually
                 for obj in objects:
                     try:
-                        session.add(obj)
+                        new_obj = ProductEnriched(
+                            product_id=obj.product_id,
+                            description=obj.description,
+                            price=obj.price,
+                            image_url=obj.image_url
+                        )
+                        session.add(new_obj)
                         session.flush()
                         success_count += 1
                     except Exception as row_err:
