@@ -1,5 +1,7 @@
 import requests
 import json
+import random
+import psycopg2
 # from uuid_utils import uuid7
 
 def test_query():
@@ -48,14 +50,17 @@ def test_get_products():
         "categories": ["Bakery", "Dairy"]  # adjust as appropriate for your DB
     }
     response = requests.get(url, params=params)
+    print("\ntest_get_products:")
     print("Status code:", response.status_code)
     print("Response JSON:")
     print(response.json())
 
+CREATED_ORDER_ID = None
 def test_create_order():
     url = "http://localhost:7000/orders"
     payload = {
-        "user_id": "01981762-2cc0-740e-a010-df99a9bbc9d5",  # replace with a real user_id from DB
+        # "user_id": "01981762-2cc0-740e-a010-df99a9bbc9d5",  # replace with a real user_id from DB
+        "user_id": 86224,
         "order_dow": 3,
         "order_hour_of_day": 15,
         "total_items": 3,
@@ -67,9 +72,19 @@ def test_create_order():
     headers = {"Content-Type": "application/json"}
     try:
         response = requests.post(url, data=json.dumps(payload), headers=headers)
+        print("\ntest_create_order:")
         print("Status code:", response.status_code)
+        response_json = response.json()
         print("Response JSON:")
         print(json.dumps(response.json(), indent=2))
+        if response.status_code == 201:
+            # Try both top-level and nested styles for order_id
+            CREATED_ORDER_ID = response_json.get("order_id") \
+                               or response_json.get("id") \
+                               or (response_json.get("data", {}).get("order_id") if "data" in response_json else None)
+            print(f"Saved order_id: {CREATED_ORDER_ID}")
+        else:
+            print("Order not created successfully.")
         # assert response.status_code == 201
     except requests.RequestException as e:
         print("HTTP request failed:", e)
@@ -81,7 +96,8 @@ def test_create_order():
 
 
 def test_orders_order_id_items():
-    order_id = "01981768-0d9d-723b-ac39-fd8fbdc2eadb"
+    # order_id = "01981768-0d9d-723b-ac39-fd8fbdc2eadb"
+    order_id = CREATED_ORDER_ID
     items = [
         {"product_id": 1, "quantity": 2},
         {"product_id": 5, "quantity": 1},
@@ -91,8 +107,23 @@ def test_orders_order_id_items():
         f"http://localhost:7000/orders/{order_id}/items",
         json=items  # Items as list, not wrapped in a dict
     )
+    print("\ntest_orders_order_id_items:")
     print(resp.status_code)
     print(resp.json())
+
+# def test_delete_order():
+#     # order_id = "01981768-0d9d-723b-ac39-fd8fbdc2eadb"
+#     order_id = CREATED_ORDER_ID
+#     items = [
+#         {"product_id": 1, "quantity": 2},
+#         {"product_id": 5, "quantity": 1},
+#     ]
+#
+#     resp = requests.delete(f"http://localhost:7000/orders/{order_id}")
+#
+#     print("\ntest_delete_order:")
+#     print(resp.status_code)
+#     print(resp.json())
 
 def test_enriched_products_across_departments():
     url = "http://localhost:7000/products"
@@ -192,6 +223,96 @@ class UserApiTests:
 
 # TODO: add sample test for cart api
 
+class OrderTablesSanityTest:
+    def __init__(self, conn, base_url):
+        self.conn = conn
+        self.base_url = base_url
+
+    def test_orders_table_basic(self):
+        print("\n=== Sanity: Orders Table ===")
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM orders.orders")
+            count = cur.fetchone()[0]
+            print(f"Total orders: {count}")
+            cur.execute("SELECT * FROM orders.orders LIMIT 3")
+            sample = cur.fetchall()
+            print("Sample orders (limit 3):")
+            for row in sample:
+                print(row)
+
+    def test_order_items_table_basic(self):
+        print("\n=== Sanity: Order Items Table ===")
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM orders.order_items")
+            count = cur.fetchone()[0]
+            print(f"Total order items: {count}")
+            cur.execute("SELECT * FROM orders.order_items LIMIT 3")
+            sample = cur.fetchall()
+            print("Sample order items (limit 3):")
+            for row in sample:
+                print(row)
+
+    def test_order_items_relationship(self):
+        print("\n=== Sanity: Order → Order Items Relationship ===")
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT order_id FROM orders.orders OFFSET floor(random()*10000) LIMIT 1")
+            row = cur.fetchone()
+            if not row:
+                print("No orders found.")
+                return
+            order_id = row[0]
+            # order_id = 2468802
+            print(f"Random order_id: {order_id}")
+            cur.execute("SELECT * FROM orders.order_items WHERE order_id = %s LIMIT 3", (order_id,))
+            items = cur.fetchall()
+            if items:
+                print(f"Sample order_items for order_id={order_id}:")
+                for item in items:
+                    print(item)
+            else:
+                print(f"No order_items found for order_id={order_id}.")
+
+    def test_orders_api(self):
+        import requests
+        print("\n=== Sanity: GET /orders API ===")
+        url = f"{self.base_url}/orders?limit=2"
+        try:
+            r = requests.get(url)
+            print(f"GET {url} - Status: {r.status_code}")
+            if r.status_code == 200:
+                data = r.json()
+                print("Response:", data)
+            else:
+                print("Error response:", r.text)
+        except Exception as e:
+            print("API call failed:", e)
+
+    def test_order_items_api(self):
+        import requests
+        print("\n=== Sanity: GET /orders/{id}/items API ===")
+        url = f"{self.base_url}/orders?limit=2"
+        try:
+            r = requests.get(url)
+            if r.status_code != 200:
+                print("Cannot fetch orders for item test.")
+                return
+            orders = r.json().get("orders") or r.json()
+            if not orders:
+                print("No orders returned from API.")
+                return
+            for order in orders:
+                order_id = order.get("order_id") or order.get("id")
+                item_url = f"{self.base_url}/orders/{order_id}/items"
+                r2 = requests.get(item_url)
+                print(f"GET {item_url} - Status: {r2.status_code}")
+                if r2.status_code == 200:
+                    print("Items:", r2.json())
+                else:
+                    print("Error response:", r2.text)
+        except Exception as e:
+            print("API call failed:", e)
+
+
 
 if __name__ == "__main__":
     test_query()
@@ -201,9 +322,28 @@ if __name__ == "__main__":
     test_create_order()
     print()
     test_orders_order_id_items()
+    # print()
+    # test_delete_order()
     print()
     tester = UserApiTests()
     tester.run_all()
     print()
     test_enriched_products_across_departments()
+    print()
 
+    #### testing orders and order_items in db
+    conn = psycopg2.connect(
+        host="localhost",
+        port=5432,
+        user="timele_user",
+        password="timele_password",
+        database="timele_db"
+    )
+    base_url = "http://localhost:7000"
+    sanity = OrderTablesSanityTest(conn, base_url)
+    sanity.test_orders_table_basic()
+    sanity.test_order_items_table_basic()
+    sanity.test_order_items_relationship()
+    sanity.test_orders_api()
+    sanity.test_order_items_api()
+    conn.close()

@@ -2,12 +2,368 @@ import os
 import csv
 import traceback
 
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from app.db_core.database import SessionLocal
-from app.db_core.models import Product, Department, Aisle, User
+from .db_core.database import SessionLocal
+from .db_core.models import Product, Department, Aisle, User, Order, OrderItem
 
 CSV_DIR = "/data"
+
+def load_departments(db: Session):
+    departments_file = os.path.join(CSV_DIR, "departments.csv")
+    print(f"Loading departments from: {departments_file}")
+    with open(departments_file, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            db.add(Department(
+                department_id=int(row["department_id"]),
+                department=row["department"]
+            ))
+    db.commit()
+
+def load_aisles(db: Session):
+    aisles_file = os.path.join(CSV_DIR, "aisles.csv")
+    print(f"Loading aisles from: {aisles_file}")
+    with open(aisles_file, newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            db.add(Aisle(
+                aisle_id=int(row["aisle_id"]),
+                aisle=row["aisle"]
+            ))
+    db.commit()
+
+def load_products(db: Session):
+    products_file = os.path.join(CSV_DIR, "products.csv")
+    print(f"Loading products from: {products_file}")
+    batch_size = 200  # Tweak as needed
+    batch_products = []
+    products_loaded = 0
+    product_errors = 0
+    success_count = 0
+    with open(products_file, newline='') as f:
+        reader = csv.DictReader(f)
+        for row_num, row in enumerate(reader, 1):
+            try:
+                product = Product(
+                    product_id=int(row["product_id"]),
+                    product_name=row["product_name"],
+                    aisle_id=int(row["aisle_id"]),
+                    department_id=int(row["department_id"])
+                )
+                batch_products.append(product)
+                products_loaded += 1
+
+                if len(batch_products) >= batch_size:
+                    try:
+                        db.add_all(batch_products)
+                        db.flush()  # Optionally use commit for ultra-safety
+                        success_count += len(batch_products)
+                        if success_count % 10000 == 0:
+                            print(f"   Committed batch of {len(batch_products)} products")
+                        batch_products = []
+                    except (IntegrityError, SQLAlchemyError) as batch_err:
+                        db.rollback()
+                        print(
+                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        # Now try each row one by one to isolate the bad ones
+                        for single_product in batch_products:
+                            try:
+                                db.add(single_product)
+                                db.flush()
+                                success_count += 1
+                            except (IntegrityError, SQLAlchemyError) as row_err:
+                                product_errors += 1
+                                db.rollback()
+                                print(f"      -> Skipping bad product (row {row_num}): {row_err}")
+                        batch_products = []
+
+            except Exception as row_error:
+                product_errors += 1
+                print(f"   Row {row_num}: Error creating product: {row_error}")
+
+        # Commit any remaining products in the final batch
+        if batch_products:
+            try:
+                db.add_all(batch_products)
+                db.flush()
+                print(f"   Committed final batch of {len(batch_products)} products")
+            except (IntegrityError, SQLAlchemyError) as batch_err:
+                db.rollback()
+                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                success_count_final = 0
+                for single_product in batch_products:
+                    try:
+                        db.add(single_product)
+                        db.flush()
+                        success_count_final += 1
+                    except (IntegrityError, SQLAlchemyError) as row_err:
+                        product_errors += 1
+                        db.rollback()
+                        print(f"      -> Skipping bad product: {row_err}")
+                print(f"   Committed final batch of {success_count_final} products")
+
+        print(f"Products processing summary:")
+        print(f"   Successfully prepared: {products_loaded} products")
+        print(f"   Skipped/Errors: {product_errors}")
+
+        db.commit()
+
+def load_orders(db: Session):
+    orders_file = os.path.join(CSV_DIR, "orders_demo.csv")
+    print(f"Loading products from: {orders_file}")
+    batch_size = 200  # Tweak as needed
+    batch_orders = []
+    orders_loaded = 0
+    order_errors = 0
+    success_count = 0
+    with open(orders_file, newline='') as f:
+        reader = csv.DictReader(f)
+        for row_num, row in enumerate(reader, 1):
+            try:
+                order = Order(
+                    order_id=int(row["order_id"]),
+                    user_id=int(row["user_id"]),
+                    order_number=int(row["order_number"]),
+                    order_dow=int(row["order_dow"]),
+                    order_hour_of_day=int(row["order_hour_of_day"]),
+                    days_since_prior_order=int(float(row["days_since_prior_order"])) if row.get(
+                        "days_since_prior_order") else None,
+                    total_items=0  # countem when finished loading
+                )
+                batch_orders.append(order)
+                orders_loaded += 1
+
+                if len(batch_orders) >= batch_size:
+                    try:
+                        db.add_all(batch_orders)
+                        db.flush()  # Optionally use commit for ultra-safety
+                        success_count += len(batch_orders)
+                        if success_count % 10000 == 0:
+                            print(f"   Committed batch of {len(batch_orders)} orders")
+                        batch_orders = []
+                    except (IntegrityError, SQLAlchemyError) as batch_err:
+                        db.rollback()
+                        print(
+                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        # Now try each row one by one to isolate the bad ones
+                        for single_order in batch_orders:
+                            try:
+                                db.add(single_order)
+                                db.flush()
+                                success_count += 1
+                            except (IntegrityError, SQLAlchemyError) as row_err:
+                                order_errors += 1
+                                db.rollback()
+                                print(f"      -> Skipping bad order (row {row_num}): {row_err}")
+                        batch_orders = []
+
+            except Exception as row_error:
+                order_errors += 1
+                print(f"   Row {row_num}: Error creating order: {row_error}")
+
+        # Commit any remaining orders in the final batch
+        if batch_orders:
+            try:
+                db.add_all(batch_orders)
+                db.flush()
+                print(f"   Committed final batch of {len(batch_orders)} orders")
+            except (IntegrityError, SQLAlchemyError) as batch_err:
+                db.rollback()
+                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                success_count_final = 0
+                for single_order in batch_orders:
+                    try:
+                        db.add(single_order)
+                        db.flush()
+                        success_count_final += 1
+                    except (IntegrityError, SQLAlchemyError) as row_err:
+                        order_errors += 1
+                        db.rollback()
+                        print(f"      -> Skipping bad order: {row_err}")
+                print(f"   Committed final batch of {success_count_final} orders")
+
+        print(f"Orders processing summary:")
+        print(f"   Successfully prepared: {orders_loaded} orders")
+        print(f"   Skipped/Errors: {order_errors}")
+
+        db.commit()
+
+def load_order_items(db: Session):
+    order_items_file = os.path.join(CSV_DIR, "order_items_demo.csv")
+    print(f"Loading order items from: {order_items_file}")
+    batch_size = 10
+    batch_items = []
+    items_loaded = 0
+    item_errors = 0
+    success_count = 0
+    with open(order_items_file, newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row_num, row in enumerate(reader, 1):
+            try:
+                item=OrderItem(
+                        order_id=int(row["order_id"]),
+                        product_id=int(row["product_id"]),
+                        add_to_cart_order=int(row.get("add_to_cart_order" or 1)),
+                        reordered=int(row.get("reordered" or 0)),
+                    )
+                batch_items.append(item)
+                items_loaded += 1
+
+                if len(batch_items) >= batch_size:
+                    try:
+                        db.add_all(batch_items)
+                        db.flush()  # Optionally use commit for ultra-safety
+                        success_count += len(batch_items)
+                        if success_count % 100000 == 0:
+                            print(f"   Committed batch of {len(batch_items)} order items")
+                        batch_items = []
+                    except (IntegrityError, SQLAlchemyError) as batch_err:
+                        db.rollback()
+                        print(
+                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        # Now try each row one by one to isolate the bad ones
+                        for single_item in batch_items:
+                            try:
+                                db.add(single_item)
+                                db.flush()
+                                success_count += 1
+                            except (IntegrityError, SQLAlchemyError) as row_err:
+                                item_errors += 1
+                                db.rollback()
+                                print(f"      -> Skipping bad order (row {row_num}): {row_err}")
+                        batch_items = []
+            except Exception as row_error:
+                item_errors += 1
+                print(f"   Row {row_num}: Error creating order item: {row_error}")
+        if batch_items:
+            try:
+                db.add_all(batch_items)
+                db.flush()
+                print(f"   Committed final batch of {len(batch_items)} order items")
+            except (IntegrityError, SQLAlchemyError) as batch_err:
+                db.rollback()
+                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                success_count_final = 0
+                for single_order_item in batch_items:
+                    try:
+                        db.add(single_order_item)
+                        db.flush()
+                        success_count_final += 1
+                    except (IntegrityError, SQLAlchemyError) as row_err:
+                        item_errors += 1
+                        db.rollback()
+                        print(f"      -> Skipping bad order item: {row_err}")
+                print(f"   Committed final batch of {success_count_final} order items")
+
+    print(f"Order Items processing summary:")
+    print(f"   Successfully prepared: {items_loaded} order items")
+    print(f"   Skipped/Errors: {item_errors}")
+
+    db.commit()
+
+def load_users(db: Session):
+    users_file = os.path.join(CSV_DIR, "users_demo.csv")
+    print(f"Loading users from: {users_file}")
+
+    if not os.path.exists(users_file):
+        print(f"ERROR: Users file not found: {users_file}")
+        print("Available files in directory:")
+        for f in os.listdir(CSV_DIR):
+            print(f"   - {f}")
+    else:
+        print(f"Users file exists: {users_file}")
+        file_size = os.path.getsize(users_file)
+        print(f"File size: {file_size} bytes")
+
+        users_loaded = 0
+        errors = 0
+        batch_size = 100
+
+        with open(users_file, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            print(f"CSV columns: {reader.fieldnames}")
+
+            batch_users = []
+            for row_num, row in enumerate(reader, 1):
+                try:
+                    # Check for unique constraint violations before adding
+                    existing_user_id = db.query(User).filter(User.user_id == int(row['user_id'])).first()
+                    # existing_name = db.query(User).filter(User.name == row['name']).first()
+                    existing_email = db.query(User).filter(User.email_address == row['email_address']).first()
+
+                    if existing_user_id:
+                        if errors < 3:
+                            print(f"   Row {row_num}: User ID {row['user_id']} already exists, skipping")
+                        errors += 1
+                        continue
+
+                    # if existing_name:
+                    #     if errors < 3:
+                    #         print(f"   Row {row_num}: User name '{row['name']}' already exists, skipping")
+                    #     errors += 1
+                    #     continue
+
+                    if existing_email:
+                        if errors < 3:
+                            print(f"   Row {row_num}: Email '{row['email_address']}' already exists, skipping")
+                        errors += 1
+                        continue
+
+                    user = User(
+                        user_id=int(row['user_id']),
+                        name=row['name'],
+                        hashed_password=row['hashed_password'],
+                        email_address=row['email_address'],
+                        phone_number=row['phone_number'],
+                        street_address=row['street_address'],
+                        city=row['city'],
+                        postal_code=row['postal_code'],
+                        country=row['country']
+                    )
+                    batch_users.append(user)
+                    users_loaded += 1
+
+                    if users_loaded <= 5:  # Show first 5 for confirmation
+                        print(f"   Row {row_num}: Prepared user {row['user_id']}: {row['name']}")
+
+                    # Commit in batches
+                    if len(batch_users) >= batch_size:
+                        try:
+                            db.add_all(batch_users)
+                            db.flush()  # Flush to catch constraint errors
+                            print(f"   Committed batch of {len(batch_users)} users")
+                        except (IntegrityError, SQLAlchemyError) as batch_err:
+                            db.rollback()
+                            print(
+                                f"   ERROR: User batch insert failed at row {row_num} (will try individually): {batch_err}")
+                            for user in batch_users:
+                                try:
+                                    db.add(user)
+                                    db.flush()
+                                except (IntegrityError, SQLAlchemyError) as row_err:
+                                    errors += 1
+                                    db.rollback()
+                                    print(f"      -> Skipping bad user (row {row_num}): {row_err}")
+                        batch_users = []
+
+                except Exception as row_error:
+                    errors += 1
+                    if errors <= 3:  # Show first 3 errors
+                        print(f"   Row {row_num}: Error processing user {row.get('user_id', 'unknown')}: {row_error}")
+
+            # Commit remaining users
+            if batch_users:
+                db.add_all(batch_users)
+                db.flush()
+                print(f"   Committed final batch of {len(batch_users)} users")
+
+        print(f"Users processing summary:")
+        print(f"   Successfully prepared: {users_loaded} users")
+        print(f"   Skipped/Errors: {errors}")
+
+        db.commit()
 
 def populate_tables():
     db: Session = SessionLocal()
@@ -17,14 +373,20 @@ def populate_tables():
     # Check what's already loaded
     products_exist = db.query(Product).first() is not None
     users_exist = db.query(User).first() is not None
+    orders_exist = db.query(Order).first() is not None
+    order_items_exist = db.query(OrderItem).first() is not None
     
     if products_exist:
         print("Products already populated.")
     if users_exist:
         print("Users already populated.")
+    if orders_exist:
+        print("Orders already populated.")
+    if order_items_exist:
+        print("Order items already populated.")
         
     # Skip if everything is already loaded
-    if products_exist and users_exist:
+    if products_exist and users_exist and orders_exist:
         print("All data already populated.")
         db.close()
         return
@@ -32,216 +394,30 @@ def populate_tables():
     try:
         # Load departments, aisles, products only if products don't exist
         if not products_exist:
-            # Load departments
-            departments_file = os.path.join(CSV_DIR, "departments.csv")
-            print(f"Loading departments from: {departments_file}")
-            with open(departments_file, newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    db.add(Department(
-                        department_id=int(row["department_id"]),
-                        department=row["department"]
-                    ))
-            db.commit()
-
-            # Load aisles
-            aisles_file = os.path.join(CSV_DIR, "aisles.csv")
-            print(f"Loading aisles from: {aisles_file}")
-            with open(aisles_file, newline='') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    db.add(Aisle(
-                        aisle_id=int(row["aisle_id"]),
-                        aisle=row["aisle"]
-                    ))
-            db.commit()
-
-            # Load products
-            products_file = os.path.join(CSV_DIR, "products.csv")
-            print(f"Loading products from: {products_file}")
-            batch_size = 200  # Tweak as needed
-            batch_products = []
-            products_loaded = 0
-            product_errors = 0
-            success_count = 0
-            with open(products_file, newline='') as f:
-                reader = csv.DictReader(f)
-                # for row in reader:
-                #     db.add(Product(
-                #         product_id=int(row["product_id"]),
-                #         product_name=row["product_name"],
-                #         aisle_id=int(row["aisle_id"]),
-                #         department_id=int(row["department_id"])
-                #     ))
-
-                for row_num, row in enumerate(reader, 1):
-                    try:
-                        product = Product(
-                            product_id=int(row["product_id"]),
-                            product_name=row["product_name"],
-                            aisle_id=int(row["aisle_id"]),
-                            department_id=int(row["department_id"])
-                        )
-                        batch_products.append(product)
-                        products_loaded += 1
-
-                        if len(batch_products) >= batch_size:
-                            try:
-                                db.add_all(batch_products)
-                                db.flush()  # Optionally use commit for ultra-safety
-                                success_count += len(batch_products)
-                                if  success_count % 10000 == 0:
-                                    print(f"   Committed batch of {len(batch_products)} products")
-                                batch_products = []
-                            except (IntegrityError, SQLAlchemyError) as batch_err:
-                                db.rollback()
-                                print(
-                                    f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
-                                # Now try each row one by one to isolate the bad ones
-                                for single_product in batch_products:
-                                    try:
-                                        db.add(single_product)
-                                        db.flush()
-                                        success_count += 1
-                                    except (IntegrityError, SQLAlchemyError) as row_err:
-                                        product_errors += 1
-                                        db.rollback()
-                                        print(f"      -> Skipping bad product (row {row_num}): {row_err}")
-                                batch_products = []
-
-                    except Exception as row_error:
-                        product_errors += 1
-                        print(f"   Row {row_num}: Error creating product: {row_error}")
-
-                # Commit any remaining products in the final batch
-                if batch_products:
-                    try:
-                        db.add_all(batch_products)
-                        db.flush()
-                        print(f"   Committed final batch of {len(batch_products)} products")
-                    except (IntegrityError, SQLAlchemyError) as batch_err:
-                        db.rollback()
-                        print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
-                        success_count_final = 0
-                        for single_product in batch_products:
-                            try:
-                                db.add(single_product)
-                                db.flush()
-                                success_count_final += 1
-                            except (IntegrityError, SQLAlchemyError) as row_err:
-                                product_errors += 1
-                                db.rollback()
-                                print(f"      -> Skipping bad product: {row_err}")
-                        print(f"   Committed final batch of {success_count_final} products")
-
-                print(f"Products processing summary:")
-                print(f"   Successfully prepared: {products_loaded} products")
-                print(f"   Skipped/Errors: {product_errors}")
-
-                db.commit()
+            load_departments(db)
+            load_aisles(db)
+            load_products(db)
 
         # Load users only if they don't exist
         if not users_exist:
-            users_file = os.path.join(CSV_DIR, "users_demo.csv")
-            print(f"Loading users from: {users_file}")
-            
-            if not os.path.exists(users_file):
-                print(f"ERROR: Users file not found: {users_file}")
-                print("Available files in directory:")
-                for f in os.listdir(CSV_DIR):
-                    print(f"   - {f}")
-            else:
-                print(f"Users file exists: {users_file}")
-                file_size = os.path.getsize(users_file)
-                print(f"File size: {file_size} bytes")
-                
-                users_loaded = 0
-                errors = 0
-                batch_size = 100
-                
-                with open(users_file, newline='', encoding='utf-8') as f:
-                    reader = csv.DictReader(f)
-                    print(f"CSV columns: {reader.fieldnames}")
-                    
-                    batch_users = []
-                    for row_num, row in enumerate(reader, 1):
-                        try:
-                            # Check for unique constraint violations before adding
-                            existing_user_id = db.query(User).filter(User.user_id == int(row['user_id'])).first()
-                            # existing_name = db.query(User).filter(User.name == row['name']).first()
-                            existing_email = db.query(User).filter(User.email_address == row['email_address']).first()
-                            
-                            if existing_user_id:
-                                if errors < 3:
-                                    print(f"   Row {row_num}: User ID {row['user_id']} already exists, skipping")
-                                errors += 1
-                                continue
-                            
-                            # if existing_name:
-                            #     if errors < 3:
-                            #         print(f"   Row {row_num}: User name '{row['name']}' already exists, skipping")
-                            #     errors += 1
-                            #     continue
-                                
-                            if existing_email:
-                                if errors < 3:
-                                    print(f"   Row {row_num}: Email '{row['email_address']}' already exists, skipping")
-                                errors += 1
-                                continue
-                            
-                            user = User(
-                                user_id=int(row['user_id']),
-                                name=row['name'],
-                                hashed_password=row['hashed_password'],
-                                email_address=row['email_address'],
-                                phone_number=row['phone_number'],
-                                street_address=row['street_address'],
-                                city=row['city'],
-                                postal_code=row['postal_code'],
-                                country=row['country']
-                            )
-                            batch_users.append(user)
-                            users_loaded += 1
-                            
-                            if users_loaded <= 5:  # Show first 5 for confirmation
-                                print(f"   Row {row_num}: Prepared user {row['user_id']}: {row['name']}")
-                            
-                            # Commit in batches
-                            if len(batch_users) >= batch_size:
-                                try:
-                                    db.add_all(batch_users)
-                                    db.flush()  # Flush to catch constraint errors
-                                    print(f"   Committed batch of {len(batch_users)} users")
-                                except (IntegrityError, SQLAlchemyError) as batch_err:
-                                    db.rollback()
-                                    print(
-                                        f"   ERROR: User batch insert failed at row {row_num} (will try individually): {batch_err}")
-                                    for user in batch_users:
-                                        try:
-                                            db.add(user)
-                                            db.flush()
-                                        except (IntegrityError, SQLAlchemyError) as row_err:
-                                            errors += 1
-                                            db.rollback()
-                                            print(f"      -> Skipping bad user (row {row_num}): {row_err}")
-                                batch_users = []
-                                
-                        except Exception as row_error:
-                            errors += 1
-                            if errors <= 3:  # Show first 3 errors
-                                print(f"   Row {row_num}: Error processing user {row.get('user_id', 'unknown')}: {row_error}")
-                    
-                    # Commit remaining users
-                    if batch_users:
-                        db.add_all(batch_users)
-                        db.flush()
-                        print(f"   Committed final batch of {len(batch_users)} users")
-                
-                print(f"Users processing summary:")
-                print(f"   Successfully prepared: {users_loaded} users")
-                print(f"   Skipped/Errors: {errors}")
+            load_users(db)
 
-                db.commit()
+        if not orders_exist:
+            load_orders(db)
+
+        if not order_items_exist:
+            load_order_items(db)
+
+        # compute total_items per order after loading items
+        print("Updating order totals...")
+        order_item_counts = db.query(
+            OrderItem.order_id, func.count(OrderItem.product_id)
+        ).group_by(OrderItem.order_id).all()
+        for order_id, total in order_item_counts:
+            db.execute(
+                update(Order).where(Order.order_id == order_id).values(total_items=total)
+            )
+        db.commit()
 
         print("Committing all changes to database...")
         db.commit()
@@ -250,7 +426,10 @@ def populate_tables():
         # Final verification
         final_products = db.query(Product).count()
         final_users = db.query(User).count()
-        print(f"Final counts - Products: {final_products}, Users: {final_users}")
+        final_orders = db.query(Order).count()
+        final_order_items = db.query(OrderItem).count()
+        print(f"Final counts - Products: {final_products}, Users: {final_users},"
+              f"Orders: {final_orders}, Order items: {final_order_items}")
         
         # Sample a few users to verify they loaded correctly
         sample_users = db.query(User).limit(3).all()
