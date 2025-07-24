@@ -13,3 +13,7 @@ backend/app/enriched/
 __pycache__/
 *.pyc
 
+.DS_Store
+
+*.ps1
+
