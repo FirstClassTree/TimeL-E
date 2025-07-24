@@ -183,9 +183,10 @@ class StackedBasketModel:
         f1_score = 2 * (precision * recall) / (precision + recall)
         return f1_score.fillna(0)
 
-    def train(self, features_df: pd.DataFrame, future_df: pd.DataFrame, keyset: dict):
+    def train(self, features_df: pd.DataFrame, future_df: pd.DataFrame, keyset: dict, model_save_path: str = "."):
         """Main training function with optimized data preparation."""
         train_users, valid_users = keyset['train'], keyset['valid']
+        self.model_save_path = model_save_path
 
         # --- 1. Prepare datasets for Stage 1 ---
         logger.info("--- Preparing datasets for Stage 1 training ---")
@@ -244,7 +245,7 @@ class StackedBasketModel:
         self.stage2_selector.train(X_meta_train, y_meta_train)
         
         # --- 5. Save Models ---
-        self.save_models()
+        self.save_models(model_path)
 
     def save_models(self, path="."):
         os.makedirs(path, exist_ok=True)
@@ -261,7 +262,54 @@ print("✅ All required classes and functions defined.")
 # =====================================================================================
 logger.info("--- Starting Data Loading and Preprocessing ---")
 
-# Load data
+# Auto-detect data path for universal compatibility
+def get_data_path():
+    """Automatically detect the correct data path"""
+    possible_paths = [
+        "/app/training-data/",  # Docker container path
+        "./data/",              # Local development path
+        "../data/",             # If running from subdirectory
+        "data/",                # Current directory
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(os.path.join(path, "orders.csv")):
+            print(f"✅ Found data at: {path}")
+            return path
+    
+    raise FileNotFoundError("❌ Could not find data files. Please ensure orders.csv exists in data/ directory")
+
+# Auto-detect model save path
+def get_model_path():
+    """Automatically detect the correct model save path"""
+    possible_paths = [
+        "/app/models/",         # Docker container path
+        "./ml-service/models/", # Local development path
+        "../ml-service/models/",# If running from subdirectory
+        "./models/",            # Current directory
+        "models/",              # Simple models directory
+    ]
+    
+    for path in possible_paths:
+        try:
+            os.makedirs(path, exist_ok=True)
+            # Test if we can write to this directory
+            test_file = os.path.join(path, "test_write.tmp")
+            with open(test_file, 'w') as f:
+                f.write("test")
+            os.remove(test_file)
+            print(f"✅ Will save models to: {path}")
+            return path
+        except:
+            continue
+    
+    # Fallback to current directory
+    return "./"
+
+# Load data with auto-detected paths
+data_path = get_data_path()
+model_path = get_model_path()
+
 data_files = {
     'orders': 'orders.csv',
     'order_products_prior': 'order_products__prior.csv',
@@ -269,7 +317,9 @@ data_files = {
     'products': 'products.csv',
     'departments': 'departments.csv'
 }
-data = {name: pd.read_csv(f) for name, f in data_files.items()}
+
+print(f"📂 Loading data from: {data_path}")
+data = {name: pd.read_csv(os.path.join(data_path, f)) for name, f in data_files.items()}
 
 # Optimize memory usage
 data = optimize_dataframes(data)
@@ -317,7 +367,7 @@ logger.info("--- Initializing the Stacked Model for Training ---")
 stacked_model = StackedBasketModel()
 
 # Train the model using the optimized training pipeline
-stacked_model.train(features_df, instacart_future_df, keyset)
+stacked_model.train(features_df, instacart_future_df, keyset, model_path)
 
 print("\n🎉🎉🎉 MODEL TRAINING COMPLETE! 🎉🎉🎉")
 print("You can now download 'stage1_lgbm.pkl' and 'stage2_gbc.pkl' from the file explorer.")
