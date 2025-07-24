@@ -22,22 +22,45 @@ const ProductImage: React.FC<ProductImageProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSrc, setCurrentSrc] = useState<string>('');
 
   const handleImageError = () => {
-    setImageError(true);
-    setIsLoading(false);
+    // If local default image fails, try external placeholder
+    if (currentSrc === localDefaultImage) {
+      setCurrentSrc(fallbackPlaceholder);
+      setIsLoading(true);
+    } else {
+      setImageError(true);
+      setIsLoading(false);
+    }
   };
 
   const handleImageLoad = () => {
     setIsLoading(false);
   };
 
-  // ✅ FIXED: Use external placeholder instead of deleted local file
-  const placeholderImage = './app/storage/image_not_available.png';
-  const imageSrc = src || placeholderImage;
+  // Use local image first, then fallback to external placeholder
+  const localDefaultImage = '/storage/image_not_available.png';
+  const fallbackPlaceholder = 'https://via.placeholder.com/300x300?text=No+Image';
+  
+  // Check if we should use default image (null, empty)
+  const shouldUseDefault = !src || src.trim() === '';
+  
+  // Set the image source
+  React.useEffect(() => {
+    if (shouldUseDefault) {
+      setCurrentSrc(localDefaultImage);
+    } else {
+      setCurrentSrc(src || '');
+    }
+    setImageError(false);
+    setIsLoading(true);
+  }, [src, shouldUseDefault, localDefaultImage]);
 
-  // ✅ FIXED: Removed reference to deleted '/images/products/default.jpg'
-  if (imageError || !imageSrc) {
+  const imageSrc = currentSrc;
+
+  // Only show fallback icon if there was an actual image error
+  if (imageError) {
     return (
       <div 
         className={`flex items-center justify-center bg-gray-100 dark:bg-gray-800 ${className}`}

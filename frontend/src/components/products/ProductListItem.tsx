@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth.store';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useUser } from '@/components/auth/UserProvider';
+import ProductImage from '@/components/products/ProductImage';
 
 interface ProductListItemProps {
   product: Product;
@@ -47,12 +48,11 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
       <Link to={`/products/${product.product_id}`} className="block">
         <div className="flex p-4">
           {/* Product Image */}
-          <div className="flex-shrink-0 w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-            <img
-              src={product.image_url || 'https://images.pexels.com/photos/264537/pexels-photo-264537.jpeg?auto=compress&cs=tinysrgb&w=400'}
+          <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden">
+            <ProductImage
+              src={product.image_url}
               alt={product.product_name}
-              className="w-full h-full object-cover"
-              loading="lazy"
+              className="w-full h-full"
             />
           </div>
           

@@ -59,9 +59,58 @@ export interface PredictionFeedback {
 
 class PredictionService {
 
-  async getCurrentPredictedBasket(): Promise<PredictedBasket | null> {
+  async getCurrentPredictedBasket(userId?: string): Promise<PredictedBasket | null> {
     try {
-      return await api.get<PredictedBasket>('/predictions/current-basket');
+      if (!userId) {
+        // Try to get user ID from auth store
+        const authStore = (await import('@/stores/auth.store')).useAuthStore;
+        const user = authStore.getState().user;
+        if (!user?.id) {
+          return null;
+        }
+        userId = user.id;
+      }
+
+      // Call the actual backend endpoint
+      const response = await api.get(`/predictions/user/${userId}`);
+      
+      // Transform the backend response to frontend format
+      if (response.predictions && response.predictions.length > 0) {
+        const mockBasket: PredictedBasket = {
+          id: `basket_${userId}_${Date.now()}`,
+          userId: response.user_id,
+          weekOf: new Date().toISOString(),
+          status: 'generated',
+          confidenceScore: 0.8,
+          items: response.predictions.map((pred: any, index: number) => ({
+            id: `item_${pred.product_id}_${index}`,
+            basketId: `basket_${userId}_${Date.now()}`,
+            productId: pred.product_id,
+            product: {
+              product_id: pred.product_id,
+              product_name: pred.product_name,
+              aisle_id: 1,
+              department_id: 1,
+              aisle_name: 'Unknown Aisle',
+              department_name: 'Unknown Department',
+              price: Math.random() * 10 + 2, // Mock price
+              image_url: '/storage/image_not_available.png'
+            },
+            quantity: 1,
+            confidenceScore: pred.score,
+            isAccepted: true,
+            createdAt: new Date().toISOString()
+          })),
+          totalItems: response.predictions.length,
+          totalValue: response.predictions.length * 5, // Mock total
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        return mockBasket;
+      }
+      
+      return null;
     } catch (error: any) {
       if (error.response?.status === 404) {
         return null;

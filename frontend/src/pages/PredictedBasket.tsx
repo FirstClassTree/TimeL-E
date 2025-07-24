@@ -18,14 +18,16 @@ const PredictedBasket: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showExplanations, setShowExplanations] = useState(false);
+  const { userId } = useUser();
 
   // Fetch current predicted basket
   const { data: basket, isLoading, error, refetch } = useQuery(
-    'predicted-basket',
-    predictionService.getCurrentPredictedBasket,
+    ['predicted-basket', userId],
+    () => predictionService.getCurrentPredictedBasket(userId),
     {
       staleTime: 5 * 60 * 1000,
-      retry: 1
+      retry: 1,
+      enabled: !!userId
     }
   );
 
@@ -40,10 +42,10 @@ const PredictedBasket: React.FC = () => {
 
   // Generate new prediction mutation
   const generateMutation = useMutation(
-    () => predictionService.getUserPredictedBaskets(useUser().userId),
+    () => predictionService.getCurrentPredictedBasket(userId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries('predicted-basket');
+        queryClient.invalidateQueries(['predicted-basket', userId]);
         toast.success('New predictions generated!');
       },
       onError: () => {

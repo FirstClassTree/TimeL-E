@@ -32,9 +32,9 @@ const Products: React.FC = () => {
 
   const itemsPerPage = 25;
 
-  // Fetch products with corrected sort parameters
-  const { data, isLoading, error } = useQuery(
-    ['products', currentPage, sortOption, filters, searchQuery],
+  // Fetch products with all dependencies properly tracked
+  const { data, isLoading, error, refetch } = useQuery(
+    ['products', currentPage, sortOption, filters.categories, filters.priceRange, searchQuery],
     () => productService.getProducts({
       offset: itemsPerPage * (currentPage - 1),
       limit: itemsPerPage,
@@ -46,7 +46,8 @@ const Products: React.FC = () => {
     }),
     { 
       keepPreviousData: true,
-      staleTime: 5 * 60 * 1000,
+      staleTime: 1 * 60 * 1000, // Reduced cache time for testing
+      enabled: true,
     }
   );
 

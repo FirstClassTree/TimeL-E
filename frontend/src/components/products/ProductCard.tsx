@@ -45,7 +45,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
       transition={{ duration: 0.3 }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden"
+      className="group relative bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col"
     >
       <Link to={`/products/${product.product_id}`} className="block">
         {/* Image Container */}
@@ -93,6 +93,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
             {product.product_name}
           </h3>
+
+          {/* Product Description */}
+          {product.description && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+              {product.description}
+            </p>
+          )}
 
           {/* Price Section */}
           <div className="flex items-center justify-between mb-4">
