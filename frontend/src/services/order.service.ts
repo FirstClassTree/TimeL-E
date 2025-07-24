@@ -2,14 +2,12 @@ import { api } from '@/services/api.client';
 import { Product } from '@/services/product.service';
 
 export interface OrderItem {
-  id: string;
-  orderId: string;
-  productId: string;
-  product: Product;
-  quantity: number;
-  price: number;
-  total: number;
-  createdAt: string;
+    id: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image: string;
+    category: string;
 }
 
 export interface Delivery {
@@ -17,10 +15,8 @@ export interface Delivery {
   orderId: string;
   type: 'standard' | 'express' | 'scheduled';
   status: 'pending' | 'scheduled' | 'in_transit' | 'delivered' | 'failed';
-  addressLine1: string;
-  addressLine2?: string;
+  street: string;
   city: string;
-  state: string;
   zipCode: string;
   country: string;
   scheduledDate?: string;
@@ -40,17 +36,20 @@ export interface Order {
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   items: OrderItem[];
   delivery?: Delivery;
-  subtotal: number;
   tax: number;
   deliveryFee: number;
-  discount: number;
   total: number;
-  paymentMethod: string;
+  paymentMethod: {
+    type: 'card' | 'paypal';
+    last4?: string;
+    brand?: string;
+  };
   paymentStatus: string;
   notes?: string;
   metadata: Record<string, any>;
   createdAt: string;
   updatedAt: string;
+  trackingNumber?: string;
 }
 
 export interface CreateOrderData {
@@ -58,7 +57,6 @@ export interface CreateOrderData {
   deliveryAddress: {
     street: string;
     city: string;
-    state: string;
     zipCode: string;
     country: string;
   };
@@ -104,11 +102,11 @@ export interface TrackingInfo {
 class OrderService {
 
   async createOrder(data: CreateOrderData): Promise<Order> {
-    return api.post<Order>('/orders/create', data);
+    return api.post<Order>('/orders', data);
   }
 
   // Get all orders for the current user
-  async getOrders(filters: OrderFilters = {}): Promise<OrdersResponse> {
+  async getOrders(userId: string, filters: OrderFilters = {}): Promise<OrdersResponse> {
     const params = new URLSearchParams();
     
     if (filters.page) params.append('page', filters.page.toString());
@@ -118,10 +116,10 @@ class OrderService {
     if (filters.endDate) params.append('endDate', filters.endDate);
     if (filters.sort) params.append('sort', filters.sort);
 
-    return api.get<OrdersResponse>(`/orders?${params.toString()}`);
+    return await api.get<OrdersResponse>(`/orders/user/${userId}?${params.toString()}`);
   }
 
-  // Get a single order by ID
+  // Get order by ID
   async getOrder(orderId: string): Promise<Order> {
     return api.get<Order>(`/orders/${orderId}`);
   }

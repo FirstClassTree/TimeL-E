@@ -30,7 +30,7 @@ const ResetPassword: React.FC = () => {
       }
 
       try {
-        await authService.validateResetToken(token, email);
+        //await authService.validateResetToken(token, email);
         setTokenValid(true);
       } catch (error) {
         setTokenValid(false);

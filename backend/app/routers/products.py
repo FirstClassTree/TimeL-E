@@ -124,47 +124,13 @@ async def search_products(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{product_id}", response_model=APIResponse)
-async def get_product(product_id: int) -> APIResponse:
-    """Get specific product by ID"""
-    try:
-        # Get product from database
-        db_result = await db_service.get_product_by_id(product_id)
-        
-        if not db_result.get("success", True):
-            raise HTTPException(status_code=500, detail="Database query failed")
-        
-        products_data = db_result.get("data", [])
-        
-        if not products_data:
-            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
-        
-        # Convert to Product model
-        product_row = products_data[0]
-        product = Product(
-            product_id=product_row["product_id"],
-            product_name=product_row["product_name"],
-            aisle_id=product_row["aisle_id"],
-            department_id=product_row["department_id"],
-            aisle_name=product_row.get("aisle_name"),
-            department_name=product_row.get("department_name"),
-            description=product_row.get("description"),
-            price=product_row.get("price"),
-            image_url=product_row.get("image_url")
-        )
-        
-        return APIResponse(
-            message="Product retrieved successfully",
-            data=product
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.get("/department/{department_id}", response_model=APIResponse)
-async def get_products_by_department(department_id: int) -> APIResponse:
-    """Get all products in a specific department"""
+async def get_products_by_department(
+    department_id: int,
+    limit: int = Query(50, description="Number of products to return", ge=1, le=100),
+    offset: int = Query(0, description="Number of products to skip", ge=0)
+) -> APIResponse:
+    """Get products in a specific department with pagination"""
     try:
         # Verify department exists
         dept_result = await db_service.get_department_by_id(department_id)
@@ -180,17 +146,21 @@ async def get_products_by_department(department_id: int) -> APIResponse:
         # Convert to Department model
         dept_row = dept_data[0]
         department = Department(
-            department_id=dept_row["department_id"],
-            department=dept_row["department"]
+            id=str(dept_row["department_id"]),
+            name=dept_row["department"]
         )
         
-        # Get products in department
-        products_result = await db_service.get_products_by_department(department_id)
+        # Get products in department with pagination
+        db_result = await db_service.get_products_with_filters(
+            limit=limit,
+            offset=offset,
+            department_id=department_id
+        )
         
-        if not products_result.get("success", True):
+        if not db_result.get("success", True):
             raise HTTPException(status_code=500, detail="Database query failed")
         
-        products_data = products_result.get("data", [])
+        products_data = db_result.get("data", [])
         
         # Convert to Product models
         products = [
@@ -208,12 +178,25 @@ async def get_products_by_department(department_id: int) -> APIResponse:
             for row in products_data
         ]
         
+        # Pagination info
+        has_next = len(products) == limit
+        has_prev = offset > 0
+        page = (offset // limit) + 1
+        
+        result = ProductSearchResult(
+            products=products,
+            total=len(products),  # Note: This is the current page count, not total
+            page=page,
+            per_page=limit,
+            has_next=has_next,
+            has_prev=has_prev
+        )
+        
         return APIResponse(
-            message=f"Products in {department.department} department retrieved successfully",
+            message=f"Products in {department.name} department retrieved successfully",
             data={
                 "department": department,
-                "products": products,
-                "total": len(products)
+                "pagination": result
             }
         )
     except HTTPException:
@@ -280,65 +263,38 @@ async def get_products_by_aisle(aisle_id: int) -> APIResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{product_id}/recommendations", response_model=APIResponse)
-async def get_product_recommendations(
-    product_id: int,
-    limit: int = Query(10, description="Number of recommendations to return", ge=1, le=50)
-) -> APIResponse:
-    """Get ML recommendations based on a specific product"""
+@router.get("/{product_id}", response_model=APIResponse)
+async def get_product(product_id: int) -> APIResponse:
+    """Get specific product by ID"""
     try:
-        # Verify product exists
-        product_result = await db_service.get_product_by_id(product_id)
+        # Get product from database
+        db_result = await db_service.get_product_by_id(product_id)
         
-        if not product_result.get("success", True):
+        if not db_result.get("success", True):
             raise HTTPException(status_code=500, detail="Database query failed")
         
-        product_data = product_result.get("data", [])
+        products_data = db_result.get("data", [])
         
-        if not product_data:
+        if not products_data:
             raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
         
-        # TODO: Integrate with ML service for real recommendations
-        # For now, return products from the same department as a placeholder
-        product_row = product_data[0]
-        department_id = product_row["department_id"]
-        
-        recommendations_result = await db_service.get_products_by_department(department_id)
-        
-        if not recommendations_result.get("success", True):
-            raise HTTPException(status_code=500, detail="Database query failed")
-        
-        recommendations_data = recommendations_result.get("data", [])
-        
-        # Filter out the original product and limit results
-        filtered_recommendations = [
-            row for row in recommendations_data 
-            if row["product_id"] != product_id
-        ][:limit]
-        
-        # Convert to Product models
-        recommendations = [
-            Product(
-                product_id=row["product_id"],
-                product_name=row["product_name"],
-                aisle_id=row["aisle_id"],
-                department_id=row["department_id"],
-                aisle_name=row.get("aisle_name"),
-                department_name=row.get("department_name"),
-                description=row.get("description"),
-                price=row.get("price"),
-                image_url=row.get("image_url")
-            )
-            for row in filtered_recommendations
-        ]
+        # Convert to Product model
+        product_row = products_data[0]
+        product = Product(
+            product_id=product_row["product_id"],
+            product_name=product_row["product_name"],
+            aisle_id=product_row["aisle_id"],
+            department_id=product_row["department_id"],
+            aisle_name=product_row.get("aisle_name"),
+            department_name=product_row.get("department_name"),
+            description=product_row.get("description"),
+            price=product_row.get("price"),
+            image_url=product_row.get("image_url")
+        )
         
         return APIResponse(
-            message=f"Found {len(recommendations)} recommendations for product {product_id}",
-            data={
-                "product_id": product_id,
-                "recommendations": recommendations,
-                "total": len(recommendations)
-            }
+            message="Product retrieved successfully",
+            data=product
         )
     except HTTPException:
         raise

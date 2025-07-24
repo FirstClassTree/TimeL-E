@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { Mail, Lock, Eye, EyeOff, ShoppingCart, Brain, Loader2 } from 'lucide-react';
+import {Mail, Lock, Eye, EyeOff, ShoppingCart, Loader2, User} from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 interface LoginFormData {
   email: string;
@@ -13,12 +14,41 @@ interface LoginFormData {
   rememberMe: boolean;
 }
 
+interface QuickLoginUser {
+  id: string;
+  name: string;
+  email: string;
+  avatar: string;
+}
+
+const quickLoginUsers: QuickLoginUser[] = [
+    {
+      id: "39993",
+      name: "John",
+      email: "user39993@timele-demo.com",
+      avatar: "👨‍💼"
+    },
+    {
+      id: "688",
+      name: "Sarah",
+      email: "user688@timele-demo.com",
+      avatar: "👩‍💻"
+    },
+    {
+      id: "82420",
+      name: "Mike",
+      email: "user82420@timele-demo.com",
+      avatar: "👨‍🎨"
+    }
+  ];
+
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoading } = useAuthStore();
+  const { user, login, isLoading } = useAuthStore();
   const { fetchCart } = useCartStore();
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false)
+  const { userId, setUserId } = useUser();
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -40,7 +70,10 @@ const Login: React.FC = () => {
       await login(data.email, data.password);
       
       // Fetch cart after successful login
-      await fetchCart();
+      const loggedInUser = useAuthStore.getState().user;
+      if (loggedInUser?.id) {
+        await fetchCart(loggedInUser.id);
+      }
       
       // Redirect to intended page or home
       navigate(from, { replace: true });
@@ -53,8 +86,27 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleQuickLogin = async (quickUser: QuickLoginUser) => {
+    try {
+      setUserId(quickUser.id);
+      // Use the demo login which will return a random user
+      await login('demo@timele.com', 'password');
+      
+      // Fetch cart after successful login
+      const loggedInUser = useAuthStore.getState().user;
+      if (loggedInUser?.id) {
+        await fetchCart(loggedInUser.id);
+      }
+      
+      toast.success(`Welcome ${quickUser.name}!`);
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      toast.error('Quick login failed. Please try again.');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -64,7 +116,7 @@ const Login: React.FC = () => {
         {/* Logo and Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center justify-center gap-2 mb-6">
-            <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl">
+            <div className="p-3 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl">
               <ShoppingCart className="w-8 h-8 text-white" />
             </div>
             <span className="text-2xl font-bold text-gray-900 dark:text-white">TimeL-E</span>
@@ -185,7 +237,7 @@ const Login: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
+              className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -218,19 +270,39 @@ const Login: React.FC = () => {
             </Link>
           </form>
 
-          {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="flex items-start gap-3">
-              <Brain className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-blue-900 dark:text-blue-100 mb-1">
-                  Demo Credentials
-                </p>
-                <p className="text-blue-700 dark:text-blue-300">
-                  Email: user@timele.com<br />
-                  Password: user123
-                </p>
-              </div>
+          {/* Quick Login Users */}
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                Quick Login
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {quickLoginUsers.map((quickUser) => (
+                <motion.button
+                  key={quickUser.id}
+                  onClick={() => handleQuickLogin(quickUser)}
+                  disabled={isLoading}
+                  className="w-full p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="text-2xl">{quickUser.avatar}</div>
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {quickUser.name}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {quickUser.email}
+                    </p>
+                  </div>
+                  {isLoading && userId === quickUser.id && (
+                    <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                  )}
+                </motion.button>
+              ))}
             </div>
           </div>
         </motion.div>

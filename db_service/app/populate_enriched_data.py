@@ -17,10 +17,17 @@ from app.db_core.database import SessionLocal
 
 def populate_enriched_data(force_reset=False):
     """Populate the product_enriched table from CSV"""
-
-    # Use /data/products_enriched/ (/data is a mounted volume)
-    enriched_dir = Path("/data/products_enriched")
-    csv_files = sorted(enriched_dir.glob("enriched_products_dept*.csv"))
+    
+    # Database setup
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    
+    # CSV file path - check both possible locations
+    csv_file_local = Path(__file__).parent.parent / "data" / "dataenriched_products_ALL_DEPARTMENTS.csv"
+    csv_file_docker = Path("/app/csv_data/dataenriched_products_ALL_DEPARTMENTS.csv")
+    
+    # Use docker path if it exists, otherwise use local path
+    csv_file = csv_file_docker if csv_file_docker.exists() else csv_file_local
     
     if not csv_files:
         print(f"Error: No enriched CSV files found in {enriched_dir}")

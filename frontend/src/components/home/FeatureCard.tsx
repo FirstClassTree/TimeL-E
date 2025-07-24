@@ -22,7 +22,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({
       transition={{ duration: 0.6, delay }}
       className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow"
     >
-      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-4">
+      <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-800 rounded-lg flex items-center justify-center mb-4">
         <Icon className="h-6 w-6 text-white" />
       </div>
       

@@ -1,6 +1,3 @@
-// frontend/src/layouts/AdminLayout.tsx
-// UPDATED: Added navigation for User Seeding and enhanced demo features
-
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -94,12 +91,12 @@ const AdminLayout: React.FC = () => {
             </button>
             
             <Link to="/" className="flex items-center gap-2">
-              <div className="p-1.5 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+              <div className="p-1.5 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
                 <ShoppingCart className="w-5 h-5 text-white" />
               </div>
               <div>
                 <span className="text-lg font-bold text-gray-900 dark:text-white">TimeL-E</span>
-                <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                <div className="flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400">
                   <Shield size={10} />
                   <span>Admin</span>
                 </div>
@@ -108,9 +105,9 @@ const AdminLayout: React.FC = () => {
           </div>
 
           {/* Mobile User Avatar */}
-          <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
             <span className="text-white font-bold text-sm">
-              {user?.firstName?.[0]?.toUpperCase() || 'A'}
+              {user?.name?.[0]?.toUpperCase() || 'A'}
             </span>
           </div>
         </div>
@@ -131,12 +128,12 @@ const AdminLayout: React.FC = () => {
               <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <Link to="/" className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
+                    <div className="p-2 bg-gradient-to-br from-cyan-600 to-blue-600 rounded-lg">
                       <ShoppingCart className="w-6 h-6 text-white" />
                     </div>
                     <div>
                       <span className="text-lg font-bold text-gray-900 dark:text-white">TimeL-E</span>
-                      <div className="flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                      <div className="flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400">
                         <Shield size={12} />
                         <span>Admin</span>
                       </div>
@@ -155,14 +152,14 @@ const AdminLayout: React.FC = () => {
               {/* User Info */}
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold">
-                      {user?.firstName?.[0]?.toUpperCase() || 'A'}
+                      {user?.name?.[0]?.toUpperCase() || 'A'}
                     </span>
                   </div>
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white text-sm">
-                      {user?.firstName} {user?.lastName}
+                      {user?.name}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       Administrator
@@ -187,7 +184,7 @@ const AdminLayout: React.FC = () => {
                       onClick={() => window.innerWidth < 1024 && setIsSidebarOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                         location.pathname === item.path
-                          ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                          ? 'bg-cyan-50 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                       }`}
                     >
@@ -215,7 +212,7 @@ const AdminLayout: React.FC = () => {
                     onClick={() => window.innerWidth < 1024 && setIsSidebarOpen(false)}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       location.pathname === item.path
-                        ? 'bg-indigo-50 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300'
+                        ? 'bg-cyan-50 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >

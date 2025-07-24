@@ -14,11 +14,8 @@ export default defineConfig(({ command, mode }) => {
         jsxRuntime: 'automatic'
       })
     ],
-    
-    // ========================================================================
-    // PATH RESOLUTION
-    // ========================================================================
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(__dirname, './src'),
         '@components': path.resolve(__dirname, './src/components'),
@@ -27,7 +24,9 @@ export default defineConfig(({ command, mode }) => {
         '@stores': path.resolve(__dirname, './src/stores'),
         '@utils': path.resolve(__dirname, './src/utils'),
         '@types': path.resolve(__dirname, './src/types'),
-        '@assets': path.resolve(__dirname, './src/assets')
+        '@assets': path.resolve(__dirname, './src/assets'),
+        'react': path.resolve(__dirname, './node_modules/react'),
+        'react-dom': path.resolve(__dirname, './node_modules/react-dom')
       }
     },
 
@@ -89,7 +88,7 @@ export default defineConfig(({ command, mode }) => {
             router: ['react-router-dom'],
             ui: ['framer-motion', '@headlessui/react', 'lucide-react'],
             forms: ['react-hook-form'],
-            http: ['axios', 'react-query'],
+            http: ['axios', '@tanstack/react-query'],
             state: ['zustand'],
             charts: ['recharts'],
             utils: ['date-fns', 'clsx', 'tailwind-merge']
@@ -131,7 +130,7 @@ export default defineConfig(({ command, mode }) => {
         'react-router-dom',
         'axios',
         'zustand',
-        'react-query',
+        '@tanstack/react-query',
         'framer-motion',
         'lucide-react',
         'recharts',

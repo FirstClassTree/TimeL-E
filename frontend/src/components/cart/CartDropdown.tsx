@@ -1,9 +1,9 @@
-// frontend/src/components/cart/CartDropdown.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Trash2, Plus, Minus, X } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
+import { useUser } from '@/components/auth/UserProvider';
 
 interface CartDropdownProps {
   onClose: () => void;
@@ -11,12 +11,13 @@ interface CartDropdownProps {
 
 const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
   const { cart, updateQuantity, removeItem, getSubtotal, getItemCount } = useCartStore();
+  const { userId } = useUser();
 
-  const handleQuantityChange = (id: string, newQuantity: number) => {
+  const handleQuantityChange = (id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(id);
+      removeItem(userId, id);
     } else {
-      updateQuantity(id, newQuantity);
+      updateQuantity(userId, id, newQuantity);
     }
   };
 
@@ -77,8 +78,8 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Product Image */}
                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                     <img
-                      src={item.product.image}
-                      alt={item.product.name}
+                      src={item.product.image_url}
+                      alt={item.product.product_name}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
@@ -87,7 +88,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Product Info */}
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {item.product.name}
+                      {item.product.product_name}
                     </h4>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       ${item.price.toFixed(2)}
@@ -117,7 +118,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
 
                   {/* Remove Button */}
                   <button
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => removeItem(userId, item.id)}
                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={16} />

@@ -4,8 +4,10 @@ import { ShoppingCart } from 'lucide-react';
 import { Product } from '@/services/product.service';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
-import { useMutation } from 'react-query';
+import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
+import ProductImage from '@/components/products/ProductImage';
 
 interface ProductListItemProps {
   product: Product;
@@ -13,10 +15,11 @@ interface ProductListItemProps {
 
 const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
   const { addToCart } = useCartStore();
-  const { isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
+  const { userId } = useUser();
 
   const addToCartMutation = useMutation(
-    () => addToCart(product.id),
+    () => addToCart(user?.id ?? userId, product.product_id),
     {
       onSuccess: () => {
         toast.success('Added to cart');
@@ -38,21 +41,19 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
     addToCartMutation.mutate();
   };
 
-  const discount = product.compareAtPrice 
-    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
-    : 0;
+  const discount = 0;
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow">
-      <Link to={`/products/${product.id}`} className="block">
+      <Link to={`/products/${product.product_id}`} className="block">
         <div className="flex p-4">
           {/* Product Image */}
-          <div className="flex-shrink-0 w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-            <img
-              src={product.imageUrl || 'https://images.pexels.com/photos/264537/pexels-photo-264537.jpeg?auto=compress&cs=tinysrgb&w=400'}
-              alt={product.name}
-              className="w-full h-full object-cover"
-              loading="lazy"
+          <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden">
+            <ProductImage
+              src={product.image_url}
+              alt={product.product_name}
+              department={product.department_name}
+              className="w-full h-full"
             />
           </div>
           
@@ -61,10 +62,10 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
-                  {product.name}
+                  {product.product_name}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {product.brand} • {product.category?.name}
+                  {product.department_name} • {product.aisle_name}
                 </p>
                 {product.description && (
                   <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
@@ -75,12 +76,12 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
                 {/* Price */}
                 <div className="flex items-center gap-2 mt-2">
                   <span className="font-bold text-gray-900 dark:text-white">
-                    ${product.price.toFixed(2)}
+                    ${product.price?.toFixed(2)}
                   </span>
-                  {product.compareAtPrice && (
+                  {product.price && (
                     <>
                       <span className="text-xs text-gray-500 line-through">
-                        ${product.compareAtPrice.toFixed(2)}
+                        ${product.price.toFixed(2)}
                       </span>
                       {discount > 0 && (
                         <span className="text-xs font-medium text-red-600 dark:text-red-400">
@@ -90,25 +91,6 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
                     </>
                   )}
                 </div>
-
-                {/* Stock Status */}
-                {product.trackInventory && (
-                  <div className="mt-1">
-                    {product.stock === 0 ? (
-                      <span className="text-xs text-red-600 dark:text-red-400">
-                        Out of stock
-                      </span>
-                    ) : product.stock <= 5 ? (
-                      <span className="text-xs text-orange-600 dark:text-orange-400">
-                        Only {product.stock} left
-                      </span>
-                    ) : (
-                      <span className="text-xs text-green-600 dark:text-green-400">
-                        In stock
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
               
               {/* Actions */}
@@ -116,13 +98,11 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
                 {/* Add to Cart */}
                 <button
                   onClick={handleAddToCart}
-                  disabled={addToCartMutation.isLoading || product.stock === 0}
+                  disabled={addToCartMutation.isLoading}
                   className={`p-2 rounded-full transition-all ${
-                    product.stock === 0
-                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                      : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+                    'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
-                  title={product.stock === 0 ? 'Out of stock' : 'Add to cart'}
+                  title='Add to cart'
                 >
                   <ShoppingCart size={16} />
                 </button>

@@ -23,14 +23,7 @@ interface AuthResponse {
 interface User {
   id: string;
   email: string;
-  firstName: string;
-  lastName: string;
-  role: 'user' | 'admin';
-  phone?: string;
-  isActive: boolean;
-  lastLoginAt?: string;
-  createdAt: string;
-  updatedAt: string;
+  name: string;
 }
 
 class AuthService {
@@ -38,17 +31,34 @@ class AuthService {
   private readonly REFRESH_TOKEN_KEY = 'timele_refresh_token';
   private readonly USER_KEY = 'timele_user';
 
-  // Login
+  // Login - Adapted for demo backend
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/login', credentials);
-    this.setTokens(response.accessToken, response.refreshToken);
-    this.setUser(response.user);
-    return response;
+    // Call the demo login endpoint (GET request, ignores credentials)
+    const response = await api.get('/users/login');
+    
+    // Transform backend format to frontend expected format
+    const user = {
+      id: response.user_id,
+      email: response.email_address,
+      name: response.name
+    };
+    
+    // Create mock tokens since backend doesn't provide them
+    const mockAuth = {
+      user,
+      accessToken: `demo_token_${response.user_id}`,
+      refreshToken: `demo_refresh_${response.user_id}`
+    };
+    
+    this.setTokens(mockAuth.accessToken, mockAuth.refreshToken);
+    this.setUser(mockAuth.user);
+    
+    return mockAuth;
   }
 
   // Register
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/auth/register', data);
+    const response = await api.post<AuthResponse>('/users/register', data);
     this.setTokens(response.accessToken, response.refreshToken);
     this.setUser(response.user);
     return response;
@@ -57,7 +67,7 @@ class AuthService {
   // Logout
   async logout(): Promise<void> {
     try {
-      await api.post('/auth/logout');
+      await api.post('/users/logout');
     } catch (error) {
       // Ignore logout errors
     } finally {
@@ -73,7 +83,7 @@ class AuthService {
     }
 
     const response = await api.post<{ accessToken: string; refreshToken: string }>(
-      '/auth/refresh',
+      '/users/refresh',
       { refreshToken }
     );
 
@@ -89,17 +99,12 @@ class AuthService {
 
   // Forgot password
   async forgotPassword(email: string): Promise<void> {
-    await api.post('/auth/forgot-password', { email });
+    await api.post('/users/forgot-password', { email });
   }
 
   // Reset password
-  async resetPassword(token: string, password: string): Promise<void> {
-    await api.post('/auth/reset-password', { token, password });
-  }
-
-  // Change password
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    await api.put('/auth/change-password', { currentPassword, newPassword });
+  async resetPassword(userId: string, token: string, password: string): Promise<void> {
+    await api.post(`/users/${userId}/reset-password`, { token, password });
   }
 
   // Token management
@@ -131,43 +136,11 @@ class AuthService {
     return !!this.getAccessToken() && !!this.getUser();
   }
 
-  // Check if user is admin
-  isAdmin(): boolean {
-    const user = this.getUser();
-    return user?.role === 'admin';
-  }
-
   // Clear auth data
   private clearAuth(): void {
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
-  }
-
-  // Decode JWT token (optional utility)
-  decodeToken(token: string): any {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      return null;
-    }
-  }
-
-  // Check if token is expired
-  isTokenExpired(token: string): boolean {
-    const decoded = this.decodeToken(token);
-    if (!decoded || !decoded.exp) return true;
-    
-    const expirationDate = new Date(decoded.exp * 1000);
-    return expirationDate < new Date();
   }
 }
 

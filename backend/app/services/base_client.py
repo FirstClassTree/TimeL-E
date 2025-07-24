@@ -1,22 +1,28 @@
 # backend/app/services/base_client.py
 import httpx
+import asyncio
 from typing import Dict, Any, Optional
 from ..config import settings
 
 class ServiceClient:
-    """Async HTTP client for inter-service communication"""
+    """Base HTTP client for communicating with other services"""
     
-    def __init__(self):
-        self.timeout = httpx.Timeout(settings.SERVICE_TIMEOUT)
-        self.client = None
+    def __init__(self, timeout: int = None):
+        self.timeout = timeout or settings.SERVICE_TIMEOUT
+        self._client = None
     
     async def __aenter__(self):
-        self.client = httpx.AsyncClient(timeout=self.timeout)
+        """Async context manager entry"""
+        self._client = httpx.AsyncClient(
+            timeout=self.timeout,
+            follow_redirects=True
+        )
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.client:
-            await self.client.aclose()
+        """Async context manager exit"""
+        if self._client:
+            await self._client.aclose()
     
     async def request(
         self, 
@@ -26,25 +32,82 @@ class ServiceClient:
         params: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None
     ) -> Dict[str, Any]:
-        """Make HTTP request to external service"""
+        """Make HTTP request to service"""
+        
+        if not self._client:
+            raise RuntimeError("ServiceClient must be used as async context manager")
+        
+        # Default headers
+        request_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        if headers:
+            request_headers.update(headers)
+        
         try:
-            if not self.client:
-                raise RuntimeError("Client not initialized. Use async context manager.")
+            # Make the request
+            if method.upper() == "GET":
+                response = await self._client.get(
+                    url, 
+                    params=params, 
+                    headers=request_headers
+                )
+            elif method.upper() == "POST":
+                response = await self._client.post(
+                    url, 
+                    json=data, 
+                    params=params, 
+                    headers=request_headers
+                )
+            elif method.upper() == "PUT":
+                response = await self._client.put(
+                    url, 
+                    json=data, 
+                    params=params, 
+                    headers=request_headers
+                )
+            elif method.upper() == "PATCH":
+                response = await self._client.patch(
+                    url, 
+                    json=data, 
+                    params=params, 
+                    headers=request_headers
+                )
+            elif method.upper() == "DELETE":
+                response = await self._client.delete(
+                    url, 
+                    json=data, 
+                    params=params, 
+                    headers=request_headers
+                )
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
             
-            response = await self.client.request(
-                method=method,
-                url=url,
-                json=data,
-                params=params,
-                headers=headers or {"Content-Type": "application/json"}
-            )
-            
+            # Check for HTTP errors
             response.raise_for_status()
+            
+            # Return JSON response
             return response.json()
             
-        except httpx.TimeoutException:
-            raise Exception(f"Service timeout: {url}")
         except httpx.HTTPStatusError as e:
-            raise Exception(f"Service error {e.response.status_code}: {e.response.text}")
+            # Handle HTTP errors
+            error_detail = f"HTTP {e.response.status_code} error"
+            try:
+                error_body = e.response.json()
+                if "detail" in error_body:
+                    error_detail = error_body["detail"]
+                elif "message" in error_body:
+                    error_detail = error_body["message"]
+            except:
+                error_detail = f"HTTP {e.response.status_code}: {e.response.text}"
+            
+            raise Exception(f"Service request failed: {error_detail}")
+            
+        except httpx.RequestError as e:
+            # Handle connection errors
+            raise Exception(f"Service connection failed: {str(e)}")
+        
         except Exception as e:
-            raise Exception(f"Service communication error: {str(e)}")
+            # Handle other errors
+            raise Exception(f"Service request error: {str(e)}")

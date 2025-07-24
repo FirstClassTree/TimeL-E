@@ -1,25 +1,21 @@
-// frontend/src/pages/Profile.tsx
-// FIXED: Removed dateOfBirth field that doesn't exist in user model
-
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
-import { useMutation, useQueryClient } from 'react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  User, Mail, Phone, MapPin, Settings,
-  Edit3, Save, X, CheckCircle, Eye, EyeOff, Shield
+  User, Mail, Settings,
+  Edit3, Save, X, CheckCircle, Eye, EyeOff
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
-// FIXED: Removed dateOfBirth from interface
 interface ProfileFormData {
-  firstName: string;
-  lastName: string;
+  id: string;
+  name: string;
   email: string;
-  phone?: string;
 }
 
 interface PasswordFormData {
@@ -30,6 +26,7 @@ interface PasswordFormData {
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuthStore();
+  const { userId } = useUser();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -43,10 +40,9 @@ const Profile: React.FC = () => {
     reset: resetProfile
   } = useForm<ProfileFormData>({
     defaultValues: {
-      firstName: user?.firstName || '',
-      lastName: user?.lastName || '',
+      id: user?.id || userId,
+      name: user?.name || '',
       email: user?.email || '',
-      phone: user?.phone || '',
     }
   });
 
@@ -59,7 +55,10 @@ const Profile: React.FC = () => {
   } = useForm<PasswordFormData>();
 
   // Update profile mutation
-  const updateProfileMutation = useMutation(userService.updateProfile, {
+  const updateProfileMutation = useMutation(
+        ({ id, data }: { id: string; data: any }) =>
+    userService.updateProfile(id, data),
+  {
     onSuccess: (data) => {
       updateUser(data);
       setIsEditing(false);
@@ -73,7 +72,10 @@ const Profile: React.FC = () => {
   });
 
   // Change password mutation
-  const changePasswordMutation = useMutation(userService.changePassword, {
+  const changePasswordMutation = useMutation(
+        ({ id, passwordData }: { id: string; passwordData: any }) =>
+    userService.changePassword(id, passwordData),
+  {
     onSuccess: () => {
       setShowPasswordForm(false);
       resetPassword();
@@ -86,7 +88,8 @@ const Profile: React.FC = () => {
   });
 
   const onSubmitProfile = (data: ProfileFormData) => {
-    updateProfileMutation.mutate(data);
+    let id = user?.id || userId;
+    updateProfileMutation.mutate({id, data});
   };
 
   const onSubmitPassword = (data: PasswordFormData) => {
@@ -94,19 +97,21 @@ const Profile: React.FC = () => {
       toast.error('New passwords do not match');
       return;
     }
+    let id = user?.id || userId;
     changePasswordMutation.mutate({
+      id : id,
+      passwordData:  {
       currentPassword: data.currentPassword,
       newPassword: data.newPassword
-    });
+    }});
   };
 
   const handleCancelEdit = () => {
     setIsEditing(false);
     resetProfile({
-      firstName: user?.firstName || '',
-      lastName: user?.lastName || '',
+      id: user?.id || '',
+      name: user?.name || '',
       email: user?.email || '',
-      phone: user?.phone || '',
     });
   };
 
@@ -122,7 +127,7 @@ const Profile: React.FC = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Profile</h1>
           <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Manage your account information and preferences
+            Manage your account information
           </p>
         </div>
 
@@ -133,29 +138,23 @@ const Profile: React.FC = () => {
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-xl">
-                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                      {user.name?.charAt(0)}
                     </span>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {user.firstName} {user.lastName}
+                      {user.name}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400">{user.email}</p>
-                    {user.isAdmin && (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200 text-xs font-medium rounded-full mt-1">
-                        <Shield size={12} />
-                        Administrator
-                      </span>
-                    )}
                   </div>
                 </div>
                 
                 {!isEditing && (
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors"
                   >
                     <Edit3 size={16} />
                     Edit Profile
@@ -167,7 +166,7 @@ const Profile: React.FC = () => {
             <form onSubmit={handleSubmitProfile(onSubmitProfile)} className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* First Name */}
+                {/* Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     First Name
@@ -175,39 +174,17 @@ const Profile: React.FC = () => {
                   {isEditing ? (
                     <input
                       type="text"
-                      {...registerProfile('firstName', { required: 'First name is required' })}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      {...registerProfile('name', { required: 'First Name is required' })}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   ) : (
                     <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
                       <User size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">{user.firstName}</span>
+                      <span className="text-gray-900 dark:text-white">{user.name}</span>
                     </div>
                   )}
-                  {profileErrors.firstName && (
-                    <p className="text-red-500 text-sm mt-1">{profileErrors.firstName.message}</p>
-                  )}
-                </div>
-
-                {/* Last Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Last Name
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="text"
-                      {...registerProfile('lastName', { required: 'Last name is required' })}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                      <User size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">{user.lastName}</span>
-                    </div>
-                  )}
-                  {profileErrors.lastName && (
-                    <p className="text-red-500 text-sm mt-1">{profileErrors.lastName.message}</p>
+                  {profileErrors.name && (
+                    <p className="text-red-500 text-sm mt-1">{profileErrors.name.message}</p>
                   )}
                 </div>
 
@@ -223,28 +200,6 @@ const Profile: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Email cannot be changed in demo mode
                   </p>
-                </div>
-
-                {/* Phone */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Phone Number
-                  </label>
-                  {isEditing ? (
-                    <input
-                      type="tel"
-                      {...registerProfile('phone')}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Optional"
-                    />
-                  ) : (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                      <Phone size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">
-                        {user.phone || 'Not provided'}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -268,7 +223,7 @@ const Profile: React.FC = () => {
                     <button
                       type="submit"
                       disabled={updateProfileMutation.isLoading}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {updateProfileMutation.isLoading ? (
                         <>
@@ -332,7 +287,7 @@ const Profile: React.FC = () => {
                         <input
                           type={showCurrentPassword ? 'text' : 'password'}
                           {...registerPassword('currentPassword', { required: 'Current password is required' })}
-                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10"
                         />
                         <button
                           type="button"
@@ -362,7 +317,7 @@ const Profile: React.FC = () => {
                               message: 'Password must be at least 6 characters'
                             }
                           })}
-                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-10"
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 pr-10"
                         />
                         <button
                           type="button"
@@ -389,7 +344,7 @@ const Profile: React.FC = () => {
                           validate: value => 
                             value === watch('newPassword') || 'Passwords do not match'
                         })}
-                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       />
                       {passwordErrors.confirmPassword && (
                         <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword.message}</p>
@@ -412,7 +367,7 @@ const Profile: React.FC = () => {
                       <button
                         type="submit"
                         disabled={changePasswordMutation.isLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {changePasswordMutation.isLoading ? (
                           <>
@@ -432,48 +387,10 @@ const Profile: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
-
-          {/* Account Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Account Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Account Type</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {user.isAdmin ? (
-                    <>
-                      <Shield size={16} className="text-indigo-600 dark:text-indigo-400" />
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">Administrator</span>
-                    </>
-                  ) : (
-                    <>
-                      <User size={16} className="text-gray-600 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">Standard User</span>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Member Since</p>
-                <p className="text-gray-900 dark:text-white mt-1">
-                  {user.createdAt 
-                    ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })
-                    : 'Unknown'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
-  );
+      );
 };
 
 export default Profile;

@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .routers import products, orders, predictions, users, cart, categories
+from .routers import orders, predictions, users, cart, categories, products
 from .models.base import APIResponse
 
 # Create FastAPI app

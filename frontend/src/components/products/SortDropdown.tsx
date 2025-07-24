@@ -1,6 +1,3 @@
-// frontend/src/components/products/SortDropdown.tsx
-// FIXED: Aligned with backend API - separate sort field and order parameters
-
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
@@ -22,8 +19,7 @@ const SortDropdown: React.FC<SortDropdownProps> = ({ value, onChange }) => {
     { value: 'name' as SortOption, label: 'Name (A-Z)' },
     { value: 'price' as SortOption, label: 'Price (Low to High)' },
     { value: 'createdAt' as SortOption, label: 'Newest First' },
-    { value: 'popularity' as SortOption, label: 'Most Popular' },
-    { value: 'rating' as SortOption, label: 'Highest Rated' }
+    { value: 'popularity' as SortOption, label: 'Most Popular' }
   ];
 
   return (

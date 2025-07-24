@@ -85,7 +85,7 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -115,7 +115,7 @@ const Register: React.FC = () => {
                   transition={{ delay: 0.3 + index * 0.1 }}
                   className="flex items-center gap-3"
                 >
-                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full">
+                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-full">
                     <Check className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
@@ -127,7 +127,7 @@ const Register: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="mt-12 p-6 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl"
+              className="mt-12 p-6 bg-gradient-to-r from-indigo-500/10 to-blue-500/10 rounded-2xl"
             >
               <div className="flex items-center gap-3 mb-3">
                 <Sparkles className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -147,7 +147,7 @@ const Register: React.FC = () => {
           {/* Logo and Header */}
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center justify-center gap-2 mb-6">
-              <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl">
+              <div className="p-3 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-2xl">
                 <ShoppingCart className="w-8 h-8 text-white" />
               </div>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">TimeL-E</span>
@@ -272,7 +272,7 @@ const Register: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-[1.02]"
+                    className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all transform hover:scale-[1.02]"
                   >
                     Continue
                   </button>
@@ -396,7 +396,7 @@ const Register: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleNextStep}
-                      className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-[1.02]"
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-blue-700 transition-all transform hover:scale-[1.02]"
                     >
                       Continue
                     </button>
@@ -466,7 +466,7 @@ const Register: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
+                      className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02]"
                     >
                       {isLoading ? (
                         <span className="flex items-center justify-center gap-2">

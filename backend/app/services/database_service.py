@@ -56,24 +56,48 @@ class DatabaseService:
     async def query(self, query_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute custom query"""
         async with ServiceClient() as client:
-            response = await client.request(
-                method="POST",
-                url=f"{self.base_url}/query",
-                data=query_data
-            )
-            
-            # Convert db-service response format to expected backend format
-            if response.get("status") == "ok":
-                return {
-                    "success": True,
-                    "data": response.get("results", [])
-                }
-            else:
-                return {
-                    "success": False,
-                    "data": [],
-                    "error": response.get("detail", "Query failed")
-                }
+            try:
+                response = await client.request(
+                    method="POST",
+                    url=f"{self.base_url}/query",
+                    data=query_data
+                )
+                
+                # Convert db-service response format to expected backend format
+                if response.get("status") == "ok":
+                    return {
+                        "success": True,
+                        "data": response.get("results", [])
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": response.get("detail", "Query failed")
+                    }
+            except Exception as e:
+                # Extract more detailed error information
+                error_str = str(e)
+                
+                # Check for common database constraint violations
+                if "email_address" in error_str and "already exists" in error_str:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": "Email address already exists"
+                    }
+                elif "name" in error_str and "already exists" in error_str:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": "Username already exists"
+                    }
+                else:
+                    return {
+                        "success": False,
+                        "data": [],
+                        "error": f"Database error: {error_str}"
+                    }
 
     # Product-specific methods
     async def get_products_with_filters(
@@ -398,6 +422,107 @@ class DatabaseService:
             "params": [int(user_id), hashed_password]
         }
         return await self.query(query)
+
+    # Simplified Order methods
+    async def get_user_orders_with_items(
+        self,
+        user_id: int,
+        limit: int = 20,
+        offset: int = 0
+    ) -> Dict[str, Any]:
+        """Get user orders with their items in a single query"""
+        query = {
+            "sql": """
+                SELECT o.order_id, o.user_id, o.order_number, o.status::text,
+                       o.total_items,
+                       oi.product_id, oi.quantity, p.product_name
+                FROM orders.orders o
+                LEFT JOIN orders.order_items oi ON o.order_id = oi.order_id
+                LEFT JOIN products.products p ON oi.product_id = p.product_id
+                WHERE o.user_id = $1
+                ORDER BY o.order_number DESC, oi.product_id
+                LIMIT $2 OFFSET $3
+            """,
+            "params": [user_id, limit, offset]
+        }
+        return await self.query(query)
+
+    async def create_order_with_items(
+        self,
+        user_id: int,
+        items: list
+    ) -> Dict[str, Any]:
+        """Create a new order with items using multiple SQL queries"""
+        try:
+            # First, get the next order number for this user
+            order_number_query = {
+                "sql": """
+                    SELECT COALESCE(MAX(order_number), 0) + 1 as next_order_number
+                    FROM orders.orders
+                    WHERE user_id = $1
+                """,
+                "params": [user_id]
+            }
+            
+            order_number_result = await self.query(order_number_query)
+            if not order_number_result.get("success", True):
+                return {"success": False, "error": "Failed to get next order number"}
+            
+            next_order_number = order_number_result["data"][0]["next_order_number"]
+            
+            # Create the order
+            create_order_query = {
+                "sql": """
+                    INSERT INTO orders.orders (user_id, eval_set, order_number, order_dow, 
+                                             order_hour_of_day, days_since_prior_order, 
+                                             total_items, status)
+                    VALUES ($1, 'new', $2, 1, 12, NULL, $3, 'PENDING')
+                    RETURNING order_id, user_id, order_number, status::text, total_items
+                """,
+                "params": [user_id, next_order_number, len(items)]
+            }
+            
+            order_result = await self.query(create_order_query)
+            if not order_result.get("success", True):
+                return {"success": False, "error": "Failed to create order"}
+            
+            order_data = order_result["data"][0]
+            order_id = order_data["order_id"]
+            
+            # Create order items
+            created_items = []
+            for item in items:
+                item_query = {
+                    "sql": """
+                        INSERT INTO orders.order_items (order_id, product_id, add_to_cart_order, 
+                                                       reordered, quantity)
+                        VALUES ($1, $2, $3, 0, $4)
+                        RETURNING order_id, product_id, quantity
+                    """,
+                    "params": [order_id, item.product_id, len(created_items) + 1, item.quantity]
+                }
+                
+                item_result = await self.query(item_query)
+                if not item_result.get("success", True):
+                    return {"success": False, "error": f"Failed to add item {item.product_id}"}
+                
+                created_items.append(item_result["data"][0])
+            
+            # Return the complete order data
+            return {
+                "success": True,
+                "data": {
+                    "order_id": order_data["order_id"],
+                    "user_id": order_data["user_id"],
+                    "order_number": order_data["order_number"],
+                    "status": order_data["status"],
+                    "total_items": order_data["total_items"],
+                    "items": created_items
+                }
+            }
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
 # Service instance
 db_service = DatabaseService()

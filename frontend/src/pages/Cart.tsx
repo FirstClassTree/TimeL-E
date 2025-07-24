@@ -1,12 +1,9 @@
-// frontend/src/pages/Cart.tsx
-// FIXED: Moved confirmation dialog to component level - proper separation of concerns
-
 import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingCart, Trash2, Plus, Minus, ArrowRight, 
-  Package, AlertCircle, CheckCircle, Truck, Info
+  Package, CheckCircle, Truck
 } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
@@ -14,6 +11,7 @@ import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import toast from 'react-hot-toast';
+import { useUser } from '@/components/auth/UserProvider';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
@@ -26,20 +24,20 @@ const Cart: React.FC = () => {
     updateQuantity, 
     removeItem, 
     clearCart,
-    getSubtotal,
-    getSavings
+    getSubtotal
   } = useCartStore();
+  const { userId } = useUser();
 
   useEffect(() => {
-    fetchCart();
+    fetchCart(user?.id ?? userId);
   }, []);
 
-  const handleQuantityChange = async (itemId: string, currentQuantity: number, delta: number) => {
+  const handleQuantityChange = async (itemId: number, currentQuantity: number, delta: number) => {
     const newQuantity = currentQuantity + delta;
     if (newQuantity < 1) {
-      await removeItem(itemId);
+      await removeItem(user?.id ?? userId, itemId);
     } else {
-      await updateQuantity(itemId, newQuantity);
+      await updateQuantity(user?.id ?? userId, itemId, newQuantity);
     }
   };
 
@@ -51,13 +49,11 @@ const Cart: React.FC = () => {
     navigate('/checkout');
   };
 
-  // FIXED: Moved confirmation dialog to component level
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
       try {
-        await clearCart();
+        await clearCart(user?.id ?? userId);
       } catch (error) {
-        // Error is already handled in the store with toast
         console.error('Failed to clear cart:', error);
       }
     }
@@ -86,10 +82,9 @@ const Cart: React.FC = () => {
   }
 
   const subtotal = getSubtotal();
-  const savings = getSavings();
-  const estimatedTax = subtotal * 0.08; // 8% tax
-  const deliveryFee = subtotal > 50 ? 0 : 5.99; // Free delivery over $50
-  const total = subtotal + estimatedTax + deliveryFee - savings;
+  const estimatedTax = subtotal * 0.18; // 18% tax
+  const deliveryFee = 7.99;
+  const total = subtotal + estimatedTax + deliveryFee;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
@@ -135,8 +130,8 @@ const Cart: React.FC = () => {
                       <div className="flex items-start gap-4">
                         <div className="w-20 h-20 flex-shrink-0">
                           <ProductImage
-                            src={item.product.imageUrl}
-                            alt={item.product.name}
+                            src={item.product.image_url}
+                            alt={item.product.product_name}
                             className="w-full h-full object-cover rounded-lg"
                           />
                         </div>
@@ -145,26 +140,26 @@ const Cart: React.FC = () => {
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-base font-medium text-gray-900 dark:text-white truncate">
-                                {item.product.name}
+                                {item.product.product_name}
                               </h3>
                               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {item.product.category?.name}
+                                {item.product.department_name}
                               </p>
                               
-                              {item.product.originalPrice > item.product.price && (
+                              {item.product.price != null && (
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-sm line-through text-gray-400">
-                                    ${item.product.originalPrice.toFixed(2)}
+                                    ${item.product.price.toFixed(2)}
                                   </span>
-                                  <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                                    Save ${(item.product.originalPrice - item.product.price).toFixed(2)}
+                                  <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                                    $0.00
                                   </span>
                                 </div>
                               )}
                             </div>
                             
                             <button
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeItem(user?.id ?? userId, item.id)}
                               disabled={isUpdating}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 disabled:opacity-50"
                             >
@@ -237,13 +232,6 @@ const Cart: React.FC = () => {
                   <span className="text-gray-900 dark:text-white">${subtotal.toFixed(2)}</span>
                 </div>
                 
-                {savings > 0 && (
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
-                    <span>Savings</span>
-                    <span>-${savings.toFixed(2)}</span>
-                  </div>
-                )}
-                
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Estimated Tax</span>
                   <span className="text-gray-900 dark:text-white">${estimatedTax.toFixed(2)}</span>
@@ -251,8 +239,8 @@ const Cart: React.FC = () => {
                 
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
-                  <span className={deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-gray-900 dark:text-white"}>
-                    {deliveryFee === 0 ? 'FREE' : `$${deliveryFee.toFixed(2)}`}
+                  <span className={"text-gray-900 dark:text-white"}>
+                    {`$${deliveryFee.toFixed(2)}`}
                   </span>
                 </div>
                 

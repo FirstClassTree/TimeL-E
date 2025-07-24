@@ -1,53 +1,33 @@
 import { api } from '@/services/api.client';
 
 export interface Product {
-  id: string;
-  sku: string;
-  name: string;
-  description: string;
-  price: number;
-  compareAtPrice?: number;
-  unit?: string;
-  unitValue?: number;
-  brand?: string;
-  tags: string[];
-  imageUrl?: string;
-  additionalImages: string[];
-  categoryId: string;
-  category?: Category;
-  stock: number;
-  trackInventory: boolean;
-  isActive: boolean;
-  isFeatured: boolean;
-  isOnSale: boolean;
-  salePercentage: number;
-  salePrice: number;
-  inStock: boolean;
-  nutritionalInfo: Record<string, any>;
-  metadata: Record<string, any>;
-  viewCount: number;
-  purchaseCount: number;
-  avgRating: number;
-  reviewCount: number;
-  createdAt: string;
-  updatedAt: string;
+  product_id: number;
+  product_name: string;
+  aisle_id: number;
+  department_id: number;
+  aisle_name: string;
+  department_name: string;
+  description: string | null;
+  price: number | null;
+  image_url: string | null;
 }
 
-export interface Category {
+export interface Department {
   id: string;
   name: string;
   description?: string;
   imageUrl?: string;
   parentId?: string;
   isActive: boolean;
-  productCount?: number;
 }
 
 export interface ProductsResponse {
   products: Product[];
   total: number;
-  offset: number;
-  hasMore: boolean;
+  page: number;
+  per_page: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface ProductFilters {
@@ -60,7 +40,6 @@ export interface ProductFilters {
   maxPrice?: number;
   inStock?: boolean;
   onSale?: boolean;
-  featured?: boolean;
 }
 
 class ProductService {
@@ -69,13 +48,6 @@ class ProductService {
   // CORE PRODUCT BROWSING (Read-only operations)
   // ============================================================================
 
-    async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
-    const params = new URLSearchParams();
-    if (filters.offset) params.append('offset', filters.offset.toString());
-    if (filters.limit) params.append('limit', filters.limit.toString());
-        return api.get<ProductsResponse>(`/products?${params.toString()}`);
-  }
-  /*
   // Get all products with filters
   async getProducts(filters: ProductFilters = {}): Promise<ProductsResponse> {
     const params = new URLSearchParams();
@@ -85,30 +57,28 @@ class ProductService {
     if (filters.sort) params.append('sort', filters.sort);
     if (filters.search) params.append('search', filters.search);
     if (filters.categories?.length) {
-      filters.categories.forEach(cat => params.append('categories[]', cat));
+      filters.categories.forEach(cat => params.append('categories', cat));
     }
     if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString());
     if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString());
     if (filters.inStock) params.append('inStock', 'true');
     if (filters.onSale) params.append('onSale', 'true');
-    //if (filters.featured) params.append('featured', 'true');
 
     return api.get<ProductsResponse>(`/products?${params.toString()}`);
   }
-*/
 
   // Get single product
-  async getProduct(id: bigint): Promise<Product> {
+  async getProduct(id: number): Promise<Product> {
     return api.get<Product>(`/products/${id}`);
   }
 
   // Get product by department
-  async getProductsByDepartment(departmentId: bigint): Promise<Product> {
+  async getProductsByDepartment(departmentId: number): Promise<Product> {
     return api.get<Product>(`/products/department/${departmentId}`);
   }
 
   // Get product by aisle number
-  async getProductsByAisle(aisleId: bigint): Promise<Product> {
+  async getProductsByAisle(aisleId: number): Promise<Product> {
     return api.get<Product>(`/products/aisle/${aisleId}`);
   }
 
@@ -123,7 +93,7 @@ class ProductService {
   }
 
   // Get product recommendations
-  async getRecommendations(productId: string, limit: number = 4): Promise<Product[]> {
+  async getRecommendations(productId: number, limit: number = 4): Promise<Product[]> {
     return api.get<Product[]>(`/products/${productId}/recommendations?limit=${limit}`);
   }
 
@@ -131,14 +101,15 @@ class ProductService {
   // CATEGORY OPERATIONS (Read-only)
   // ============================================================================
 
-  // Get categories
-  async getCategories(): Promise<Category[]> {
-    return api.get<Category[]>('/products/categories');
+  // Get departments
+  async getDepartments(): Promise<Department[]> {
+    const response = await api.get('/departments');
+    return response.data.departments || [];
   }
 
   // Get category by ID
-  async getCategory(id: string): Promise<Category> {
-    return api.get<Category>(`/products/categories/${id}`);
+  async getDepartment(id: string): Promise<Department> {
+    return api.get<Department>(`/products/department/${id}`);
   }
 
   // ============================================================================
@@ -146,7 +117,7 @@ class ProductService {
   // ============================================================================
 
   // TODO: Track product view - use in admin?
-  async trackProductView(productId: string): Promise<void> {
+  async trackProductView(productId: number): Promise<void> {
     return api.post(`/products/${productId}/view`);
   }
 
@@ -165,12 +136,6 @@ class ProductService {
       style: 'currency',
       currency: 'USD'
     }).format(price);
-  }
-
-  //  TODO: Calculate discount percentage - use and show!
-  calculateDiscount(price: number, compareAtPrice?: number): number {
-    if (!compareAtPrice || compareAtPrice <= price) return 0;
-    return Math.round(((compareAtPrice - price) / compareAtPrice) * 100);
   }
 }
 

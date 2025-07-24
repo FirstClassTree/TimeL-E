@@ -1,8 +1,7 @@
-// frontend/src/App.tsx
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ReactQueryDevtools } from 'react-query/devtools';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
 
@@ -14,6 +13,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 // Auth components
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import AdminRoute from '@/components/auth/AdminRoute';
+import { UserProvider } from '@/components/auth/UserProvider';
 
 // Loading component
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -33,16 +33,6 @@ const Register = lazy(() => import('@/pages/Register'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 
-// Admin pages
-const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard'));
-const AdminProducts = lazy(() => import('@/pages/admin/Products'));
-const AdminOrders = lazy(() => import('@/pages/admin/Orders'));
-const AdminUsers = lazy(() => import('@/pages/admin/Users'));
-const AdminMetrics = lazy(() => import('@/pages/admin/Metrics'));
-const AdminSettings = lazy(() => import('@/pages/admin/Settings'));
-const UserSeeding = lazy(() => import('@/pages/admin/UserSeeding'));
-const DemoPredictionPage = lazy(() => import('@/pages/admin/DemoPredictionPage'));
-
 // Create React Query client with optimized settings
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,8 +50,9 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="App">
+      <UserProvider>
+        <Router>
+          <div className="App">
           <AnimatePresence mode="wait">
             <Suspense fallback={<LoadingSpinner fullScreen />}>
               <Routes>
@@ -100,18 +91,7 @@ const App: React.FC = () => {
                     <AdminLayout />
                   </AdminRoute>
                 }>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="products" element={<AdminProducts />} />
-                  <Route path="orders" element={<AdminOrders />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="metrics" element={<AdminMetrics />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  
-                  {/* NEW: Demo functionality routes */}
-                  <Route path="user-seeding" element={<UserSeeding />} />
-                  <Route path="demo-prediction" element={<DemoPredictionPage />} />
-                  
+
                   {/* Legacy route redirects */}
                   <Route path="demo" element={<Navigate to="/admin/demo-prediction" replace />} />
                   <Route path="seed-users" element={<Navigate to="/admin/user-seeding" replace />} />
@@ -162,13 +142,14 @@ const App: React.FC = () => {
 
           {/* React Query DevTools (development only) */}
           {process.env.NODE_ENV === 'development' && (
-            <ReactQueryDevtools 
-              initialIsOpen={false} 
+            <ReactQueryDevtools
+              initialIsOpen={false}
               position="bottom-right"
             />
           )}
         </div>
-      </Router>
+        </Router>
+      </UserProvider>
     </QueryClientProvider>
   );
 };
