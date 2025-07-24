@@ -2,6 +2,7 @@
 data/
 ./data/
 data/*.csv
-!data/enriched_products_dept1.csv
+!db_service/data/enriched_products_dept1.csv
+!db_service/data/dataenriched_products_ALL_DEPARTMENTS.csv
 !/ml-service/src/data/
 

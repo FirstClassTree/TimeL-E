@@ -29,11 +29,11 @@ import threading
 from collections import deque
 
 # Configuration
-DEPARTMENT_ID = 1  # Change this to process different departments
+DEPARTMENTS = list(range(1, 22))  # Process ALL departments 1-21
 INPUT_CSV = "../data/products.csv"
-OUTPUT_CSV = f"../data/enriched_products_dept{DEPARTMENT_ID}.csv"
-MAX_WORKERS = 15  # Number of concurrent threads
-REQUESTS_PER_SECOND = 10  # API rate limit (requests per second)
+OUTPUT_DIR = "../data"  # Directory for enriched products
+MAX_WORKERS = 60  # Number of concurrent threads (INCREASED for speed!)
+REQUESTS_PER_SECOND = 50  # API rate limit (increased with more workers)
 TIMEOUT = 10  # Request timeout in seconds
 BATCH_SIZE = 50  # Products per progress update
 
@@ -235,8 +235,66 @@ class ProductEnricher:
             'image_url': "https://via.placeholder.com/300x300?text=No+Image"
         }
     
+    def process_products_for_department(self, df, department_id):
+        """Process products for a specific department"""
+        # Filter by department
+        filtered_df = df[df['department_id'] == department_id].copy()
+        dept_product_count = len(filtered_df)
+        
+        if dept_product_count == 0:
+            logger.info(f"No products found for department {department_id}")
+            return []
+        
+        logger.info(f"Processing {dept_product_count} products in department {department_id}")
+        
+        # Prepare product data for concurrent processing
+        product_data = [(row['product_id'], row['product_name'], department_id) for _, row in filtered_df.iterrows()]
+        
+        return product_data
+    
+    def process_single_product_with_dept(self, product_data):
+        """Process a single product with department info"""
+        product_id, product_name, department_id = product_data
+        session = self.create_session()
+        
+        try:
+            # Apply rate limiting
+            self.rate_limit_wait()
+            
+            # Get enriched data from API
+            enriched_data = self.search_openfoodfacts(product_name, session)
+            
+            # Update progress
+            self.update_progress()
+            
+            # Return enriched product data with department
+            return {
+                'product_id': product_id,
+                'product_name': product_name,
+                'department_id': department_id,
+                'description': enriched_data['description'],
+                'price': enriched_data['price'],
+                'image_url': enriched_data['image_url']
+            }
+            
+        except Exception as e:
+            logger.warning(f"Error processing product {product_name}: {e}")
+            self.update_progress()
+            # Return fallback data
+            fallback_data = self.get_fallback_data(product_name)
+            return {
+                'product_id': product_id,
+                'product_name': product_name,
+                'department_id': department_id,
+                'description': fallback_data['description'],
+                'price': fallback_data['price'],
+                'image_url': fallback_data['image_url']
+            }
+        finally:
+            session.close()
+
     def process_products(self):
-        """Main processing function with concurrent processing"""
+        """Main processing function for ALL departments with concurrent processing"""
         try:
             # Check if input file exists
             if not os.path.exists(INPUT_CSV):
@@ -254,29 +312,41 @@ class ProductEnricher:
                 logger.error(f"CSV missing required columns. Found: {list(df.columns)}")
                 return False
             
-            # Filter by department
-            filtered_df = df[df['department_id'] == DEPARTMENT_ID].copy()
-            self.total_count = len(filtered_df)
+            # Create output directory
+            os.makedirs(OUTPUT_DIR, exist_ok=True)
             
-            if self.total_count == 0:
-                logger.warning(f"No products found for department_id = {DEPARTMENT_ID}")
-                return False
-            
-            logger.info(f"Found {self.total_count} products in department {DEPARTMENT_ID}")
-            logger.info(f"Using {MAX_WORKERS} concurrent workers for processing")
+            # Process ALL departments 1-21
+            logger.info(f"🚀 Processing ALL departments {DEPARTMENTS[0]}-{DEPARTMENTS[-1]} with {MAX_WORKERS} workers!")
             logger.info(f"Rate limit: {REQUESTS_PER_SECOND} requests per second")
             
-            # Prepare product data for concurrent processing
-            product_data = [(row['product_id'], row['product_name']) for _, row in filtered_df.iterrows()]
+            all_product_data = []
+            department_stats = {}
             
-            # Process products concurrently
+            # Collect products from all departments
+            for dept_id in DEPARTMENTS:
+                dept_products = self.process_products_for_department(df, dept_id)
+                all_product_data.extend(dept_products)
+                department_stats[dept_id] = len(dept_products)
+            
+            self.total_count = len(all_product_data)
+            
+            if self.total_count == 0:
+                logger.warning("No products found in any department!")
+                return False
+            
+            logger.info(f"📊 Total products to process: {self.total_count}")
+            for dept_id, count in department_stats.items():
+                if count > 0:
+                    logger.info(f"   Department {dept_id}: {count} products")
+            
+            # Process ALL products concurrently across departments
             enriched_products = []
             
             with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                 # Submit all tasks
                 future_to_product = {
-                    executor.submit(self.process_single_product, data): data 
-                    for data in product_data
+                    executor.submit(self.process_single_product_with_dept, data): data 
+                    for data in all_product_data
                 }
                 
                 # Collect results as they complete
@@ -292,6 +362,7 @@ class ProductEnricher:
                         enriched_products.append({
                             'product_id': product_data[0],
                             'product_name': product_data[1],
+                            'department_id': product_data[2],
                             'description': fallback_data['description'],
                             'price': fallback_data['price'],
                             'image_url': fallback_data['image_url']
@@ -300,17 +371,25 @@ class ProductEnricher:
             # Sort results by product_id to maintain order
             enriched_products.sort(key=lambda x: x['product_id'])
             
-            # Save results
-            output_df = pd.DataFrame(enriched_products)
+            # Save results - both consolidated and per-department files
+            all_output_df = pd.DataFrame(enriched_products)
             
-            # Create output directory if it doesn't exist
-            os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
+            # Save consolidated file
+            consolidated_file = f"{OUTPUT_DIR}enriched_products_ALL_DEPARTMENTS.csv"
+            all_output_df.to_csv(consolidated_file, index=False)
+            logger.info(f"✅ Saved consolidated file: {consolidated_file}")
             
-            output_df.to_csv(OUTPUT_CSV, index=False)
-            logger.info(f"✅ Successfully saved {len(enriched_products)} enriched products to {OUTPUT_CSV}")
+            # Save per-department files
+            for dept_id in DEPARTMENTS:
+                dept_products = [p for p in enriched_products if p['department_id'] == dept_id]
+                if dept_products:
+                    dept_df = pd.DataFrame(dept_products)
+                    dept_file = f"{OUTPUT_DIR}enriched_products_dept{dept_id}.csv"
+                    dept_df.to_csv(dept_file, index=False)
+                    logger.info(f"✅ Department {dept_id}: {len(dept_products)} products saved to {dept_file}")
             
-            # Display sample results
-            self.display_sample_results(output_df)
+            # Display comprehensive results
+            self.display_comprehensive_results(all_output_df, department_stats)
             
             return True
             
@@ -318,37 +397,51 @@ class ProductEnricher:
             logger.error(f"Error during processing: {e}")
             return False
     
-    def display_sample_results(self, df):
-        """Display sample results for verification"""
-        logger.info("\n" + "="*60)
-        logger.info("SAMPLE RESULTS (first 3 products):")
-        logger.info("="*60)
+    def display_comprehensive_results(self, df, department_stats):
+        """Display comprehensive results for all departments"""
+        logger.info("\n" + "="*70)
+        logger.info("🎉 ALL DEPARTMENTS PROCESSING COMPLETE!")
+        logger.info("="*70)
         
-        for idx in range(min(3, len(df))):
-            row = df.iloc[idx]
-            logger.info(f"\nProduct {idx + 1}:")
-            logger.info(f"  ID: {row['product_id']}")
-            logger.info(f"  Name: {row['product_name']}")
-            logger.info(f"  Description: {row['description'][:100]}...")
-            logger.info(f"  Price: ${row['price']}")
-            logger.info(f"  Image: {row['image_url'][:50]}...")
+        # Sample results from different departments
+        logger.info("SAMPLE RESULTS (from different departments):")
+        departments_shown = set()
+        sample_count = 0
         
-        logger.info(f"\n📊 SUMMARY:")
-        logger.info(f"   Total products processed: {len(df)}")
-        logger.info(f"   Department: {DEPARTMENT_ID}")
-        logger.info(f"   Output file: {OUTPUT_CSV}")
-        logger.info(f"   Average price: ${df['price'].mean():.2f}")
+        for idx, row in df.iterrows():
+            dept_id = row['department_id']
+            if dept_id not in departments_shown and sample_count < 5:
+                departments_shown.add(dept_id)
+                sample_count += 1
+                logger.info(f"\nDepartment {dept_id} Sample:")
+                logger.info(f"  ID: {row['product_id']}")
+                logger.info(f"  Name: {row['product_name']}")
+                logger.info(f"  Description: {row['description'][:80]}...")
+                logger.info(f"  Price: ${row['price']}")
+        
+        logger.info(f"\n📊 COMPREHENSIVE SUMMARY:")
+        logger.info(f"   🎯 Total products processed: {len(df):,}")
+        logger.info(f"   🏪 Departments covered: {len([d for d, c in department_stats.items() if c > 0])}/21")
+        logger.info(f"   💰 Average price: ${df['price'].mean():.2f}")
+        logger.info(f"   📁 Output directory: {OUTPUT_DIR}")
+        
+        logger.info(f"\n📈 PER-DEPARTMENT BREAKDOWN:")
+        for dept_id in sorted(department_stats.keys()):
+            count = department_stats[dept_id]
+            if count > 0:
+                dept_avg_price = df[df['department_id'] == dept_id]['price'].mean()
+                logger.info(f"   Department {dept_id:2d}: {count:4d} products (avg ${dept_avg_price:.2f})")
 
 def main():
-    """Main function"""
-    print("🛒 TimeL-E Product Enricher (Concurrent Version)")
-    print("=" * 50)
-    print(f"Processing department: {DEPARTMENT_ID}")
-    print(f"Input file: {INPUT_CSV}")
-    print(f"Output file: {OUTPUT_CSV}")
-    print(f"Concurrent workers: {MAX_WORKERS}")
-    print(f"Rate limit: {REQUESTS_PER_SECOND} requests/second")
-    print("=" * 50)
+    """Main function for ALL departments processing"""
+    print("🛒 TimeL-E Product Enricher - ALL DEPARTMENTS (Enhanced Version)")
+    print("=" * 70)
+    print(f"🎯 Processing ALL departments: {DEPARTMENTS[0]}-{DEPARTMENTS[-1]}")
+    print(f"📁 Input file: {INPUT_CSV}")
+    print(f"📂 Output directory: {OUTPUT_DIR}")
+    print(f"⚡ Concurrent workers: {MAX_WORKERS} (4x faster!)")
+    print(f"🚀 Rate limit: {REQUESTS_PER_SECOND} requests/second")
+    print("=" * 70)
     
     enricher = ProductEnricher()
     
@@ -358,10 +451,15 @@ def main():
     
     if success:
         duration = end_time - start_time
-        print(f"\n✅ Processing completed in {duration:.1f} seconds")
-        print(f"📁 Results saved to: {OUTPUT_CSV}")
-        print(f"⚡ Speed: ~{enricher.total_count/duration:.1f} products/second")
-        print(f"\n💡 To process other departments, change DEPARTMENT_ID and run again")
+        print(f"\n🎉 ✅ ALL DEPARTMENTS PROCESSING COMPLETED! ✅ 🎉")
+        print(f"⏱️  Total time: {duration:.1f} seconds")
+        print(f"📊 Products processed: {enricher.total_count:,}")
+        print(f"⚡ Processing speed: ~{enricher.total_count/duration:.1f} products/second")
+        print(f"📁 Results saved to: {OUTPUT_DIR}")
+        print(f"🏪 Departments 1-21 all processed with {MAX_WORKERS} workers!")
+        print("\n📂 Generated files:")
+        print(f"   • enriched_products_ALL_DEPARTMENTS.csv (consolidated)")
+        print(f"   • enriched_products_dept1.csv through enriched_products_dept21.csv")
     else:
         print(f"\n❌ Processing failed. Check the logs above for details.")
         sys.exit(1)
