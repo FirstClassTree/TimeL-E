@@ -14,9 +14,9 @@ OpenAPI Description:
     and relationships to order and cart records.
 """
 
-from sqlalchemy import String, Integer,TIMESTAMP, Boolean
+from sqlalchemy import String, Integer,TIMESTAMP, Boolean, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime, UTC
+from datetime import datetime, timedelta, UTC
 from .base import Base
 from typing import List, Optional
 
@@ -39,6 +39,7 @@ class User(Base):
         country (Optional[str]): Country for delivery address. Nullable.
         orders (List[Order]): List of all orders placed by this user.
         carts (List[Cart]): List of all shopping carts owned by this user.
+        last_notification_sent_at (Mapped[Optional[datetime]]): last time a notification was triggered.
 
 
     Relationships:
@@ -63,7 +64,13 @@ class User(Base):
             country="USA")
     """
     __tablename__ = 'users'
-    __table_args__ = {"schema": "users"}
+    __table_args__ = (
+        CheckConstraint(
+            "(days_between_order_notifications IS NULL OR (days_between_order_notifications >= 1 AND days_between_order_notifications <= 365))",
+            name="check_days_between_order_notifications"
+        ),
+        {"schema": "users"}
+    )
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
     name: Mapped[str] = mapped_column(String, nullable=False)   # allow repeating names
@@ -84,13 +91,13 @@ class User(Base):
                                                       nullable=True)
 
     order_notifications_next_scheduled_time: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
-                                                          default=lambda: datetime.now(UTC),
+                                                          default=lambda: datetime.now(UTC)  + timedelta(days=7),
                                                           nullable=True)
     last_notification_sent_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
-                                                          default=lambda: datetime.now(UTC),
+                                                          default=None,
                                                           nullable=True)
     pending_order_notification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    order_notifications_via_email: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    order_notifications_via_email: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Enables accessing all orders by this user
     orders: Mapped[List["Order"]]  = relationship("Order", back_populates="user")

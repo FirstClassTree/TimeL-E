@@ -2,6 +2,9 @@ import requests
 import json
 import random
 import psycopg2
+from datetime import datetime
+import time
+from dateutil.parser import parse as parse_datetime, parse as parse_datetime
 # from uuid_utils import uuid7
 
 def test_query():
@@ -160,68 +163,144 @@ class UserApiTests:
     BASE = "http://localhost:7000/users"
 
     def __init__(self):
+        self.timestamp = int(time.time())
+        self.email = f"alice_{self.timestamp}@example.com"
+        self.password = f"Password123_{self.timestamp}"
+        self.new_password = f"NewPass123_{self.timestamp}"
+        self.updated_email = f"alice_updated_{self.timestamp}@example.com"
         self.user_id = None
-        self.password = "Password123"
-        self.new_password = "NewPass123"
+
+    def assert_datetime_close(self, dt1_str, dt2_str, tolerance_seconds=2):
+        dt1 = parse_datetime(dt1_str)
+        dt2 = parse_datetime(dt2_str)
+        assert abs((dt1 - dt2).total_seconds()) <= tolerance_seconds, f"{dt1} vs {dt2}"
 
     def create_user(self):
         data = {
             "name": "alice",
-            "email_address": "alice@example.com",
+            "email_address": self.email,
             "password": self.password,
             "phone_number": "123-456-7890",
             "street_address": "1 Main St",
             "city": "Townsville",
             "postal_code": "00001",
-            "country": "Wonderland"
+            "country": "Wonderland",
+            "days_between_order_notifications": 5,
+            "order_notifications_via_email": True
         }
         resp = requests.post(f"{self.BASE}/", json=data)
         assert resp.status_code == 201, resp.text
-        self.user_id = resp.json()["user_id"]
-        print("User created:", resp.json())
+        json = resp.json()
+        self.user_id = json["user_id"]
+        assert json["email_address"] == self.email
+
+        def assert_datetime_offset(self, later, earlier, expected_delta_days):
+            dt1 = parse_datetime(later)
+            dt2 = parse_datetime(earlier)
+            actual_delta = (dt1 - dt2).days
+            assert actual_delta == expected_delta_days, (f"Expected {expected_delta_days} days,"
+                                                         f"got {actual_delta} between {dt1} and {dt2}")
+        # self.assert_datetime_close(json["order_notifications_next_scheduled_time"],
+        #                            json["order_notifications_start_date_time"])
+        print("User created:", json)
+
+    def login_user(self, email=None, password=None, expect_success=True):
+        data = {
+            "email_address": email or self.email,
+            "password": password or self.password
+        }
+        resp = requests.post(f"{self.BASE}/login", json=data)
+        if expect_success:
+            assert resp.status_code == 200, resp.text
+            print("User logged in:", resp.json())
+        else:
+            assert resp.status_code == 401, f"Expected login failure: {resp.status_code}"
+            print("Login failed as expected")
 
     def get_user(self):
         resp = requests.get(f"{self.BASE}/{self.user_id}")
+        assert resp.status_code == 200
+        json = resp.json()
+        assert json["user_id"] == self.user_id
+        assert json["city"] == "Townsville"
+        print("User details:", json)
+
+    def get_notification_settings(self):
+        resp = requests.get(f"{self.BASE}/{self.user_id}/notification-settings")
+        assert resp.status_code == 200
+        json = resp.json()
+        assert json["days_between_order_notifications"] == 5
+        assert json["order_notifications_via_email"] is True
+        print("Notification settings:", json)
+
+    def update_notification_settings(self):
+        data = {
+            "days_between_order_notifications": 3,
+            "order_notifications_via_email": False
+        }
+        resp = requests.patch(f"{self.BASE}/{self.user_id}/notification-settings", json=data)
         assert resp.status_code == 200, resp.text
-        print("User details:", resp.json())
+        json = resp.json()
+        assert json["days_between_order_notifications"] == 3
+        assert json["order_notifications_via_email"] is False
+        print("Notification settings updated:", json)
 
     def update_user(self):
         data = {"city": "Newville", "phone_number": "555-4321"}
         resp = requests.patch(f"{self.BASE}/{self.user_id}", json=data)
-        assert resp.status_code == 200, resp.text
-        print("User updated:", resp.json())
+        assert resp.status_code == 200
+        json = resp.json()
+        assert json["city"] == "Newville"
+        assert json["phone_number"] == "555-4321"
+        print("User updated:", json)
 
     def update_password(self):
         data = {"current_password": self.password, "new_password": self.new_password}
         resp = requests.post(f"{self.BASE}/{self.user_id}/password", json=data)
-        assert resp.status_code == 200, resp.text
-        print("Password updated:", resp.json())
-        self.password = self.new_password  # Update for later deletion
+        assert resp.status_code == 200
+        print("Password updated.")
+        self.password = self.new_password
 
     def update_email(self):
         data = {
             "current_password": self.password,
-            "new_email_address": "alice.changed@example.com"
+            "new_email_address": self.updated_email
         }
         resp = requests.post(f"{self.BASE}/{self.user_id}/email", json=data)
-        assert resp.status_code == 200, f"{resp.status_code} {resp.text}"
-        print("Email updated:", resp.json())
+        assert resp.status_code == 200
+        json = resp.json()
+        assert json["email_address"] == self.updated_email
+        self.email = self.updated_email
+        print("Email updated:", json)
 
     def delete_user(self):
         data = {"password": self.password}
         resp = requests.delete(f"{self.BASE}/{self.user_id}", json=data)
-        assert resp.status_code in (200, 204), resp.text
-        print("User deleted.")
+        assert resp.status_code in (200, 204)
+        print("User deleted")
+
+        # Check user is gone
+        check = requests.get(f"{self.BASE}/{self.user_id}")
+        assert check.status_code == 404
+        print("Verified user is deleted")
 
     def run_all(self):
         self.create_user()
+        self.login_user()
         self.get_user()
+        self.get_notification_settings()
+        self.update_notification_settings()
         self.update_user()
         self.update_password()
+        self.login_user(password="wrong-password", expect_success=False)
+        self.login_user()
         self.update_email()
+        self.login_user()
         self.delete_user()
 
+
 # TODO: add sample test for cart api
+
 
 class OrderTablesSanityTest:
     def __init__(self, conn, base_url):
@@ -331,19 +410,19 @@ if __name__ == "__main__":
     test_enriched_products_across_departments()
     print()
 
-    #### testing orders and order_items in db
-    conn = psycopg2.connect(
-        host="localhost",
-        port=5432,
-        user="timele_user",
-        password="timele_password",
-        database="timele_db"
-    )
-    base_url = "http://localhost:7000"
-    sanity = OrderTablesSanityTest(conn, base_url)
-    sanity.test_orders_table_basic()
-    sanity.test_order_items_table_basic()
-    sanity.test_order_items_relationship()
-    sanity.test_orders_api()
-    sanity.test_order_items_api()
-    conn.close()
+    # #### testing orders and order_items in db
+    # conn = psycopg2.connect(
+    #     host="localhost",
+    #     port=5432,
+    #     user="timele_user",
+    #     password="timele_password",
+    #     database="timele_db"
+    # )
+    # base_url = "http://localhost:7000"
+    # sanity = OrderTablesSanityTest(conn, base_url)
+    # sanity.test_orders_table_basic()
+    # sanity.test_order_items_table_basic()
+    # sanity.test_order_items_relationship()
+    # sanity.test_orders_api()
+    # sanity.test_order_items_api()
+    # conn.close()

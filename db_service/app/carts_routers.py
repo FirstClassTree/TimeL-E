@@ -154,7 +154,6 @@ def get_enriched_product_info(session: Session, product_id: int):
         "image_url": enriched.image_url if enriched else None,
     }
 
-# GET /carts/{user_id}
 @router.get("/{user_id}", response_model=CartResponse)
 def get_user_cart(user_id: int):
     """
@@ -231,7 +230,6 @@ def update_user_cart(user_id: int, cart: Cart):
     finally:
         session.close()
 
-# POST /carts/
 @router.post("/", response_model=CartResponse, status_code=201)
 def create_cart(cart: Cart):
     """
@@ -280,7 +278,6 @@ def create_cart(cart: Cart):
     finally:
         session.close()
 
-# DELETE /carts/{user_id}
 @router.delete("/{user_id}", status_code=200)
 def delete_cart(user_id: int):
     """
@@ -314,7 +311,6 @@ def get_cart(session: Session, user_id: int) -> Cart:
     # cart = session.query(Cart).filter(Cart.user_id == user_id).first()
     return cart
 
-# POST /carts/{user_id}/items
 @router.post("/{user_id}/items", response_model=CartResponse)
 def add_cart_item(user_id: int, item: AddCartItemRequest):
     """Add an item to user's cart, or increment if exists.
@@ -359,7 +355,6 @@ def add_cart_item(user_id: int, item: AddCartItemRequest):
     finally:
         session.close()
 
-# PUT /carts/{user_id}/items/{product_id}
 @router.put("/{user_id}/items/{product_id}", response_model=CartResponse)
 def update_cart_item(user_id: int, product_id: int, update: UpdateCartItemRequest):
     """Update quantity of a specific item in cart"""
@@ -396,7 +391,6 @@ def update_cart_item(user_id: int, product_id: int, update: UpdateCartItemReques
     finally:
         session.close()
 
-# DELETE /carts/{user_id}/items/{product_id}
 @router.delete("/{user_id}/items/{product_id}", response_model=CartResponse)
 def remove_cart_item(user_id: int, product_id: int):
     """Remove a specific item from cart"""
@@ -424,7 +418,6 @@ def remove_cart_item(user_id: int, product_id: int):
     finally:
         session.close()
 
-# DELETE /carts/{user_id}}
 @router.delete("/{user_id}", response_model=CartResponse)
 def clear_user_cart(user_id: int):
     """Clear all items from cart for a user"""
@@ -441,11 +434,6 @@ def clear_user_cart(user_id: int):
         raise HTTPException(status_code=500, detail="Error deleting cart")
     finally:
         session.close()
-
-# POST /carts/{user_id}/checkout
-class HTTPException:
-    pass
-
 
 @router.post("/{user_id}/checkout")
 def checkout_cart(user_id: int):

@@ -21,6 +21,8 @@ def process_scheduled_user_notifications():
                 continue  # skip uninitialized users
 
             if now >= user.order_notifications_next_scheduled_time:
+                user.last_notification_sent_at = now
+
                 # flag as pending
                 user.pending_order_notification = True
 

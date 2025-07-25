@@ -6,7 +6,7 @@ import os
 from .db_core.models import User
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "timele.connects@gmail.com")
+NOTIFICATION_FROM_EMAIL = os.getenv("NOTIFICATION_FROM_EMAIL", "timele.connects@gmail.com")
 APP_NAME = os.getenv("APP_NAME", "TimeL-E")
 
 def send_email_notification(user: User):
@@ -32,7 +32,7 @@ def send_email_notification(user: User):
                 "Content-Type": "application/json"
             },
             json={
-                "from": FROM_EMAIL,
+                "from": NOTIFICATION_FROM_EMAIL,
                 "to": [user.email_address],
                 "subject": subject,
                 "text": content

@@ -75,8 +75,8 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - DB_SERVICE_PORT=${DB_SERVICE_PORT}
       - RESET_DATABASE_ON_STARTUP=${RESET_DATABASE_ON_STARTUP}
-      - RESEND_API_KEY = ${RESEND_API_KEY}
-      - FROM_EMAIL=${FROM_EMAIL}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - NOTIFICATION_FROM_EMAIL=${NOTIFICATION_FROM_EMAIL}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1"]
       interval: 10s

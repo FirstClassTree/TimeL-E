@@ -320,6 +320,21 @@ Note:
 
 ### User API Endpoints
 
+### Datetime handling and Timezones
+
+Naive datetime (e.g., 2024-07-24T13:00:00)
+* Assumed to be in UTC
+* Automatically converted and marked as UTC (+00:00) internally
+
+Timezone-aware datetime (e.g., 2024-07-24T13:00:00+02:00)
+* Converted to UTC for consistency
+* Stored and returned in UTC
+
+This ensures:
+* Reliable scheduling logic
+* No ambiguity in user input
+* Safer handling of dates regardless of client behavior
+
 ### Create User ```POST /users```
 
 Creates new user with unique email address.
@@ -356,6 +371,61 @@ user = db_service.create_entity(
 )
 ```
 
+### User Login ```POST /users/login```
+
+Logs user in if the email and password are correct. Otherwise returns "Invalid email or password".  
+
+#### Request Body (JSON):
+
+```json
+{
+  "email_address": "alice@example.com",
+  "password": "Password123"
+}
+```
+
+#### Response:  
+```json
+{
+  "user_id": 42,
+  "name": "Alice",
+  "email_address": "alice@example.com",
+  "phone_number": "123-456-7890",
+  "street_address": "1 Main St",
+  "city": "Townsville",
+  "postal_code": "00001",
+  "country": "Wonderland",
+  "days_between_order_notifications": 7,
+  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
+  "order_notifications_next_scheduled_time": "2025-07-31T14:00:00Z",
+  "pending_order_notification": false,
+  "order_notifications_via_email": true,
+  "last_notification_sent_at": "2025-07-23T14:00:00Z"
+}
+```
+
+#### Example Request (Backend usage):
+
+```python
+import requests
+
+LOGIN_URL = "http://localhost:7000/users/login"
+
+payload = {
+    "email_address": "alice@example.com",
+    "password": "Password123"
+}
+
+response = requests.post(LOGIN_URL, json=payload)
+
+if response.status_code == 200:
+    user_data = response.json()
+    print("Login successful!")
+    print(user_data)
+else:
+    print(f"Login failed: {response.status_code}")
+    print(response.json())
+```
 
 ### Update Password ```POST /users/{user_id}/password```
 
@@ -374,6 +444,7 @@ db_service.create_entity(
 
 Updates the user's email address.  
 Requires current password for validation and ensures the new email is unique.
+Returns updated email.
 
 #### Example Request (Backend usage):
 
@@ -392,7 +463,7 @@ this dedicated endpoint must be used.
 
 ### Fetch details ```GET /users/{user_id}```
 
-Fetches user details by user_id (uuid7).
+Fetches user details by user_id (uuid7). Returns full details.except credentials
 
 #### Example Request (Backend usage):
 
@@ -426,6 +497,81 @@ db_service.delete_entity(
     data={"password": "currentpw"}
 )
 ```
+
+### Notifications API
+Provides full control over user notification preferences via GET and PATCH endpoints. Fully timezone-aware.  
+Backed by a custom scheduler and real email delivery infrastructure for precise order reminders, even during development.    
+
+#### Fields the user controls (via API input)
+* `days_between_order_notifications`:	Frequency (in days) between reminders.
+* `order_notifications_start_date_time`:	When the schedule begins (can be optional or default to now).
+* `order_notifications_via_email`:	Whether user wants to opt in to receive reminders via email.
+
+#### Fields the db_service controls:
+* `order_notifications_next_scheduled_time`:	Calculated: start + (now - order_notifications_next_scheduled_time) // interval + 1
+* `last_notification_sent_at`:	Set by scheduler when a notification is sent.
+* `pending_order_notification`:	Set by scheduler if a notification is due and not sent yet.
+
+
+### Update Notification Settings ```PATCH /users/{user_id}/notification-settings```
+
+Update notification settings for the user. Can send partial fields.  
+The `order_notifications_start_date_time` field should be provided in ISO 8601 format with an explicit timezone offset  
+(e.g., Z for UTC or +02:00, -05:00, etc.).
+
+Examples (valid):
+```json
+"order_notifications_start_date_time": "2025-07-24T14:00:00Z"
+"order_notifications_start_date_time": "2025-07-24T09:00:00-05:00"
+```
+* The service expects timezone-aware datetimes.
+* If a datetime is submitted without a timezone, it is assumed to be UTC as a fallback.
+* All datetimes are internally stored and returned as UTC with timezone awareness preserved.
+
+#### Request Body (JSON):
+
+```json
+{
+  "days_between_order_notifications": 7,
+  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
+  "order_notifications_via_email": true
+}
+```
+
+#### Response:  
+```json
+{
+  "message": "Notification settings updated successfully",
+  "user_id": 206110,
+  "days_between_order_notifications": 3,
+  "order_notifications_start_date_time": "2025-07-25T02:56:42.889469+00:00",
+  "order_notifications_next_scheduled_time": "2025-07-28T02:56:42.889469+00:00",
+  "order_notifications_via_email": false,
+  "pending_order_notification": false,
+  "last_notification_sent_at": null
+}
+```
+
+### Get Notification Settings ```GET /users/{user_id}/notification-settings```
+
+Get notification settings for the user. Use to display upcoming schedules or missed reminders clearly.
+
+#### Request Body (JSON):
+n/a
+
+#### Response:  
+```json
+{
+  "user_id": 42,
+  "days_between_order_notifications": 7,
+  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
+  "order_notifications_next_scheduled_time": "2025-07-31T14:00:00Z",
+  "last_notification_sent_at": "2025-07-23T14:00:00Z",
+  "pending_order_notification": false,
+  "order_notifications_via_email": true
+}
+```
+
 
 ### Cart API Endpoints
 
