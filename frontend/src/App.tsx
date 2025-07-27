@@ -71,17 +71,41 @@ const App: React.FC = () => {
 
                 {/* Protected User Routes */}
                 <Route path="/" element={
-                  <ProtectedRoute>
                     <MainLayout />
-                  </ProtectedRoute>
                 }>
-                  <Route path="cart" element={<Cart />} />
-                  <Route path="checkout" element={<Checkout />} />
-                  <Route path="orders" element={<Orders />} />
-                  <Route path="orders/:id" element={<OrderDetail />} />
-                  <Route path="profile" element={<Profile />} />
-                  <Route path="predicted-basket" element={<PredictedBasket />} />
-                </Route>
+                   {/* Protected Routes */}
+                    <Route path="cart" element={
+                      <ProtectedRoute>
+                        <Cart />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="checkout" element={
+                      <ProtectedRoute>
+                        <Checkout />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="orders" element={
+                      <ProtectedRoute>
+                        <Orders />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="orders/:id" element={
+                      <ProtectedRoute>
+                        <OrderDetail />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="profile" element={
+                      <ProtectedRoute>
+                        <Profile />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="predicted-basket" element={
+                      <ProtectedRoute>
+                        <PredictedBasket />
+                      </ProtectedRoute>
+                    } />
+                  </Route>
+
 
                 {/* Auth redirects */}
                 <Route path="/login" element={<Navigate to="/auth/login" replace />} />

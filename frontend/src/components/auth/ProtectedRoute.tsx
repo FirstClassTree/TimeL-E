@@ -1,10 +1,13 @@
-// frontend/src/components/auth/ProtectedRoute.tsx
 import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 
-const ProtectedRoute: React.FC = () => {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, isLoading, user } = useAuthStore();
   const location = useLocation();
 
@@ -14,10 +17,11 @@ const ProtectedRoute: React.FC = () => {
 
   if (!isAuthenticated || !user) {
     // Redirect to login with the current location as state
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/auth/login" state={{ from: location }} replace />;
   }
 
-  return <Outlet />;
+  // Return the children directly instead of Outlet
+  return <>{children}</>;
 };
 
 export default ProtectedRoute;
