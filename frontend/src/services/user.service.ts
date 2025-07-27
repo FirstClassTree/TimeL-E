@@ -1,7 +1,4 @@
-import { apiClient } from './api.client';
-import { useUser } from '@/components/auth/UserProvider';
-
-const { setUserId } = useUser();
+import { api } from './api.client';
 
 export interface User {
   id: string;
@@ -29,47 +26,42 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
-export const userService = {
+class UserService {
   // Get user profile
-  getProfile: async (userId : string): Promise<UserProfile> => {
-    const response = await apiClient.get(`/users/${userId}`);
-    setUserId(response.data.id);
-    return response.data;
-  },
+  async getProfile(userId: string): Promise<UserProfile> {
+    return api.get<UserProfile>(`/users/${userId}`);
+  }
 
   // Update user profile
-  updateProfile: async(userId: string, data: UpdateProfileRequest): Promise<UserProfile> => {
-    const response = await apiClient.put(`/users/${userId}`, data);
-    return response.data;
-  },
+  async updateProfile(userId: string, data: UpdateProfileRequest): Promise<UserProfile> {
+    return api.put<UserProfile>(`/users/${userId}`, data);
+  }
 
   // Change user password
-  changePassword: async (userId: string ,data: ChangePasswordRequest): Promise<void> => {
-    await apiClient.put(`/users/${userId}/password`, data);
-  },
+  async changePassword(userId: string, data: ChangePasswordRequest): Promise<void> {
+    return api.put<void>(`/users/${userId}/password`, data);
+  }
 
   // Get user preferences
-  getPreferences: async (userId: string): Promise<any> => {
-    const response = await apiClient.get(`/users/${userId}/preferences`);
-    return response.data;
-  },
+  async getPreferences(userId: string): Promise<any> {
+    return api.get(`/users/${userId}/preferences`);
+  }
 
   // Update user preferences
-  updatePreferences: async (userId: string ,preferences: any): Promise<any> => {
-    const response = await apiClient.put(`/users/${userId}/preferences`, preferences);
-    return response.data;
-  },
+  async updatePreferences(userId: string, preferences: any): Promise<any> {
+    return api.put(`/users/${userId}/preferences`, preferences);
+  }
 
   // Delete user
-  deleteAccount: async (userId: string): Promise<void> => {
-    await apiClient.delete(`/users/${userId}`);
-  },
+  async deleteAccount(userId: string): Promise<void> {
+    return api.delete(`/users/${userId}`);
+  }
 
   // Get user statistics
-  getStats: async (): Promise<any> => {
-    const response = await apiClient.get('/users/stats');
-    return response.data;
+  async getStats(): Promise<any> {
+    return api.get('/users/stats');
   }
-};
+}
 
-export default userService;
+// Export as singleton instance to match your import pattern
+export const userService = new UserService();

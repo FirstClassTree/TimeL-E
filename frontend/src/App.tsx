@@ -8,11 +8,9 @@ import { AnimatePresence } from 'framer-motion';
 // Layout components
 import MainLayout from '@/layouts/MainLayout';
 import AuthLayout from '@/layouts/AuthLayout';
-import AdminLayout from '@/layouts/AdminLayout';
 
 // Auth components
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import AdminRoute from '@/components/auth/AdminRoute';
 import { UserProvider } from '@/components/auth/UserProvider';
 
 // Loading component
@@ -83,18 +81,6 @@ const App: React.FC = () => {
                   <Route path="orders/:id" element={<OrderDetail />} />
                   <Route path="profile" element={<Profile />} />
                   <Route path="predicted-basket" element={<PredictedBasket />} />
-                </Route>
-
-                {/* Admin Routes */}
-                <Route path="/admin" element={
-                  <AdminRoute>
-                    <AdminLayout />
-                  </AdminRoute>
-                }>
-
-                  {/* Legacy route redirects */}
-                  <Route path="demo" element={<Navigate to="/admin/demo-prediction" replace />} />
-                  <Route path="seed-users" element={<Navigate to="/admin/user-seeding" replace />} />
                 </Route>
 
                 {/* Auth redirects */}
