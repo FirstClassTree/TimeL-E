@@ -1,7 +1,8 @@
 # backend/app/routers/cart.py
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from ..models.base import APIResponse
 from ..services.database_service import db_service
 
@@ -9,6 +10,8 @@ router = APIRouter(prefix="/cart", tags=["Cart"])
 
 class CartItem(BaseModel):
     """Cart item model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     product_id: int
     quantity: int = 1
     product_name: Optional[str] = None
@@ -17,6 +20,8 @@ class CartItem(BaseModel):
 
 class CartResponse(BaseModel):
     """Cart response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     user_id: str
     items: List[CartItem]
     total_items: int
@@ -24,11 +29,15 @@ class CartResponse(BaseModel):
 
 class AddCartItemRequest(BaseModel):
     """Add item to cart request"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     product_id: int
     quantity: int = 1
 
 class UpdateCartItemRequest(BaseModel):
     """Update cart item request"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     quantity: int
 
 # In-memory cart storage (replace with database in production)

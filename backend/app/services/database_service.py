@@ -49,7 +49,7 @@ class DatabaseService:
             return await client.request(
                 method="DELETE",
                 url=f"{self.base_url}/{entity_type}/{entity_id}",
-                json=data,
+                data=data,
                 headers=headers
             )
     

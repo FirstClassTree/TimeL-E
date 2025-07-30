@@ -2,6 +2,7 @@
 import httpx
 import asyncio
 from typing import Dict, Any, Optional
+import json
 from ..config import settings
 
 class ServiceClient:
@@ -75,15 +76,20 @@ class ServiceClient:
                     headers=request_headers
                 )
             elif method.upper() == "DELETE":
-                # For DELETE, use content=json.dumps(data) instead of json=data
-                import json
-                response = await self._client.request(
-                    method="DELETE",
-                    url=url,
-                    content=json.dumps(data) if data else None,
-                    params=params,
-                    headers=request_headers
-                )
+                if data:    # httpx.delete() doesn't support JSON body; using .request() with content instead
+                    response = await self._client.request(
+                        method="DELETE",
+                        url=url,
+                        content=json.dumps(data),
+                        headers=request_headers,
+                        params=params
+                    )
+                else:
+                    response = await self._client.delete(
+                        url=url,
+                        params=params,
+                        headers=request_headers
+                    )
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             

@@ -3,20 +3,15 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any
 from ..models.base import APIResponse
 from ..services.database_service import db_service
-from pydantic import BaseModel, ConfigDict
-from pydantic.alias_generators import to_camel
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 class OrderItemRequest(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    
     product_id: int
     quantity: int = 1
 
 class CreateOrderRequest(BaseModel):
-    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    
     user_id: int
     items: List[OrderItemRequest]
 

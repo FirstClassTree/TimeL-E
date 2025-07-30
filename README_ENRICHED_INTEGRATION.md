@@ -1,5 +1,7 @@
 # Enriched Product Data Integration
 
+> **Note**: As of January 30, 2025, all frontend-facing API endpoints now use **camelCase** field names. The examples below reflect this standardization. Internal service communication continues to use snake_case.
+
 ## Overview
 This integration adds enriched product data (descriptions, prices, images) to the TimeL-E API endpoints.  
 The enriched data is sourced from external APIs (OpenFoodFacts) and stored in the database for fast access.
@@ -11,15 +13,15 @@ All product endpoints now return enriched data:
 
 ```json
 {
-  "product_id": 1,
-  "product_name": "Chocolate Sandwich Cookies",
-  "aisle_id": 61,
-  "department_id": 19,
-  "aisle_name": "cookies cakes",
-  "department_name": "snacks",
+  "productId": 1,
+  "productName": "Chocolate Sandwich Cookies",
+  "aisleId": 61,
+  "departmentId": 19,
+  "aisleName": "cookies cakes",
+  "departmentName": "snacks",
   "description": "Delicious chocolate sandwich cookies with cream filling",
   "price": 4.99,
-  "image_url": "https://images.openfoodfacts.org/..."
+  "imageUrl": "https://images.openfoodfacts.org/..."
 }
 ```
 
@@ -33,11 +35,11 @@ All product endpoints now return enriched data:
 Products without enriched data will have `null` values:
 ```json
 {
-  "product_id": 999,
-  "product_name": "Some Product",
+  "productId": 999,
+  "productName": "Some Product",
   "description": null,
   "price": null,
-  "image_url": null
+  "imageUrl": null
 }
 ```
 
@@ -186,4 +188,3 @@ If you have an existing database, run the migration script:
 
 This integration enhances the TimeL-E platform with rich product information  
 while maintaining backward compatibility and performance.
-
