@@ -1,7 +1,7 @@
 # backend/app/routers/users.py
 from fastapi import APIRouter, HTTPException, Body
 from typing import Optional
-from pydantic import BaseModel, EmailStr, conint, Field, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from pydantic.alias_generators import to_camel
 from ..models.base import APIResponse
 from ..services.database_service import db_service
@@ -185,17 +185,17 @@ async def demo_login() -> APIResponse:
     return APIResponse(
         message="Demo login successful",
         data={
-            "user_id": str(selected_user["user_id"]),
-            "first_name": selected_user["first_name"],
-            "last_name": selected_user["last_name"],
-            "email_address": selected_user["email"],
-            "phone_number": f"+1-555-0{selected_user['user_id']}",
-            "street_address": f"{selected_user['user_id']} Demo Street",
+            "userId": str(selected_user["user_id"]),
+            "firstName": selected_user["first_name"],
+            "lastName": selected_user["last_name"],
+            "email": selected_user["email"],
+            "phone": f"+1-555-0{selected_user['user_id']}",
+            "streetAddress": f"{selected_user['user_id']} Demo Street",
             "city": "Demo City",
-            "postal_code": str(selected_user['user_id']),
+            "postalCode": str(selected_user['user_id']),
             "country": "US",
-            "demo_user": True,
-            "ml_predictions_available": True
+            "demoUser": True,
+            "mlPredictionsAvailable": True
         }
     )
 
@@ -401,6 +401,17 @@ async def login_user(login_request: LoginRequest) -> APIResponse:
         print(f"Login failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Login failed due to a server error")
 
+class NotificationSettingsResponse(BaseModel):
+    """Notification settings response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    user_id: int
+    days_between_order_notifications: Optional[int] = Field(None, ge=1, le=365)
+    order_notifications_start_date_time: Optional[datetime] = None
+    order_notifications_next_scheduled_time: Optional[datetime] = None
+    pending_order_notification: Optional[bool] = None
+    order_notifications_via_email: Optional[bool] = None
+    last_notification_sent_at: Optional[datetime] = None
+
 @router.get("/{user_id}/notification-settings", response_model=APIResponse)
 async def get_notification_settings(user_id: str) -> APIResponse:
     """Get user notification settings"""
@@ -411,10 +422,16 @@ async def get_notification_settings(user_id: str) -> APIResponse:
         _handle_db_service_error(settings_result, user_id, "get notification settings", "Failed to get notification settings")
         
         settings_data = settings_result.get("data", [])     # no data just means user has no notification data stored
-        
+
+        if not settings_data:
+            return APIResponse(message="No notification settings found", data={})
+
+        notiff = settings_data[0]
+        notiff_response = NotificationSettingsResponse(**notiff)
+
         return APIResponse(
             message="Notification settings retrieved successfully",
-            data=settings_data[0]
+            data=notiff_response.model_dump(by_alias=True)
         )
     except HTTPException as e:
         _handle_unhandled_http_exception(e, "Failed to get notification settings due to a server error")
@@ -451,10 +468,13 @@ async def update_notification_settings(user_id: str, settings_request: UpdateNot
 
         if not updated_data:
             return APIResponse(message="No changes made", data={})
-        
+
+        notiff = updated_data[0]
+        notiff_response = NotificationSettingsResponse(**notiff )
+
         return APIResponse(
             message="Notification settings updated successfully",
-            data=updated_data[0]
+            data=notiff_response.model_dump(by_alias=True)
         )
     except HTTPException as e:
         _handle_unhandled_http_exception(e, "Failed to update notification settings due to a server error")
@@ -498,3 +518,4 @@ async def logout_user() -> APIResponse:
         message="Logout successful",
         data={"logged_out": True}
     )
+
