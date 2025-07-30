@@ -9,17 +9,29 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     libpq-dev \
     build-essential \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    curl
 
 # RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install --no-cache-dir -r requirements.txt
+# Install pip requirements
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Remove build dependencies after pip install (keep image smaller)
+RUN apt-get remove -y build-essential gcc \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY app/ ./app/
+
+RUN find /app -name '*.pyc' -delete && find /app -name '__pycache__' -type d -exec rm -rf {} +
+
+# Create a non-root user and set permissions
+RUN adduser --disabled-password --gecos '' dbservice && \
+    chown -R dbservice /app
+
+USER dbservice
 
 #Expose default port
 EXPOSE 7000

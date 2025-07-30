@@ -4,7 +4,7 @@ psycopg2-binary
 asyncpg
 sqlalchemy>=2.0
 uuid-utils>=0.11.0  # provides uuid7() support until native uuid.UUIDv7 is available in Python 3.14+
-bcrypt
+argon2-cffi>=23.1.0
 pydantic[email]
 pandas
 # pandas=2.2.3

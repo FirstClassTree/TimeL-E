@@ -19,29 +19,38 @@ class DatabaseService:
                 data=data
             )
     
-    async def get_entity(self, entity_type: str, entity_id: str) -> Dict[str, Any]:
-        """Get entity from database"""
+    async def get_entity(self, entity_type: str, entity_id: str, sub_resource: Optional[str] = None) -> Dict[str, Any]:
+        """Get entity or sub-resource from database"""
+        url = f"{self.base_url}/{entity_type}/{entity_id}"
+        if sub_resource:
+            url += f"/{sub_resource}"
         async with ServiceClient() as client:
             return await client.request(
                 method="GET",
-                url=f"{self.base_url}/{entity_type}/{entity_id}"
+                url=url
             )
     
-    async def update_entity(self, entity_type: str, entity_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Update entity in database"""
+    async def update_entity(self, entity_type: str, entity_id: str, data: Dict[str, Any], sub_resource: Optional[str] = None) -> Dict[str, Any]:
+        """Update entity or sub-resource in database"""
+        url = f"{self.base_url}/{entity_type}/{entity_id}"
+        if sub_resource:
+            url += f"/{sub_resource}"
         async with ServiceClient() as client:
             return await client.request(
                 method="PUT",
-                url=f"{self.base_url}/{entity_type}/{entity_id}",
+                url=url,
                 data=data
             )
     
-    async def delete_entity(self, entity_type: str, entity_id: str) -> Dict[str, Any]:
-        """Delete entity from database"""
+    async def delete_entity(self, entity_type: str, entity_id: str, data: Optional[Dict[str, Any]] = None,
+                            headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+        """Delete entity from database, optionally with request body and headers."""
         async with ServiceClient() as client:
             return await client.request(
                 method="DELETE",
-                url=f"{self.base_url}/{entity_type}/{entity_id}"
+                url=f"{self.base_url}/{entity_type}/{entity_id}",
+                json=data,
+                headers=headers
             )
     
     async def list_entities(self, entity_type: str, filters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -63,41 +72,15 @@ class DatabaseService:
                     data=query_data
                 )
                 
-                # Convert db-service response format to expected backend format
-                if response.get("status") == "ok":
-                    return {
-                        "success": True,
-                        "data": response.get("results", [])
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "data": [],
-                        "error": response.get("detail", "Query failed")
-                    }
+                # db_service returns the expected format directly
+                return response
             except Exception as e:
-                # Extract more detailed error information
-                error_str = str(e)
-                
-                # Check for common database constraint violations
-                if "email_address" in error_str and "already exists" in error_str:
-                    return {
-                        "success": False,
-                        "data": [],
-                        "error": "Email address already exists"
-                    }
-                elif "name" in error_str and "already exists" in error_str:
-                    return {
-                        "success": False,
-                        "data": [],
-                        "error": "Username already exists"
-                    }
-                else:
-                    return {
-                        "success": False,
-                        "data": [],
-                        "error": f"Database error: {error_str}"
-                    }
+                # Handle client-level errors (network, timeout, etc.)
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": f"Database service error: {str(e)}"
+                }
 
     # Product-specific methods
     async def get_products_with_filters(

@@ -75,10 +75,13 @@ class ServiceClient:
                     headers=request_headers
                 )
             elif method.upper() == "DELETE":
-                response = await self._client.delete(
-                    url, 
-                    json=data, 
-                    params=params, 
+                # For DELETE, use content=json.dumps(data) instead of json=data
+                import json
+                response = await self._client.request(
+                    method="DELETE",
+                    url=url,
+                    content=json.dumps(data) if data else None,
+                    params=params,
                     headers=request_headers
                 )
             else:

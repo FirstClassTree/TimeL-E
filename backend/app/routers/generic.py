@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from ..models.base import APIResponse, ErrorResponse, GenericEntity
 from ..services.http_client import db_service
 
-router = APIRouter(prefix="/api", tags=["Generic CRUD"])
+router = APIRouter(prefix="", tags=["Generic CRUD"])
 
 @router.post("/{entity}")
 async def create_entity(entity: str, data: Dict[str, Any]) -> APIResponse:

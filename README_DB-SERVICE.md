@@ -100,12 +100,12 @@ Run from the **host machine**.
 #### Windows CMD (Escape double quotes)
 
 ```bash
-curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"username\":\"alice\", \"email\":\"alice@example.com\"}"
+curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"first_name\":\"Alice\", \"last_name\":\"Smith\", \"email_address\":\"alice@example.com\", \"password\":\"SecurePass123\"}"
 ```
 #### Linux / macOS / Git Bash
 
 ```bash
-curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d '{"username":"alice", "email":"alice@example.com"}'
+curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d '{"first_name":"Alice", "last_name":"Smith", "email_address":"alice@example.com", "password":"SecurePass123"}'
 ```
 
 Once the `POST /users` route is implemented in db-service, this command should return a successful response
@@ -348,10 +348,10 @@ making the endpoints more secure, even if user IDs are exposed in URLs.
 also enables distributed ID generation across multiple servers without collisions, while maintaining chronological order. 
 
 Params:    
-* name, email_address, password, phone_number, street_address, city, postal_code, country  
+* first_name, last_name, email_address, password, phone_number, street_address, city, postal_code, country  
 
 Returns:  
-* user_id, name, email_address
+* user_id, first_name, last_name, email_address
 
 #### Example Request (Backend usage):
 
@@ -359,7 +359,8 @@ Returns:
 user = db_service.create_entity(
     endpoint="/users/",
     data={
-        "name": "Alice",
+        "first_name": "Alice",
+        "last_name": "Smith",
         "email_address": "alice@example.com",
         "password": "12345678",
         "phone_number": "555-1234",
@@ -388,7 +389,8 @@ Logs user in if the email and password are correct. Otherwise returns "Invalid e
 ```json
 {
   "user_id": 42,
-  "name": "Alice",
+  "first_name": "Alice",
+  "last_name": "Smith",
   "email_address": "alice@example.com",
   "phone_number": "123-456-7890",
   "street_address": "1 Main St",
@@ -458,7 +460,7 @@ db_service.create_entity(
 Notes:
 * If the current password is incorrect, the request will fail.
 * The new email must not already exist in the database.
-* For user security, email changes are not allowed via the general update endpoint (PATCH /users/{user_id});  
+* For user security, email changes are not allowed via the general update endpoint (PUT /users/{user_id});  
 this dedicated endpoint must be used.
 
 ### Fetch details ```GET /users/{user_id}```
@@ -471,7 +473,7 @@ Fetches user details by user_id (uuid7). Returns full details.except credentials
 user = db_service.get_entity(endpoint=f"/users/{user_id}")
 ```
 
-### Update ```PATCH /users/{user_id}```
+### Update ```PUT /users/{user_id}```
 
 Partially updates user fields. Only the provided fields will be updated.  
 Cannot update email_address or password through this endpoint by default.  
@@ -499,7 +501,7 @@ db_service.delete_entity(
 ```
 
 ### Notifications API
-Provides full control over user notification preferences via GET and PATCH endpoints. Fully timezone-aware.  
+Provides full control over user notification preferences via GET and PUT endpoints. Fully timezone-aware.  
 Backed by a custom scheduler and real email delivery infrastructure for precise order reminders, even during development.    
 
 #### Fields the user controls (via API input)
@@ -513,7 +515,7 @@ Backed by a custom scheduler and real email delivery infrastructure for precise 
 * `pending_order_notification`:	Set by scheduler if a notification is due and not sent yet.
 
 
-### Update Notification Settings ```PATCH /users/{user_id}/notification-settings```
+### Update Notification Settings ```PUT /users/{user_id}/notification-settings```
 
 Update notification settings for the user. Can send partial fields.  
 The `order_notifications_start_date_time` field should be provided in ISO 8601 format with an explicit timezone offset  
@@ -583,7 +585,7 @@ The backend is responsible for ensuring only authenticated users can access thei
 Note:
 * All endpoints validate that the user exists.  
 * All product IDs in requests are validated for existence.  
-* Cart responses always return enriched product details (name, aisle, department, price, etc).  
+* Cart responses always return enriched product details (product_name, aisle, department, price, etc).  
 * All changes update the cart’s updated_at timestamp (exposed in API, ISO8601 UTC).  
 * All cart responses include `updated_at` timestamp.  
 Clients can display or use this value to track last updates.  

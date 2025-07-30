@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from .db_core.database import SessionLocal
 from .db_core.models import Product, Department, Aisle, User, Order, OrderItem
+from .db_core.config import settings
 
 CSV_DIR = "/data"
 
@@ -263,6 +264,25 @@ def load_order_items(db: Session):
 
     db.commit()
 
+def _dev_overwrite_user_from_csv(existing_user, csv_row, db, row_num):
+    """
+    Helper: Overwrites an existing user object with values from csv_row.
+    Prints full dicts of old and new user details for transparency.
+    Dynamically updates all fields present in the CSV (except 'user_id').
+    """
+    old_dict = dict(existing_user.__dict__)
+    old_dict.pop('_sa_instance_state', None)
+    print(
+        f"Row {row_num}: DEV MODE: User with ID {csv_row['user_id']} already exists "
+        f"and is being OVERWRITTEN by Demo user from CSV.\n"
+        f"Old user details: {old_dict}\n"
+        f"New (Demo) user details: {csv_row}"
+    )
+    for field in csv_row:
+        if field != "user_id":  # Don't update the primary key
+            setattr(existing_user, field, csv_row[field])
+    db.flush()
+
 def load_users(db: Session):
     users_file = os.path.join(CSV_DIR, "users_demo.csv")
     print(f"Loading users from: {users_file}")
@@ -294,10 +314,15 @@ def load_users(db: Session):
                     existing_email = db.query(User).filter(User.email_address == row['email_address']).first()
 
                     if existing_user_id:
-                        if errors < 3:
-                            print(f"   Row {row_num}: User ID {row['user_id']} already exists, skipping")
-                        errors += 1
-                        continue
+                        if settings.NODE_ENV == "development" and row["first_name"] == "Demo":
+                            _dev_overwrite_user_from_csv(existing_user_id, row, db, row_num)
+                            users_loaded += 1
+                            continue
+                        else:
+                            if errors < 3:
+                                print(f"   Row {row_num}: User ID {row['user_id']} already exists, skipping")
+                            errors += 1
+                            continue
 
                     # if existing_name:
                     #     if errors < 3:
@@ -313,7 +338,8 @@ def load_users(db: Session):
 
                     user = User(
                         user_id=int(row['user_id']),
-                        name=row['name'],
+                        first_name=row['first_name'],
+                        last_name=row['last_name'],
                         hashed_password=row['hashed_password'],
                         email_address=row['email_address'],
                         phone_number=row['phone_number'],
@@ -326,7 +352,7 @@ def load_users(db: Session):
                     users_loaded += 1
 
                     if users_loaded <= 5:  # Show first 5 for confirmation
-                        print(f"   Row {row_num}: Prepared user {row['user_id']}: {row['name']}")
+                        print(f"   Row {row_num}: Prepared user {row['user_id']}: {row['first_name']} {row['last_name']}")
 
                     # Commit in batches
                     if len(batch_users) >= batch_size:
@@ -436,7 +462,7 @@ def populate_tables():
         if sample_users:
             print("Sample users in database:")
             for user in sample_users:
-                print(f"   User {user.user_id}: {user.name} ({user.email_address})")
+                print(f"   User {user.user_id}: {user.first_name} {user.last_name} ({user.email_address})")
         
     except Exception as e:
         print(f"CRITICAL ERROR during CSV loading: {e}")

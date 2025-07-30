@@ -5,7 +5,7 @@ from ..models.base import APIResponse
 from ..services.database_service import db_service
 from pydantic import BaseModel
 
-router = APIRouter(prefix="/api/orders", tags=["Orders"])
+router = APIRouter(prefix="/orders", tags=["Orders"])
 
 class OrderItemRequest(BaseModel):
     product_id: int

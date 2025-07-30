@@ -5,7 +5,7 @@ from ..models.base import APIResponse, Cart, CartItem, Order
 from ..services.http_client import db_service, ml_service
 import asyncio
 
-router = APIRouter(prefix="/api", tags=["Business Logic"])
+router = APIRouter(prefix="", tags=["Business Logic"])
 
 # Cart Management Endpoints
 

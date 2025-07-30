@@ -5,7 +5,7 @@ from ..models.base import APIResponse
 from ..models.grocery import PredictionItem, UserPredictions
 from ..services.ml_service import ml_service
 
-router = APIRouter(prefix="/api/predictions", tags=["Predictions"])
+router = APIRouter(prefix="/predictions", tags=["Predictions"])
 
 @router.get("/user/{user_id}", response_model=APIResponse)
 async def get_user_predictions(user_id: str) -> APIResponse:

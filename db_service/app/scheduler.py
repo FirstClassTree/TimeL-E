@@ -2,12 +2,14 @@
 
 import datetime
 from sqlalchemy.orm import Session
-from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.exc import SQLAlchemyError
 import traceback
 from .db_core.database import SessionLocal
-from .db_core.models import User  # adjust if your user model lives elsewhere
-from .notification_service import send_email_notification  # stub, define as needed
+from .db_core.models import User
+from .notification_service import send_email_notification
+import logging
+
+logger = logging.getLogger(__name__)
 
 def process_scheduled_user_notifications():
     """Run hourly to flag/schedule user notifications and send emails to users who opted in."""
@@ -38,20 +40,21 @@ def process_scheduled_user_notifications():
                 missed_intervals = max(1, (now - user.order_notifications_next_scheduled_time) // interval + 1)
                 user.order_notifications_next_scheduled_time += missed_intervals * interval
 
-                print(f"User {user.user_id}: scheduled {missed_intervals} missed notification(s), next at {user.order_notifications_next_scheduled_time.isoformat()}")
+                logger.info(f"User {user.user_id}: scheduled {missed_intervals} missed notification(s), next at {user.order_notifications_next_scheduled_time.isoformat()}")
 
         db.commit()
 
     except SQLAlchemyError as db_err:
         db.rollback()
-        print("[Scheduler] Database error during notification processing:")
-        print(f"  └── {type(db_err).__name__}: {db_err}")
-        print(traceback.format_exc())  # full traceback for debugging
+        logger.error("[Scheduler] Database error during notification processing:")
+        logger.error(f"  └── {type(db_err).__name__}: {db_err}")
+        logger.error(traceback.format_exc())  # full traceback for debugging
 
     except Exception as e:
-        print("[Scheduler] Unexpected error during notification processing:")
-        print(f"  └── {type(e).__name__}: {e}")
-        print(traceback.format_exc())
+        logger.error("[Scheduler] Unexpected error during notification processing:")
+        logger.error(f"  └── {type(e).__name__}: {e}")
+        logger.error(traceback.format_exc())
 
     finally:
         db.close()
+

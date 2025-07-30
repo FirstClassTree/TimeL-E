@@ -5,7 +5,9 @@ import pandas as pd
 import numpy as np
 from faker import Faker
 import random
-import bcrypt
+from argon2 import PasswordHasher
+import secrets
+import string
 
 # Configs
 ORDERS_CSV = 'orders.csv'
@@ -19,6 +21,23 @@ SEED = 42
 
 random.seed(SEED)
 np.random.seed(SEED)
+
+# Argon2id password hasher config
+ph = PasswordHasher(
+    memory_cost=65536,  # 64 MB
+    time_cost=3,        # 3 iterations
+    parallelism=4,      # 4 threads
+    hash_len=32,        # 32 byte hash
+    salt_len=16         # 16 byte salt
+)
+
+
+def random_password(length=12):
+    chars = string.ascii_letters + string.digits + string.punctuation
+    return ''.join(secrets.choice(chars) for _ in range(length))
+
+def hash_password(password: str) -> str:
+    return ph.hash(password)
 
 # Step 1: Select 1,000 test users
 orders = pd.read_csv(ORDERS_CSV)
@@ -42,17 +61,17 @@ for fname in [ORDER_PRIOR_CSV]:
 order_items_demo = pd.concat(order_items, ignore_index=True)
 order_items_demo.to_csv(ORDER_ITEMS_DEMO_CSV, index=False)
 
-# Step 4: Generate fake user info
+# Step 4: Generate fake user info with first and last names
 fake = Faker()
 users_info = []
 used_emails = set()
 
 for user_id in selected_users:
-    name = fake.name()
-    # Generate a deterministic password hash for the demo
-    password = 'password123'
-    # Use bcrypt instead of sha256
-    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    first_name = fake.first_name()
+    last_name = fake.last_name()
+    # generate random password and hash with Argon2id
+    password = random_password()
+    hashed_password = hash_password(password)
     # Ensure email uniqueness
     while True:
         email_address = fake.email()
@@ -65,14 +84,14 @@ for user_id in selected_users:
     postal_code = fake.postcode()
     country = fake.country()
     users_info.append([
-        user_id, name, hashed_password, email_address, phone_number,
+        user_id, first_name, last_name, password, hashed_password, email_address, phone_number,
         street_address, city, postal_code, country
     ])
 
 users_demo_df = pd.DataFrame(
     users_info,
     columns=[
-        "user_id", "name", "hashed_password", "email_address", "phone_number",
+        "user_id", "first_name", "last_name", "password", "hashed_password", "email_address", "phone_number",
         "street_address", "city", "postal_code", "country"
     ]
 )
@@ -82,4 +101,3 @@ print("  Demo CSVs generated:")
 print(f"  Users: {USERS_DEMO_CSV} ({len(users_demo_df)})")
 print(f"  Orders: {ORDERS_DEMO_CSV} ({len(orders_demo)})")
 print(f"  Order Items: {ORDER_ITEMS_DEMO_CSV} ({len(order_items_demo)})")
-

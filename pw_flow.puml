@@ -1,0 +1,20 @@
+@startuml
+skinparam rectangle {
+  BorderColor Black
+  FontSize 14
+}
+skinparam database {
+  BorderColor Black
+  FontSize 14
+}
+
+actor U as "User" #ADD8E6
+rectangle "Backend\n(REST API, FastAPI)" as B #FFD700
+rectangle "db_service\n(REST API, FastAPI, Argon2id)\n\n• Receives plaintext pw\n• Hashes pw w/ Argon2id\n• Stores/Verifies hashed pw in DB" as D #FFE4B5
+database "PostgreSQL DB" as P #E0F7FA
+
+U -right-> B : HTTPS
+B <-right-> D :  Internal Docker Network
+D <-down-> P :  Internal Docker Network
+
+@enduml

@@ -90,6 +90,12 @@ docker-compose up --build
 > See [README_BACKEND.md](README_BACKEND.md) for detailed backend documentation.
 
 
+### 🔧 DB Service (Python FastAPI)
+Access the API:
+   - API: http://localhost:7000
+   - Documentation: http://localhost:7000/docs (Explanation of API endpoints)
+   - Health Check: http://localhost:7000/health
+
 ## ⚙️ Production Setup and Run
 
 ```bash
@@ -97,3 +103,36 @@ docker-compose -f docker-compose.yml up --build
 ```
 
 This excludes pgadmin service.
+
+
+## Authentication & Password Security Architecture
+
+This architecture secures user password handling across services.  
+Passwords are sent from the client to the backend over HTTP (or HTTPS in production deployments).  
+The backend forwards the plaintext password over an internal Docker network to the db_service,  
+where all password hashing and verification is handled using the Argon2id algorithm.  
+Only the hashed password is stored in PostgreSQL. This centralizes authentication logic,  
+making upgrades and audits easier, and reduces the risk of accidental password exposure.  
+Note: For maximum security, enable HTTPS in all production environments.
+
+```text
+┌───────────────────────────┐                                ┌─────────────────────────────┐  
+│        User (client)      │  ───────────────────────────▶  │          Backend            │  
+│    (browser)              │         (HTTPS)                │     (REST API, FastAPI)     │  
+└───────────────────────────┘                                └───────────▲─────────────────┘  
+                                                                         │ Internal Docker Network  
+                                                                         ▼  
+                                                           ┌─────────────────────────────┐  
+                                                           │        DB Service           │  
+                                                           │   (FastAPI, Argon2id)       │  
+                                                           │ - Receives plaintext pw     │  
+                                                           │ - Hashes pw w/ Argon2id     │  
+                                                           │ - Stores/Verifies           │  
+                                                           │   hashed pw in DB           │  
+                                                           └─────────────▲───────────────┘  
+                                                                         │ Internal Network  
+                                                                         ▼  
+                                                           ┌─────────────────────────────┐  
+                                                           │       PostgreSQL DB         │  
+                                                           └─────────────────────────────┘  
+```

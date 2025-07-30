@@ -26,25 +26,17 @@ def validate_params(params):
         if isinstance(p, str) and len(p) > 10000:
             raise ValueError("String parameter too long")
 
-@router.get("/health")
-def health_check():
-    try:
-        import psycopg2
-        conn = psycopg2.connect(settings.DATABASE_URL)
-        conn.close()
-        return {"status": "ok", "database": "reachable"}
-    except Exception as e:
-        return {"status": "error", "database": str(e)}
-
 @router.post("/query")
 async def run_query(request: Request):
     """
     Accepts parameterized SQL queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
     Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+    Returns format expected by backend: {"success": True/False, "data": [...], "error": "..."}
     """
     # """
     # Accepts parameterized SQL SELECT queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
     # Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
+    # Returns format expected by backend: {"success": True/False, "data": [...], "error": "..."}
     # Only SELECT queries are allowed.
     # """
     body = await request.json()
@@ -52,8 +44,13 @@ async def run_query(request: Request):
     params = body.get("params", [])
 
     if not sql:
-        raise HTTPException(status_code=400, detail="Missing 'sql' in request body")
+        return {
+            "success": False,
+            "data": [],
+            "error": "Missing 'sql' in request body"
+        }
 
+    # TODO: Enable this in production!
     # if not sql.strip().lower().startswith("select"):
     #     raise HTTPException(status_code=403, detail="Only SELECT queries are allowed")
 
@@ -65,15 +62,41 @@ async def run_query(request: Request):
             rows = await conn.fetch(sql, *params)
             # Convert Record objects to dicts for JSON serialization
             results = [dict(row) for row in rows]
+            return {
+                "success": True,
+                "data": results
+            }
         except Exception as query_exc:
-            print(f"Query failed: {query_exc}")   # print goes to container logs
-            raise HTTPException(status_code=400, detail=f"Database query failed.")
+            print(f"Query failed: {query_exc}")
+            # Check for common database constraint violations
+            error_str = str(query_exc)
+            if "email_address" in error_str and "already exists" in error_str:
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": "Email address already exists"
+                }
+            elif "name" in error_str and "already exists" in error_str:
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": "Username already exists"
+                }
+            else:
+                return {
+                    "success": False,
+                    "data": [],
+                    "error": f"Database query failed: {error_str}"
+                }
         finally:
             await conn.close()
-        return {"status": "ok", "results": results}
     except Exception as e:
         print(f"Request failed: {e}")
-        raise HTTPException(status_code=400, detail=f"Request failed.")
+        return {
+            "success": False,
+            "data": [],
+            "error": f"Request failed: {str(e)}"
+        }
 
 @router.get("/products")
 def get_products(

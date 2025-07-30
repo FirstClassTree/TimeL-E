@@ -8,9 +8,9 @@ services:
     ports:
       - "${DB_SERVICE_PORT}:${DB_SERVICE_PORT}"
 
-#  postgres:
-#    ports:
-#      - "127.0.0.1:5432:5432"
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
 
   pgadmin:
     image: dpage/pgadmin4

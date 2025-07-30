@@ -42,7 +42,8 @@ class User(BaseModel):
 
     Attributes:
         user_id (int): Unique identifier for the user (primary key).
-        name (str): User's display or full name (not required to be unique).
+        first_name (str): User's first name (not required to be unique).
+        last_name (str): User's last name (not required to be unique).
         hashed_password (str): Securely hashed password for authentication.
         email_address (str): User's unique email address. Used for login and account recovery.
         phone_number (Optional[str]): User's contact phone number. May be null if not provided.
@@ -66,7 +67,8 @@ class User(BaseModel):
     Example:
         User(
             user_id=1,
-            name="Alice",
+            first_name="Alice",
+            last_name="Smith",
             hashed_password="$2b$12$...",
             email_address="alice@example.com",
             phone_number="555-1234",
@@ -75,7 +77,8 @@ class User(BaseModel):
             postal_code="12345",
             country="USA")
     """
-    name: str = Field(..., description="User's display or full name (not required to be unique)")
+    first_name: str = Field(..., description="User's first name (not required to be unique)")
+    last_name: str = Field(..., description="User's last name (not required to be unique)")
     hashed_password: str = Field(..., description="Securely hashed password for authentication")
     email_address: EmailStr = Field(..., description="User's unique email address")
     phone_number: Optional[str] = Field(None, description="User's contact phone number. May be null if not provided")

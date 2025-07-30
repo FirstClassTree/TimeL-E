@@ -29,7 +29,8 @@ class User(Base):
 
     Attributes:
         user_id (int): Unique identifier for the user (primary key).
-        name (str): User's display or full name (not required to be unique).
+        first_name (str): User's first name (not required to be unique).
+        last_name (str): User's last name (not required to be unique).
         hashed_password (str): Securely hashed password for authentication.
         email_address (str): User's unique email address. Used for login and account recovery.
         phone_number (Optional[str]): User's contact phone number. May be null if not provided.
@@ -54,7 +55,8 @@ class User(Base):
     Example:
         User(
             user_id=1,
-            name="Alice",
+            first_name="Alice",
+            last_name="Smith",
             hashed_password="$2b$12$...",
             email_address="alice@example.com",
             phone_number="555-1234",
@@ -73,7 +75,8 @@ class User(Base):
     )
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)   # allow repeating names
+    first_name: Mapped[str] = mapped_column(String, nullable=False)     # allow repeating names
+    last_name: Mapped[str] = mapped_column(String, nullable=False)      # allow repeating names
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     email_address: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)     # indexed for fast login
 

@@ -4,10 +4,10 @@ from ..models.base import APIResponse
 from ..models.grocery import Department
 from ..services.database_service import db_service
 
-router = APIRouter(prefix="/api", tags=["Categories"])
+router = APIRouter(prefix="/departments", tags=["Categories"])
 
 # Department endpoints
-@router.get("/departments", response_model=APIResponse)
+@router.get("/", response_model=APIResponse)
 async def get_departments() -> APIResponse:
     """Get all departments"""
     try:
@@ -43,7 +43,7 @@ async def get_departments() -> APIResponse:
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/departments/{department_id}", response_model=APIResponse)
+@router.get("/{department_id}", response_model=APIResponse)
 async def get_department(department_id: int) -> APIResponse:
     """Get specific department"""
     try:

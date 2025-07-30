@@ -4,7 +4,7 @@ from typing import Dict, Any
 from ..models.base import APIResponse, ServiceRequest
 from ..services.http_client import db_service, ml_service
 
-router = APIRouter(prefix="/api/services", tags=["Service Coordination"])
+router = APIRouter(prefix="/services", tags=["Service Coordination"])
 
 @router.post("/db/query")
 async def forward_db_query(query_data: Dict[str, Any]) -> APIResponse:

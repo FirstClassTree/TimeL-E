@@ -16,6 +16,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - FRONTEND_URL=${FRONTEND_URL}
+      - FRONTEND_PORT=${FRONTEND_PORT}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS}
     depends_on:
       db-service:
         condition: service_healthy
@@ -77,6 +79,7 @@ services:
       - RESET_DATABASE_ON_STARTUP=${RESET_DATABASE_ON_STARTUP}
       - RESEND_API_KEY=${RESEND_API_KEY}
       - NOTIFICATION_FROM_EMAIL=${NOTIFICATION_FROM_EMAIL}
+      - NODE_ENV=${NODE_ENV}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1"]
       interval: 10s
@@ -115,3 +118,4 @@ volumes:
 networks:
   timele-network:
     driver: bridge
+

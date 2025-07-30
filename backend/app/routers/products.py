@@ -5,7 +5,7 @@ from ..models.base import APIResponse
 from ..models.grocery import Product, ProductSearchResult, Department, Aisle
 from ..services.database_service import db_service
 
-router = APIRouter(prefix="/api/products", tags=["Products"])
+router = APIRouter(prefix="/products", tags=["Products"])
 
 @router.get("/", response_model=APIResponse)
 async def get_products(

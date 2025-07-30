@@ -1,7 +1,5 @@
 # app/orders_routers.py
 import datetime
-
-import bcrypt
 from fastapi import APIRouter, Query, HTTPException, status, Body, Path, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -271,13 +269,6 @@ def add_order_items(
         print(f"Error adding order items: {e}")
         raise HTTPException(status_code=500, detail=f"Error adding order items")
 
-
-# def verify_password(plain_password: str, hashed_password: str) -> bool:
-#     return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
-
-# class DeleteOrderRequest(BaseModel):
-#     password: str
-
 @router.delete("/{order_id}", status_code=204)
 # def delete_order(order_id: int, payload: DeleteUserRequest):
 def delete_order(order_id: int):
@@ -287,8 +278,6 @@ def delete_order(order_id: int):
         user = session.query(User).filter_by(user_id=order.user_id).first()
         if not order:
             raise HTTPException(status_code=404, detail="User not found")
-        # if not verify_password(payload.password, user.hashed_password):
-        #     raise HTTPException(status_code=403, detail="Password incorrect")
         session.delete(order)
         session.commit()
         return {"message": "Order deleted successfully"}
