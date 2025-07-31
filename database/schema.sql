@@ -283,14 +283,22 @@ ALTER SEQUENCE products.products_product_id_seq OWNED BY products.products.produ
 
 CREATE TABLE users.users (
     user_id integer NOT NULL,
-    name character varying NOT NULL,
+    first_name character varying NOT NULL,
+    last_name character varying NOT NULL,
     hashed_password character varying(128) NOT NULL,
     email_address character varying NOT NULL,
     phone_number character varying(50),
     street_address character varying(255),
     city character varying(100),
     postal_code character varying(20),
-    country character varying(100)
+    country character varying(100),
+    days_between_order_notifications integer,
+    order_notifications_start_date_time timestamp with time zone,
+    order_notifications_next_scheduled_time timestamp with time zone,
+    last_notification_sent_at timestamp with time zone,
+    pending_order_notification boolean NOT NULL,
+    order_notifications_via_email boolean NOT NULL,
+    CONSTRAINT check_days_between_order_notifications CHECK (((days_between_order_notifications IS NULL) OR ((days_between_order_notifications >= 1) AND (days_between_order_notifications <= 365))))
 );
 
 

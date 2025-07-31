@@ -76,7 +76,7 @@ class UserResponse(BaseModel):
     """User response model (without sensitive data)"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: int
+    user_id: str
     first_name: str
     last_name: str
     email_address: str
@@ -404,7 +404,7 @@ async def login_user(login_request: LoginRequest) -> APIResponse:
 class NotificationSettingsResponse(BaseModel):
     """Notification settings response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    user_id: int
+    user_id: str
     days_between_order_notifications: Optional[int] = Field(None, ge=1, le=365)
     order_notifications_start_date_time: Optional[datetime] = None
     order_notifications_next_scheduled_time: Optional[datetime] = None
