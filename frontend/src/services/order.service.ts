@@ -10,46 +10,14 @@ export interface OrderItem {
     category: string;
 }
 
-export interface Delivery {
-  id: string;
-  orderId: string;
-  type: 'standard' | 'express' | 'scheduled';
-  status: 'pending' | 'scheduled' | 'in_transit' | 'delivered' | 'failed';
-  street: string;
-  city: string;
-  zipCode: string;
-  country: string;
-  scheduledDate?: string;
-  scheduledTimeStart?: string;
-  scheduledTimeEnd?: string;
-  deliveredAt?: string;
-  deliveryNotes?: string;
-  trackingNumber?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Order {
-  id: string;
-  orderNumber: string;
-  userId: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  order_id: number;
+  order_number: number;
+  user_id: string;
+  status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   items: OrderItem[];
-  delivery?: Delivery;
-  tax: number;
-  deliveryFee: number;
   total: number;
-  paymentMethod: {
-    type: 'card' | 'paypal';
-    last4?: string;
-    brand?: string;
-  };
-  paymentStatus: string;
-  notes?: string;
-  metadata: Record<string, any>;
   createdAt: string;
-  updatedAt: string;
-  trackingNumber?: string;
 }
 
 export interface CreateOrderData {
@@ -68,8 +36,9 @@ export interface OrdersResponse {
   orders: Order[];
   total: number;
   page: number;
-  totalPages: number;
-  hasMore: boolean;
+  per_page: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 export interface OrderFilters {
@@ -203,14 +172,10 @@ class OrderService {
     return api.put<Order>(`/admin/orders/${orderId}/status`, update);
   }
 
-  async updateTracking(orderId: string, trackingNumber: string, carrier: string): Promise<Order> {
-    return api.put<Order>(`/admin/orders/${orderId}/tracking`, { trackingNumber, carrier });
-  }
-
   // Utility functions
   getStatusColor(status: Order['status']): string {
     const colors = {
-      pending: 'yellow',
+      PENDING: 'yellow',
       processing: 'blue',
       shipped: 'indigo',
       delivered: 'green',
@@ -222,7 +187,7 @@ class OrderService {
 
   getStatusIcon(status: Order['status']): string {
     const icons = {
-      pending: 'clock',
+      PENDING: 'clock',
       processing: 'loader',
       shipped: 'truck',
       delivered: 'check-circle',
@@ -237,7 +202,7 @@ class OrderService {
   }
 
   canCancel(order: Order): boolean {
-    return ['pending', 'processing'].includes(order.status);
+    return ['PENDING', 'processing'].includes(order.status);
   }
 
   canRequestRefund(order: Order): boolean {

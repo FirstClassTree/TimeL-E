@@ -6,16 +6,15 @@ import {
   MapPin, Calendar, DollarSign, Phone,
   Download, RefreshCcw, Star
 } from 'lucide-react';
-import {Delivery, orderService} from '@/services/order.service';
+import { orderService} from '@/services/order.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 interface OrderDetail {
-  id: string;
-  orderNumber: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  order_id: number;
+  order_number: number;
+  status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   total: number;
-  tax: number;
   items: Array<{
     id: string;
     name: string;
@@ -26,13 +25,6 @@ interface OrderDetail {
   }>;
   createdAt: string;
   estimatedDelivery?: string;
-  delivery?: Delivery;
-  trackingNumber?: string;
-  paymentMethod: {
-    type: 'card' | 'paypal';
-    last4?: string;
-    brand?: string;
-  };
 }
 
 const OrderDetail: React.FC = () => {
@@ -88,13 +80,6 @@ const OrderDetail: React.FC = () => {
     navigate('/cart');
   };
 
-  const handleTrackPackage = () => {
-    if (order?.trackingNumber) {
-      // Open tracking page in new tab
-      window.open(`https://tracking.example.com/${order.trackingNumber}`, '_blank');
-    }
-  };
-
   if (isLoading) return <LoadingSpinner fullScreen />;
 
   if (error || !order) {
@@ -134,7 +119,7 @@ const OrderDetail: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Order #{order.orderNumber}
+              Order #{order.order_number}
             </h1>
             <div className="flex items-center gap-4">
               <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
@@ -147,16 +132,7 @@ const OrderDetail: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex gap-3">
-            {order.status === 'shipped' && order.trackingNumber && (
-              <button
-                onClick={handleTrackPackage}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-              >
-                <Truck size={16} />
-                Track Package
-              </button>
-            )}
+          <div className="flex gap-2">
             
             <button
               onClick={handleReorder}
@@ -225,11 +201,7 @@ const OrderDetail: React.FC = () => {
               Order Summary
             </h3>
             
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-600 dark:text-gray-400">Tax</span>
-                <span className="text-gray-900 dark:text-white">${order.tax.toFixed(2)}</span>
-              </div>
+            <div className="space-y-1">
               <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                 <div className="flex justify-between">
                   <span className="font-semibold text-gray-900 dark:text-white">Total</span>
@@ -260,53 +232,20 @@ const OrderDetail: React.FC = () => {
                 </div>
               )}
               
-              {order.trackingNumber && (
+              {order.order_number && (
                 <div className="flex items-center gap-3">
                   <Package className="text-gray-400" size={16} />
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      Tracking Number
+                      Order Number
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {order.trackingNumber}
+                      {order.order_number}
                     </p>
                   </div>
                 </div>
               )}
-              
-              <div className="flex items-start gap-3">
-                <MapPin className="text-gray-400 mt-1" size={16} />
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Shipping Address
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {order.delivery?.street}, {order.delivery?.city}, {order.delivery?.zipCode}<br />
-                    {order.delivery?.country}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Payment Information */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Payment Method
-            </h3>
-            
-            <div className="flex items-center gap-3">
-              <DollarSign className="text-gray-400" size={16} />
-              <div>
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
-                  {order.paymentMethod.type === 'card' ? 'Credit Card' : 'PayPal'}
-                </p>
-                {order.paymentMethod.last4 && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {order.paymentMethod.brand} ending in {order.paymentMethod.last4}
-                  </p>
-                )}
-              </div>
             </div>
           </div>
 
@@ -324,7 +263,7 @@ const OrderDetail: React.FC = () => {
                     Contact Support
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
-                    Get help with your order
+                    Request help with your order
                   </p>
                 </div>
               </button>
@@ -349,7 +288,7 @@ const OrderDetail: React.FC = () => {
                       Rate & Review
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
-                      Share your experience
+                      Share your shopping experience
                     </p>
                   </div>
                 </button>

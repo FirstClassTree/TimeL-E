@@ -174,12 +174,12 @@ const Profile: React.FC = () => {
                 {/* Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    First Name
+                    Name
                   </label>
                   {isEditing ? (
                     <input
                       type="text"
-                      {...registerProfile('name', { required: 'First Name is required' })}
+                      {...registerProfile('name', { required: 'Name is required' })}
                       className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   ) : (

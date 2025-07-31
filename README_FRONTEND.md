@@ -45,7 +45,6 @@ frontend/
 │   │      ├── Users.tsx
 │   │      └── UserSeeding.tsx
 │   ├── layouts/             # All possible pages in main app and admin
-│   │   ├── AdminLayout.tsx
 │   │   ├── AuthLayout.tsx
 │   │   └── MainLayout.tsx
 │   ├── components/          # Diffrent components used in pages
@@ -83,7 +82,6 @@ frontend/
 │   │   └── search/
 │   │       └─ SearchModal.tsx
 │   └── services/                # APIs
-│       ├── admin.service.ts
 │       ├── api.client.ts
 │       ├── auth.service.ts
 │       ├── cart.service.ts

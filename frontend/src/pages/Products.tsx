@@ -132,7 +132,6 @@ const Products: React.FC = () => {
                 )}
               </button>
 
-              {/* FIXED: Updated to use new sort dropdown */}
               <SortDropdown value={sortOption} onChange={setSortOption} />
 
               <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">

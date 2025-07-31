@@ -1,4 +1,3 @@
-// frontend/src/layouts/AuthLayout.tsx
 import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';

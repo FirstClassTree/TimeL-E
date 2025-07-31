@@ -12,7 +12,7 @@ import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 import { useUser } from '@/components/auth/UserProvider';
-import userService from "@/services/user.service.ts";
+import { userService } from '@/services/user.service.ts'
 
 interface CheckoutFormData {
   // Contact Information
@@ -33,7 +33,7 @@ interface CheckoutFormData {
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { userId} = useUser();
+  const { userId, setUserId} = useUser();
   const { cart, getSubtotal, clearCart } = useCartStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -52,6 +52,7 @@ const Checkout: React.FC = () => {
         if (user) {
       setValue('name', user.name || '');
       setValue('email', user.email || '');
+      setUserId(user.id);
       } else {
       const currentUser = await userService.getProfile(userId);
       setValue('name', currentUser.name);
@@ -100,7 +101,7 @@ const Checkout: React.FC = () => {
       const order = await orderService.createOrder(orderData);
       
       // Clear cart after successful order
-      await clearCart();
+      await clearCart(userId);
       
       toast.success('Order placed successfully! 🎉');
       navigate(`/orders/${order.id}`);
@@ -445,14 +446,14 @@ const Checkout: React.FC = () => {
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="w-12 h-12 flex-shrink-0">
                       <ProductImage
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
+                        src={item.product.image_url}
+                        alt={item.product.product_name}
                         className="w-full h-full object-cover rounded"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {item.product.name}
+                        {item.product.product_name}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         Qty: {item.quantity}
