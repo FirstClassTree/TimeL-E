@@ -13,6 +13,7 @@ from pathlib import Path
 from sqlalchemy import text
 from app.db_core.config import settings
 from app.db_core.models.products import ProductEnriched
+from app.db_core.models.orders import Order, OrderItem
 from app.db_core.database import SessionLocal
 
 def populate_enriched_data(force_reset=False):
@@ -127,6 +128,10 @@ def populate_enriched_data(force_reset=False):
         result = session.execute(text("SELECT COUNT(*) FROM products.product_enriched")).scalar()
         print(f"Total enriched products in database: {result}")
 
+        # After loading enriched products, update existing order item prices and order totals
+        print("\nUpdating existing order item prices and order totals...")
+        update_order_prices_from_enriched_data(session)
+
         return True
 
     except Exception as e:
@@ -137,6 +142,132 @@ def populate_enriched_data(force_reset=False):
 
     finally:
         session.close()
+
+
+def update_order_prices_from_enriched_data(session):
+    """
+    Update existing order item prices based on enriched product prices,
+    then recalculate order total prices as sum of item prices.
+    """
+    try:
+        print("   Updating order item prices from enriched product data...")
+        
+        # Get product_id and price mappings from enriched data
+        enriched_prices = session.query(
+            ProductEnriched.product_id, 
+            ProductEnriched.price
+        ).filter(
+            ProductEnriched.price.isnot(None),
+            ProductEnriched.price > 0
+        ).all()
+        
+        # Create a dictionary for fast lookup
+        price_lookup = {product_id: price for product_id, price in enriched_prices}
+        print(f"   Found {len(price_lookup)} products with enriched prices")
+        
+        # Process order items in batches
+        BATCH_SIZE = 1000
+        updated_items = 0
+        failed_batches = 0
+        
+        # Get total count for progress tracking
+        total_items = session.query(OrderItem).count()
+        print(f"   Processing {total_items} order items in batches of {BATCH_SIZE}")
+        
+        offset = 0
+        while True:
+            # Get batch of order items
+            batch_items = session.query(OrderItem).offset(offset).limit(BATCH_SIZE).all()
+            
+            if not batch_items:
+                break
+            
+            try:
+                batch_updated = 0
+                for item in batch_items:
+                    if item.product_id in price_lookup:
+                        item.price = price_lookup[item.product_id]
+                        batch_updated += 1
+                
+                # Commit this batch
+                session.commit()
+                updated_items += batch_updated
+                
+                # Show progress every 10k items
+                if offset % 10000 == 0 or offset + BATCH_SIZE >= total_items:
+                    print(f"   Processed {min(offset + BATCH_SIZE, total_items)}/{total_items} items, updated {batch_updated} in this batch")
+                    
+            except Exception as batch_err:
+                session.rollback()
+                failed_batches += 1
+                print(f"   ERROR: Failed to update batch at offset {offset}: {batch_err}")
+                # Continue with next batch
+            
+            offset += BATCH_SIZE
+        
+        print(f"   Total updated: {updated_items} order items with enriched prices")
+        if failed_batches > 0:
+            print(f"   Failed batches: {failed_batches}")
+        
+        # Update order total prices in batches
+        print("   Recalculating order total prices...")
+        
+        total_orders = session.query(Order).count()
+        print(f"   Processing {total_orders} orders in batches of {BATCH_SIZE}")
+        
+        updated_orders = 0
+        failed_order_batches = 0
+        offset = 0
+        
+        while True:
+            # Get batch of orders
+            batch_orders = session.query(Order).offset(offset).limit(BATCH_SIZE).all()
+            
+            if not batch_orders:
+                break
+            
+            try:
+                batch_updated = 0
+                for order in batch_orders:
+                    # Calculate total price from order items
+                    total_price = sum(item.price * item.quantity for item in order.order_items if item.price)
+                    order.total_price = total_price
+                    batch_updated += 1
+                
+                # Commit this batch
+                session.commit()
+                updated_orders += batch_updated
+                
+                # Show progress every 10k orders
+                if offset % 10000 == 0 or offset + BATCH_SIZE >= total_orders:
+                    print(f"   Processed {min(offset + BATCH_SIZE, total_orders)}/{total_orders} orders")
+                    
+            except Exception as batch_err:
+                session.rollback()
+                failed_order_batches += 1
+                print(f"   ERROR: Failed to update order batch at offset {offset}: {batch_err}")
+                # Continue with next batch
+            
+            offset += BATCH_SIZE
+        
+        print(f"   Updated {updated_orders} orders with recalculated total prices")
+        if failed_order_batches > 0:
+            print(f"   Failed order batches: {failed_order_batches}")
+        
+        # Verify the updates
+        orders_with_price = session.query(Order).filter(Order.total_price > 0).count()
+        avg_price_result = session.query(Order.total_price).filter(Order.total_price > 0).all()
+        avg_total_price = sum(price[0] for price in avg_price_result) / len(avg_price_result) if avg_price_result else 0
+        
+        print(f"   Verification: {orders_with_price}/{total_orders} orders have prices > 0")
+        print(f"   Average order total: ${avg_total_price:.2f}" if avg_total_price else "   Average order total: $0.00")
+        
+        return True
+        
+    except Exception as e:
+        session.rollback()
+        print(f"   Error updating order prices: {e}")
+        return False
 
 
 def main():

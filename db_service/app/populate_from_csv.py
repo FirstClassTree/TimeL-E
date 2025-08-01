@@ -5,11 +5,25 @@ import traceback
 from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from datetime import datetime, timedelta, UTC
+import pandas as pd
 from .db_core.database import SessionLocal
 from .db_core.models import Product, Department, Aisle, User, Order, OrderItem
 from .db_core.config import settings
 
 CSV_DIR = "/data"
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"  # match CSV, ISO 8601 format
+
+def parse_dt(dt_str):
+    if not dt_str or pd.isna(dt_str):
+        return None
+    # Try ISO8601 first (for new CSVs), else fallback
+    try:
+        dt = pd.to_datetime(dt_str, utc=True)
+        return dt.to_pydatetime() if hasattr(dt, 'to_pydatetime') else dt
+    except Exception:
+        dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M:%S")
+        return dt.replace(tzinfo=UTC)
 
 def load_departments(db: Session):
     departments_file = os.path.join(CSV_DIR, "departments.csv")
@@ -112,26 +126,65 @@ def load_products(db: Session):
         db.commit()
 
 def load_orders(db: Session):
-    orders_file = os.path.join(CSV_DIR, "orders_demo.csv")
-    print(f"Loading products from: {orders_file}")
+    orders_file = os.path.join(CSV_DIR, "orders_demo_enriched.csv")
+    users_file = os.path.join(CSV_DIR, "users_demo.csv")
+    print(f"Loading orders from: {orders_file}")
+
+    # Preload user address info by user_id for fast lookup
+    user_info = {}
+    if os.path.exists(users_file):
+        with open(users_file, newline='', encoding='utf-8') as uf:
+            reader = csv.DictReader(uf)
+            for row in reader:
+                user_info[int(row['user_id'])] = {
+                    'delivery_name': row.get('first_name')+' '+row.get('last_name'),
+                    'phone_number': row.get('phone_number'),
+                    'street_address': row.get('street_address'),
+                    'city': row.get('city'),
+                    'postal_code': row.get('postal_code'),
+                    'country': row.get('country'),
+                }
+
+
     batch_size = 200  # Tweak as needed
     batch_orders = []
     orders_loaded = 0
     order_errors = 0
     success_count = 0
+
     with open(orders_file, newline='') as f:
         reader = csv.DictReader(f)
+        # Detect field presence once
+        has_created_at = 'created_at' in reader.fieldnames
+        has_tracking_number = 'tracking_number' in reader.fieldnames
+        has_shipping_carrier = 'shipping_carrier' in reader.fieldnames
+        has_tracking_url = 'tracking_url' in reader.fieldnames
+
         for row_num, row in enumerate(reader, 1):
             try:
+                user_id = int(row['user_id'])
+
+                # Get address/phone from preloaded dict
+                uinfo = user_info.get(user_id, {})
                 order = Order(
                     order_id=int(row["order_id"]),
-                    user_id=int(row["user_id"]),
+                    user_id=user_id,
                     order_number=int(row["order_number"]),
                     order_dow=int(row["order_dow"]),
                     order_hour_of_day=int(row["order_hour_of_day"]),
                     days_since_prior_order=int(float(row["days_since_prior_order"])) if row.get(
                         "days_since_prior_order") else None,
-                    total_items=0  # countem when finished loading
+                    total_items=0,  # countem when finished loading
+                    created_at=parse_dt(row.get('created_at')) if has_created_at else None,
+                    tracking_number=row['tracking_number'] if has_tracking_number else None,
+                    shipping_carrier=row['shipping_carrier'] if has_shipping_carrier else None,
+                    tracking_url=row['tracking_url'] if has_tracking_url else None,
+                    delivery_name=uinfo.get('delivery_name'),
+                    phone_number=uinfo.get('phone_number'),
+                    street_address=uinfo.get('street_address'),
+                    city=uinfo.get('city'),
+                    postal_code=uinfo.get('postal_code'),
+                    country=uinfo.get('country'),
                 )
                 batch_orders.append(order)
                 orders_loaded += 1
@@ -146,8 +199,7 @@ def load_orders(db: Session):
                         batch_orders = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
-                        print(
-                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        print(f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_order in batch_orders:
                             try:
@@ -280,7 +332,14 @@ def _dev_overwrite_user_from_csv(existing_user, csv_row, db, row_num):
     )
     for field in csv_row:
         if field != "user_id":  # Don't update the primary key
-            setattr(existing_user, field, csv_row[field])
+            val = csv_row.get(field)
+            if field in ("last_login", "last_notification_sent_at", "last_notifications_viewed_at") and val and val.strip():
+                try:
+                    val = parse_dt(val)
+                except Exception as e:
+                    print(f"Warning: Could not parse datetime for {field}: {val} ({e})")
+                    val = None
+            setattr(existing_user, field, val)
     db.flush()
 
 def load_users(db: Session):
@@ -338,15 +397,22 @@ def load_users(db: Session):
 
                     user = User(
                         user_id=int(row['user_id']),
-                        first_name=row['first_name'],
-                        last_name=row['last_name'],
-                        hashed_password=row['hashed_password'],
-                        email_address=row['email_address'],
-                        phone_number=row['phone_number'],
-                        street_address=row['street_address'],
-                        city=row['city'],
-                        postal_code=row['postal_code'],
-                        country=row['country']
+                        first_name=row.get('first_name'),
+                        last_name=row.get('last_name'),
+                        hashed_password=row.get('hashed_password'),
+                        email_address=row.get('email_address'),
+                        phone_number=row.get('phone_number'),
+                        street_address=row.get('street_address'),
+                        city=row.get('city'),
+                        postal_code=row.get('postal_code'),
+                        country=row.get('country'),
+                        last_login=parse_dt(row.get('last_login')),
+                        last_notifications_viewed_at=parse_dt(row.get('last_notifications_viewed_at')),
+                        days_between_order_notifications=7,
+                        order_notifications_start_date_time=parse_dt(row.get('last_login')),
+                        order_notifications_next_scheduled_time=parse_dt(row.get('last_login')) + timedelta(days=7),
+                        last_notification_sent_at=parse_dt(row.get('last_login')),
+                        pending_order_notification=True
                     )
                     batch_users.append(user)
                     users_loaded += 1
@@ -475,3 +541,4 @@ def populate_tables():
             print(f"Error during rollback: {rollback_error}")
     finally:
         db.close()
+

@@ -75,3 +75,4 @@ Thumbs.db
 *.ps1
 *.bat
 /timele_env/
+/timele_new_env/

@@ -19,6 +19,7 @@ from ..utils.fk_helpers import (
     create_order_test_data,
     create_cart_test_data
 )
+from db_service.app.db_core.models.orders import OrderStatus
 
 
 class TestProductFKConstraints:
@@ -129,7 +130,7 @@ class TestOrderFKConstraints:
             order_id = fk_manager.create_test_order(
                 user_id=user_id,
                 total_items=3,
-                status='PENDING'
+                status=OrderStatus.PENDING.value
             )
             
             # Verify order was created
@@ -142,7 +143,7 @@ class TestOrderFKConstraints:
                 assert result is not None
                 assert result[0] == user_id
                 assert result[1] == 3
-                assert result[2] == 'PENDING'
+                assert result[2] == OrderStatus.PENDING.value
     
     def test_create_order_with_invalid_user_fk(self, db_connection):
         """Test that creating order with invalid user_id fails"""
@@ -154,7 +155,7 @@ class TestOrderFKConstraints:
             'order_dow': 1,
             'order_hour_of_day': 10,
             'total_items': 1,
-            'status': 'PENDING',
+            'status': OrderStatus.PENDING.value,
             'created_at': '2024-01-01 10:00:00+00',
             'updated_at': '2024-01-01 10:00:00+00'
         }

@@ -2,10 +2,10 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import joinedload, Session
-from sqlalchemy import func
+from sqlalchemy.orm import joinedload, Session, aliased
+from sqlalchemy import func, and_
 from .db_core.database import SessionLocal
-from .db_core.models import User
+from .db_core.models import User, Order, OrderStatusHistory, Cart
 from pydantic import BaseModel, EmailStr, Field, conint, ConfigDict
 from typing import Optional, Generic, TypeVar, List
 # Removed UUID imports since we're using integer user_ids
@@ -134,6 +134,9 @@ class UserData(BaseModel):
     pending_order_notification: Optional[bool] = None
     order_notifications_via_email: Optional[bool] = None
     last_notification_sent_at: Optional[datetime] = None
+    last_notifications_viewed_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
+    has_active_cart: bool = Field(False)
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -218,6 +221,7 @@ def create_user(user_request: CreateUserRequest, session: Session = Depends(get_
             order_notifications_via_email=user_request.order_notifications_via_email,
             pending_order_notification=False,
             last_notification_sent_at=None,
+            last_login=datetime.now(UTC),  # Set initial login time at registration
         )
         session.add(user)
         session.commit()
@@ -277,7 +281,7 @@ def update_user_password(
 ) -> ServiceResponse[PasswordUpdateResponse]:
     try:
         # Fetch user
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[PasswordUpdateResponse](
                 success=False,
@@ -338,7 +342,7 @@ def update_user_email(
 ) -> ServiceResponse[EmailUpdateResponse]:
     try:
         # Fetch user
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[EmailUpdateResponse](
                 success=False,
@@ -401,7 +405,7 @@ def update_user_email(
 @router.get("/{user_id}", response_model=ServiceResponse[UserData])
 def get_user(user_id: int, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[UserData](
                 success=False,
@@ -451,7 +455,7 @@ class UpdateUserRequest(BaseModel):
 @router.put("/{user_id}", response_model=ServiceResponse[UserData])
 def update_user(user_id: int, payload: UpdateUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[UserData](
                 success=False,
@@ -525,7 +529,7 @@ class DeleteUserRequest(BaseModel):
 @router.delete("/{user_id}", response_model=ServiceResponse[DeleteResponse])
 def delete_user(user_id: int, payload: DeleteUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[DeleteResponse]:
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[DeleteResponse](
                 success=False,
@@ -580,7 +584,7 @@ class NotificationSettingsResponse(BaseModel):
 @router.get("/{user_id}/notification-settings", response_model=ServiceResponse[NotificationSettingsData])
 def get_notification_settings(user_id: int, session: Session = Depends(get_db)) -> ServiceResponse[NotificationSettingsData]:
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[NotificationSettingsData](
                 success=False,
@@ -621,7 +625,7 @@ def get_notification_settings(user_id: int, session: Session = Depends(get_db)) 
 def update_notification_settings(user_id: int, payload: UpdateNotificationSettingsRequest,
                                  session: Session = Depends(get_db)) -> ServiceResponse[NotificationSettingsData]:
     try:
-        user = session.query(User).filter_by(user_id=user_id).first()
+        user = session.get(User, user_id)
         if not user:
             return ServiceResponse[NotificationSettingsData](
                 success=False,
@@ -679,8 +683,20 @@ def login_user(payload: LoginRequest, session: Session = Depends(get_db)) -> Ser
                 error="Invalid email or password",
                 data=[]
             )
-        
+
+        user.last_login = datetime.now(UTC)
+        user.last_notification_sent_at = datetime.now(UTC)
+
+        # Check if user has an active cart
+        active_cart = session.query(Cart).filter(
+            Cart.user_id == user.user_id
+        ).order_by(Cart.updated_at.desc()).first()
+
+        session.commit()
+        session.refresh(user)
+
         user_data = UserData.model_validate(user)
+        user_data.has_active_cart = active_cart is not None
         
         return ServiceResponse[UserData](
             success=True,
@@ -703,3 +719,59 @@ def login_user(payload: LoginRequest, session: Session = Depends(get_db)) -> Ser
             error=f"Login failed: {str(e)}",
             data=[]
         )
+
+class OrderStatusNotification(BaseModel):
+    order_id: int
+    status: str
+    changed_at: datetime
+
+@router.get("/{user_id}/order-status-notifications", response_model=ServiceResponse[OrderStatusNotification])
+def get_order_status_notifications(
+    user_id: int,
+    session: Session = Depends(get_db)
+):
+    user = session.get(User, user_id)
+    if not user:
+        return ServiceResponse[OrderStatusNotification](
+            success=False,
+            error="User not found",
+            data=[]
+        )
+    
+    # Use last_notifications_viewed_at when available
+    since = user.last_notifications_viewed_at or datetime.min.replace(tzinfo=UTC)
+
+    # Follow filter -> join -> group strategy to get order status updates
+
+    # Create subquery to get max changed_at per order
+    subquery = session.query(
+        OrderStatusHistory.order_id,
+        func.max(OrderStatusHistory.changed_at).label('max_changed_at')
+    ).join(Order).filter(
+        Order.user_id == user_id,
+        OrderStatusHistory.changed_at > since
+    ).group_by(OrderStatusHistory.order_id).subquery()
+
+    # Get full status history records for the max timestamps
+    status_changes = session.query(OrderStatusHistory).join(
+        subquery,
+        and_(
+            OrderStatusHistory.order_id == subquery.c.order_id,
+            OrderStatusHistory.changed_at == subquery.c.max_changed_at
+        )
+    ).all()
+
+    # Update last_notifications_viewed_at to current time
+    user.last_notifications_viewed_at = datetime.now(UTC)
+    session.commit()
+
+    return ServiceResponse[OrderStatusNotification](
+        success=True,
+        message="Order status notifications read successfully",
+        data=[OrderStatusNotification(
+            order_id=change.order_id,
+            status=change.new_status.value,
+            changed_at=change.changed_at
+        )
+        for change in status_changes]
+    )

@@ -34,6 +34,18 @@ from ..utils.test_helpers import (
     measure_response_time
 )
 
+OPTIONAL_USER_FIELDS = [
+    "phone_number", "street_address", "city", "postal_code", "country",
+    "days_between_order_notifications", "order_notifications_start_date_time",
+    "order_notifications_next_scheduled_time", "pending_order_notification",
+    "order_notifications_via_email", "last_notification_sent_at",
+    "last_notifications_viewed_at", "last_login", "has_active_cart"
+]
+
+OPTIONAL_NOTIFICATION_SETTINGS_FIELDS = [
+    "order_notifications_start_date_time", "order_notifications_next_scheduled_time",
+    "last_notification_sent_at"
+]
 
 class TestUserCreation:
     """Test user creation functionality"""
@@ -60,12 +72,7 @@ class TestUserCreation:
         assert_response_has_structure(
             created_user,
             required_fields=["user_id", "first_name", "last_name", "email_address"],
-            optional_fields=[
-                "phone_number", "street_address", "city", "postal_code", "country",
-                "days_between_order_notifications", "order_notifications_start_date_time",
-                "order_notifications_next_scheduled_time", "pending_order_notification",
-                "order_notifications_via_email", "last_notification_sent_at"
-            ],
+            optional_fields=OPTIONAL_USER_FIELDS,
             forbidden_fields=["password", "hashed_password"]
         )
         
@@ -189,17 +196,12 @@ class TestUserRetrieval:
             assert user_data["email_address"] == user_ctx.get_email()
             
             # Ensure sensitive data is not returned
-            assert_response_has_structure(
-                user_data,
-                required_fields=["user_id", "first_name", "last_name", "email_address"],
-                optional_fields=[
-                    "phone_number", "street_address", "city", "postal_code", "country",
-                    "days_between_order_notifications", "order_notifications_start_date_time",
-                    "order_notifications_next_scheduled_time", "pending_order_notification",
-                    "order_notifications_via_email", "last_notification_sent_at"
-                ],
-                forbidden_fields=["password", "hashed_password"]
-            )
+        assert_response_has_structure(
+            user_data,
+            required_fields=["user_id", "first_name", "last_name", "email_address"],
+            optional_fields=OPTIONAL_USER_FIELDS,
+            forbidden_fields=["password", "hashed_password"]
+        )
     
     def test_get_user_not_found(self, db_service_url):
         """Test retrieval of non-existent user"""
@@ -652,10 +654,7 @@ class TestNotificationSettings:
                     "user_id", "days_between_order_notifications",
                     "order_notifications_via_email", "pending_order_notification"
                 ],
-                optional_fields=[
-                    "order_notifications_start_date_time", "order_notifications_next_scheduled_time",
-                    "last_notification_sent_at"
-                ]
+                optional_fields=OPTIONAL_NOTIFICATION_SETTINGS_FIELDS,
             )
     
     def test_update_notification_settings_partial(self, db_service_url):

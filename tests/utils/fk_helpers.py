@@ -24,6 +24,7 @@ from datetime import datetime, UTC
 from contextlib import contextmanager
 
 import pytest  # Required for assert_fk_constraint_violation
+from db_service.app.db_core.models.orders import OrderStatus
 
 
 class FKTestDataManager:
@@ -285,27 +286,34 @@ class FKTestDataManager:
             self.created_records['carts'].append(cart_id)
             return cart_id
     
-    def create_test_order(self, user_id: Optional[int] = None, order_number: Optional[int] = None, 
-                         total_items: int = 1, status: str = 'PENDING') -> int:
+    def create_test_order(self, user_id: Optional[int] = None, order_number: Optional[int] = None,
+                         total_items: int = 1, status: str = OrderStatus.PENDING.value,
+                         delivery_name: Optional[str] = None, total_price: Optional[float] = None) -> int:
         """Create a test order with valid user_id FK"""
         if user_id is None:
             # Get existing user or create one
             user_id = self.get_existing_user_id()
             if user_id is None:
                 user_id = self.create_test_user()
-        
+
         if order_number is None:
             order_number = int(time.time())
         
-        now = datetime.now(UTC)
+        if delivery_name is None:
+            delivery_name = f"Test Delivery {int(time.time())}"
         
+        if total_price is None:
+            total_price = 29.99
+
+        now = datetime.now(UTC)
+
         with self.conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO orders.orders (user_id, order_number, order_dow, order_hour_of_day,
-                                         total_items, status, created_at, updated_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                         total_items, status, delivery_name, total_price, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING order_id
-            """, (user_id, order_number, 1, 10, total_items, status, now, now))
+            """, (user_id, order_number, 1, 10, total_items, status, delivery_name, total_price, now, now))
             
             order_id = cur.fetchone()[0]
             self.conn.commit()
@@ -337,7 +345,8 @@ class FKTestDataManager:
             return cart_id, product_id
     
     def create_test_order_item(self, order_id: Optional[int] = None, product_id: Optional[int] = None,
-                             quantity: int = 1, add_to_cart_order: int = 1, reordered: int = 0) -> Tuple[int, int]:
+                             quantity: int = 1, add_to_cart_order: int = 1, reordered: int = 0,
+                             price: Optional[float] = None) -> Tuple[int, int]:
         """Create a test order item with valid FK references"""
         if order_id is None:
             order_id = self.create_test_order()
@@ -348,11 +357,14 @@ class FKTestDataManager:
             if product_id is None:
                 product_id = self.create_test_product()
         
+        if price is None:
+            price = 12.99
+        
         with self.conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO orders.order_items (order_id, product_id, add_to_cart_order, reordered, quantity)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (order_id, product_id, add_to_cart_order, reordered, quantity))
+                INSERT INTO orders.order_items (order_id, product_id, add_to_cart_order, reordered, quantity, price)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (order_id, product_id, add_to_cart_order, reordered, quantity, price))
             
             self.conn.commit()
             

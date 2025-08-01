@@ -84,7 +84,8 @@ services:
       test: ["CMD-SHELL", "curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy

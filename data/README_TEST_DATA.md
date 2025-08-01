@@ -21,3 +21,7 @@ With this strategy, we will achieve unbiased demo dataset for the ML showcase.
 Note; test order metadata is included so that the model can make a prediction for the test order.  
 e.g "What does this user tend to order on Mondays at 10am?"
 
+to (re)generate all demo csv files, run  on host  
+```python make_demo_data.py```  
+to (re)generate detailed product information, run on host  
+```python product_enricher.py```  

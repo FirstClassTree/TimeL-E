@@ -3,7 +3,7 @@ import datetime
 from fastapi import APIRouter, Query, HTTPException, status, Body, Path, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select, desc
+from sqlalchemy import func, select, desc, text
 from sqlalchemy import Enum as SqlEnum
 from .db_core.database import SessionLocal
 import asyncpg
@@ -53,6 +53,12 @@ def create_order(order_request: CreateOrderRequest, session: Session = Depends(g
     # callers cannot provide their own db or alter it.
 
     try:
+        # Set user context for order status trigger
+        session.execute(
+            text("SET LOCAL app.current_user_id = :user_id"),
+            {"user_id": str(order_request.user_id)}
+        )
+        
         # Optionally validate user exists
         user = session.query(User).filter_by(user_id=order_request.user_id).first()
         if not user:
@@ -183,6 +189,17 @@ def add_order_items(
     session: Session = Depends(get_db)
 ):
     try:
+        # Get user ID from order (assuming we need it for context)
+        order = session.query(Order).filter_by(order_id=order_id).first()
+        if not order:
+            raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
+            
+        # Set user context for trigger
+        session.execute(
+            text("SET LOCAL app.current_user_id = :user_id"),
+            {"user_id": str(order.user_id)}
+        )
+        
         if not items:
             raise HTTPException(status_code=400, detail="Must provide at least one item")
 

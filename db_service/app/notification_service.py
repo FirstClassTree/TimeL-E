@@ -20,7 +20,7 @@ def send_email_notification(user: User):
 
      Log in now to see your products and deals waiting for you!
 
-     – Your Grocery Team at {settings.APP_NAME}
+     - Your Grocery Team at {settings.APP_NAME}
      """
 
     try:
