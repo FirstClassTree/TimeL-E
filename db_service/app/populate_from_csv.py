@@ -6,6 +6,8 @@ from sqlalchemy import func, update
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from datetime import datetime, timedelta, UTC
+from sqlalchemy import Uuid
+import uuid
 import pandas as pd
 from .db_core.database import SessionLocal
 from .db_core.models import Product, Department, Aisle, User, Order, OrderItem
@@ -52,7 +54,7 @@ def load_aisles(db: Session):
 def load_products(db: Session):
     products_file = os.path.join(CSV_DIR, "products.csv")
     print(f"Loading products from: {products_file}")
-    batch_size = 200  # Tweak as needed
+    batch_size = 50  # Reduced for memory stability
     batch_products = []
     products_loaded = 0
     product_errors = 0
@@ -130,14 +132,34 @@ def load_orders(db: Session):
     users_file = os.path.join(CSV_DIR, "users_demo.csv")
     print(f"Loading orders from: {orders_file}")
 
+    # Set sequence starting point for new orders (3422000+)
+    from sqlalchemy import text
+    db.execute(text("SELECT setval('orders.orders_id_seq', 3422000, false)"))
+    print("Set orders.id sequence to start at 3422000 for new orders")
+
+    # Pre-load all existing user internal IDs for foreign key validation
+    print("Pre-loading existing user internal IDs for foreign key validation...")
+    existing_users = set()
+    users = db.query(User.id).all()
+    for user in users:
+        existing_users.add(user.id)
+    print(f"Found {len(existing_users)} existing users for validation")
+    
+    if len(existing_users) == 0:
+        print("   WARNING: No users found in database!")
+        print("   Make sure users are loaded before orders")
+        print("   Continuing anyway - will skip all orders with FK violations")
+
     # Preload user address info by user_id for fast lookup
     user_info = {}
     if os.path.exists(users_file):
         with open(users_file, newline='', encoding='utf-8') as uf:
             reader = csv.DictReader(uf)
             for row in reader:
+                first_name = row.get('first_name') or ''
+                last_name = row.get('last_name') or ''
                 user_info[int(row['user_id'])] = {
-                    'delivery_name': row.get('first_name')+' '+row.get('last_name'),
+                    'delivery_name': f"{first_name} {last_name}".strip(),
                     'phone_number': row.get('phone_number'),
                     'street_address': row.get('street_address'),
                     'city': row.get('city'),
@@ -145,36 +167,47 @@ def load_orders(db: Session):
                     'country': row.get('country'),
                 }
 
-
     batch_size = 200  # Tweak as needed
     batch_orders = []
     orders_loaded = 0
     order_errors = 0
+    fk_violations = 0
     success_count = 0
 
     with open(orders_file, newline='') as f:
         reader = csv.DictReader(f)
         # Detect field presence once
-        has_created_at = 'created_at' in reader.fieldnames
-        has_tracking_number = 'tracking_number' in reader.fieldnames
-        has_shipping_carrier = 'shipping_carrier' in reader.fieldnames
-        has_tracking_url = 'tracking_url' in reader.fieldnames
+        has_created_at = 'created_at' in (reader.fieldnames or [])
+        has_tracking_number = 'tracking_number' in (reader.fieldnames or [])
+        has_shipping_carrier = 'shipping_carrier' in (reader.fieldnames or [])
+        has_tracking_url = 'tracking_url' in (reader.fieldnames or [])
 
         for row_num, row in enumerate(reader, 1):
             try:
-                user_id = int(row['user_id'])
+                integer_user_id = int(row['user_id'])
+
+                # VALIDATE FOREIGN KEY BEFORE CREATING OBJECT
+                # Now we check against internal user IDs (not UUID7)
+                if integer_user_id not in existing_users:
+                    fk_violations += 1
+                    if fk_violations <= 10:  # Show first 10 violations
+                        print(f"   Row {row_num}: Skipping order with invalid user_id {integer_user_id}")
+                    elif fk_violations == 11:
+                        print(f"   ... (suppressing further FK violation messages)")
+                    continue
 
                 # Get address/phone from preloaded dict
-                uinfo = user_info.get(user_id, {})
+                uinfo = user_info.get(integer_user_id, {})
                 order = Order(
-                    order_id=int(row["order_id"]),
-                    user_id=user_id,
+                    id=int(row["order_id"]),  # Use original CSV order ID as internal ID
+                    user_id=integer_user_id,  # Use internal user ID directly
+                    # external_order_id will be auto-generated as UUID4
                     order_number=int(row["order_number"]),
                     order_dow=int(row["order_dow"]),
                     order_hour_of_day=int(row["order_hour_of_day"]),
                     days_since_prior_order=int(float(row["days_since_prior_order"])) if row.get(
                         "days_since_prior_order") else None,
-                    total_items=0,  # countem when finished loading
+                    total_items=0,  # count them when finished loading
                     created_at=parse_dt(row.get('created_at')) if has_created_at else None,
                     tracking_number=row['tracking_number'] if has_tracking_number else None,
                     shipping_carrier=row['shipping_carrier'] if has_shipping_carrier else None,
@@ -238,29 +271,55 @@ def load_orders(db: Session):
                 print(f"   Committed final batch of {success_count_final} orders")
 
         print(f"Orders processing summary:")
-        print(f"   Successfully prepared: {orders_loaded} orders")
-        print(f"   Skipped/Errors: {order_errors}")
+        print(f"   Successfully loaded: {orders_loaded} orders")
+        if fk_violations > 0:
+            print(f"   Skipped FK violations: {fk_violations} orders")
+        if order_errors > 0:
+            print(f"   Other errors: {order_errors} orders")
+        print(f"   Total committed: {success_count}")
 
         db.commit()
 
 def load_order_items(db: Session):
     order_items_file = os.path.join(CSV_DIR, "order_items_demo.csv")
     print(f"Loading order items from: {order_items_file}")
+    
+    # Pre-load all existing order_ids for validation
+    print("Pre-loading existing order_ids for foreign key validation...")
+    existing_orders = set()
+    orders = db.query(Order.id).all()
+    for order in orders:
+        existing_orders.add(order.id)
+    print(f"Found {len(existing_orders)} existing orders for validation")
+    
     batch_size = 10
     batch_items = []
     items_loaded = 0
     item_errors = 0
+    fk_violations = 0
     success_count = 0
+    
     with open(order_items_file, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row_num, row in enumerate(reader, 1):
             try:
-                item=OrderItem(
-                        order_id=int(row["order_id"]),
-                        product_id=int(row["product_id"]),
-                        add_to_cart_order=int(row.get("add_to_cart_order" or 1)),
-                        reordered=int(row.get("reordered" or 0)),
-                    )
+                order_id = int(row["order_id"])
+                
+                # VALIDATE FOREIGN KEY BEFORE CREATING OBJECT
+                if order_id not in existing_orders:
+                    fk_violations += 1
+                    if fk_violations <= 10:  # Show first 10 violations
+                        print(f"   Row {row_num}: Skipping order_item with invalid order_id {order_id}")
+                    elif fk_violations == 11:
+                        print(f"   ... (suppressing further FK violation messages)")
+                    continue
+                
+                item = OrderItem(
+                    order_id=order_id,
+                    product_id=int(row["product_id"]),
+                    add_to_cart_order=int(row.get("add_to_cart_order") or 1),
+                    reordered=int(row.get("reordered") or 0),
+                )
                 batch_items.append(item)
                 items_loaded += 1
 
@@ -285,11 +344,12 @@ def load_order_items(db: Session):
                             except (IntegrityError, SQLAlchemyError) as row_err:
                                 item_errors += 1
                                 db.rollback()
-                                print(f"      -> Skipping bad order (row {row_num}): {row_err}")
+                                print(f"      -> Skipping bad order item (row {row_num}): {row_err}")
                         batch_items = []
             except Exception as row_error:
                 item_errors += 1
                 print(f"   Row {row_num}: Error creating order item: {row_error}")
+        
         if batch_items:
             try:
                 db.add_all(batch_items)
@@ -311,8 +371,10 @@ def load_order_items(db: Session):
                 print(f"   Committed final batch of {success_count_final} order items")
 
     print(f"Order Items processing summary:")
-    print(f"   Successfully prepared: {items_loaded} order items")
-    print(f"   Skipped/Errors: {item_errors}")
+    print(f"   Successfully loaded: {items_loaded} order items")
+    print(f"   Skipped FK violations: {fk_violations}")
+    print(f"   Other errors: {item_errors}")
+    print(f"   Total committed: {success_count}")
 
     db.commit()
 
@@ -343,6 +405,12 @@ def _dev_overwrite_user_from_csv(existing_user, csv_row, db, row_num):
     db.flush()
 
 def load_users(db: Session):
+    USER_UUID_NAMESPACE = uuid.UUID('cafebabe-1234-4abc-8def-c0ffeefeed01')  # change for prod
+
+    # a common migration approach if for deterministic external IDs from legacy integer PKs;
+    def deterministic_uuid_from_int(integer_id: int) -> uuid.UUID:
+        return uuid.uuid5(USER_UUID_NAMESPACE, str(integer_id))  # uuid5 for stable, unique, deterministic UUIDs
+
     users_file = os.path.join(CSV_DIR, "users_demo.csv")
     print(f"Loading users from: {users_file}")
 
@@ -356,9 +424,14 @@ def load_users(db: Session):
         file_size = os.path.getsize(users_file)
         print(f"File size: {file_size} bytes")
 
+        # Set sequence starting point for new users (400000+)
+        from sqlalchemy import text
+        db.execute(text("SELECT setval('users.users_id_seq', 400000, false)"))
+        print("Set users.id sequence to start at 400000 for new users")
+
         users_loaded = 0
         errors = 0
-        batch_size = 100
+        batch_size = 25  # Reduced for memory stability
 
         with open(users_file, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)
@@ -367,9 +440,11 @@ def load_users(db: Session):
             batch_users = []
             for row_num, row in enumerate(reader, 1):
                 try:
+                    # Use original CSV user_id as internal ID (1-201520 range)
+                    integer_user_id = int(row['user_id'])
+                    
                     # Check for unique constraint violations before adding
-                    existing_user_id = db.query(User).filter(User.user_id == int(row['user_id'])).first()
-                    # existing_name = db.query(User).filter(User.name == row['name']).first()
+                    existing_user_id = db.query(User).filter(User.id == integer_user_id).first()
                     existing_email = db.query(User).filter(User.email_address == row['email_address']).first()
 
                     if existing_user_id:
@@ -383,20 +458,17 @@ def load_users(db: Session):
                             errors += 1
                             continue
 
-                    # if existing_name:
-                    #     if errors < 3:
-                    #         print(f"   Row {row_num}: User name '{row['name']}' already exists, skipping")
-                    #     errors += 1
-                    #     continue
-
                     if existing_email:
                         if errors < 3:
                             print(f"   Row {row_num}: Email '{row['email_address']}' already exists, skipping")
                         errors += 1
                         continue
 
+                    external_user_id = deterministic_uuid_from_int(integer_user_id)     # Use original CSV ID to generate external ID
+
                     user = User(
-                        user_id=int(row['user_id']),
+                        id=integer_user_id,  # Use original CSV ID as internal ID
+                        external_user_id=external_user_id,
                         first_name=row.get('first_name'),
                         last_name=row.get('last_name'),
                         hashed_password=row.get('hashed_password'),
@@ -410,7 +482,9 @@ def load_users(db: Session):
                         last_notifications_viewed_at=parse_dt(row.get('last_notifications_viewed_at')),
                         days_between_order_notifications=7,
                         order_notifications_start_date_time=parse_dt(row.get('last_login')),
-                        order_notifications_next_scheduled_time=parse_dt(row.get('last_login')) + timedelta(days=7),
+                        order_notifications_next_scheduled_time=(
+                            lambda last_login_dt: last_login_dt + timedelta(days=7) if last_login_dt else None
+                        )(parse_dt(row.get('last_login'))),
                         last_notification_sent_at=parse_dt(row.get('last_login')),
                         pending_order_notification=True
                     )
@@ -507,7 +581,7 @@ def populate_tables():
         ).group_by(OrderItem.order_id).all()
         for order_id, total in order_item_counts:
             db.execute(
-                update(Order).where(Order.order_id == order_id).values(total_items=total)
+                update(Order).where(Order.id == order_id).values(total_items=total)
             )
         db.commit()
 
@@ -528,7 +602,7 @@ def populate_tables():
         if sample_users:
             print("Sample users in database:")
             for user in sample_users:
-                print(f"   User {user.user_id}: {user.first_name} {user.last_name} ({user.email_address})")
+                print(f"   User {user.id} (external: {user.external_user_id}): {user.first_name} {user.last_name} ({user.email_address})")
         
     except Exception as e:
         print(f"CRITICAL ERROR during CSV loading: {e}")
@@ -541,4 +615,3 @@ def populate_tables():
             print(f"Error during rollback: {rollback_error}")
     finally:
         db.close()
-

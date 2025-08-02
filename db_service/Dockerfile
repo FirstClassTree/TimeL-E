@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11.9-slim
 
 WORKDIR /app
 
@@ -16,8 +16,14 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install pip requirements
-RUN pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+#RUN pip install --upgrade pip setuptools wheel \
+#    && pip install --no-cache-dir -r requirements.txt
+
+# stable versions
+#RUN pip install --upgrade "pip<25" "setuptools<70" \
+#    && pip install --no-cache-dir -r requirements.txt
 
 # Remove build dependencies after pip install (keep image smaller)
 RUN apt-get remove -y build-essential gcc \
@@ -37,7 +43,7 @@ USER dbservice
 EXPOSE 7000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1
 
 #CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7000"]

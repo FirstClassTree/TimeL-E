@@ -1,6 +1,6 @@
 # backend/app/routers/cart.py
 from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from typing import List, Optional, NoReturn
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from ..models.base import APIResponse
@@ -14,18 +14,23 @@ class CartItem(BaseModel):
     
     product_id: int
     quantity: int = 1
+    add_to_cart_order: int = 0
+    reordered: int = 0
     product_name: Optional[str] = None
     aisle_name: Optional[str] = None
     department_name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
 
 class CartResponse(BaseModel):
     """Cart response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: str
+    external_cart_id: str
+    external_user_id: str
     items: List[CartItem]
     total_items: int
-    total_quantity: int
 
 class AddCartItemRequest(BaseModel):
     """Add item to cart request"""
@@ -33,6 +38,8 @@ class AddCartItemRequest(BaseModel):
     
     product_id: int
     quantity: int = 1
+    add_to_cart_order: Optional[int] = 0
+    reordered: int = 0
 
 class UpdateCartItemRequest(BaseModel):
     """Update cart item request"""
@@ -40,299 +47,359 @@ class UpdateCartItemRequest(BaseModel):
     
     quantity: int
 
-# In-memory cart storage (replace with database in production)
-# Format: {user_id: {product_id: quantity}}
-cart_storage = {}
+class CreateCartRequest(BaseModel):
+    """Create cart request"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    external_user_id: str
+    items: List[AddCartItemRequest] = []
 
-@router.get("/{user_id}", response_model=APIResponse)
-async def get_user_cart(user_id: str) -> APIResponse:
+class UpdateCartRequest(BaseModel):
+    """Update entire cart request"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    items: List[AddCartItemRequest] = []
+
+def _handle_db_service_error(result: dict, entity_id: Optional[str] = None, operation: str = "operation",
+                             default_error: str = "Operation failed"):
+    """
+    Centralized handler for db_service errors.
+    Raises HTTPException with appropriate status code and detail message.
+    """
+    if not result.get("success", False):
+        error_msg = result.get("error", default_error).lower()
+        print(f"db_service {operation} failed with error: {error_msg}")
+
+        status_code = 500
+        detail = f"An internal server error occurred during {operation}."
+
+        if "user not found" in error_msg:
+            status_code = 404
+            detail = f"User {entity_id} not found" if entity_id else "User not found"
+        elif "cart not found" in error_msg:
+            status_code = 404
+            detail = f"Cart not found for user {entity_id}" if entity_id else "Cart not found"
+        elif "product" in error_msg and "not found" in error_msg:
+            status_code = 400
+            detail = "One or more products not found"
+        elif "cart already exists" in error_msg:
+            status_code = 409
+            detail = "Cart already exists for user"
+        elif "cart is empty" in error_msg:
+            status_code = 400
+            detail = "Cart is empty"
+        elif "database error" in error_msg:
+            status_code = 503
+            detail = "Service temporarily unavailable"
+        else:
+            # Fallback for other db_service errors
+            detail = f"{operation.capitalize()} failed"
+
+        raise HTTPException(status_code=status_code, detail=detail, headers={"X-Handled-Error": "true"})
+
+def _handle_unhandled_http_exception(e: HTTPException, operation_error_message: str) -> NoReturn:
+    """
+    Helper to handle unhandled HTTPExceptions that don't have the X-Handled-Error header.
+    """
+    # Check if this HTTPException was handled by the centralized handler
+    if e.headers and e.headers.get("X-Handled-Error") == "true":
+        raise
+    else:
+        # Log and sanitize unknown HTTPExceptions
+        print(f"Unknown HTTPException caught: {str(e)}")
+        raise HTTPException(status_code=500, detail=operation_error_message)
+
+@router.get("/{external_user_id}", response_model=APIResponse)
+async def get_user_cart(external_user_id: str) -> APIResponse:
     """Get cart for a specific user"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Get cart from db_service
+        cart_result = await db_service.get_entity("carts", external_user_id)
+        _handle_db_service_error(cart_result, external_user_id, "get cart", "Failed to get cart")
         
-        # Get cart from storage
-        user_cart = cart_storage.get(user_id, {})
+        cart_data = cart_result.get("data", [])
         
-        if not user_cart:
+        if not cart_data:
             return APIResponse(
-                message=f"Cart is empty for user {user_id}",
+                message=f"No cart found for user {external_user_id}",
                 data=CartResponse(
-                    user_id=user_id,
+                    external_cart_id="",
+                    external_user_id=external_user_id,
                     items=[],
-                    total_items=0,
-                    total_quantity=0
+                    total_items=0
                 )
             )
         
-        # Enrich cart items with product details
-        cart_items = []
-        total_quantity = 0
-        
-        for product_id, quantity in user_cart.items():
-            # Get product details
-            product_result = await db_service.get_product_by_id(int(product_id))
-            
-            if product_result.get("success", True) and product_result.get("data", []):
-                product = product_result["data"][0]
-                cart_item = CartItem(
-                    product_id=product["product_id"],
-                    quantity=quantity,
-                    product_name=product["product_name"],
-                    aisle_name=product.get("aisle_name"),
-                    department_name=product.get("department_name")
-                )
-                cart_items.append(cart_item)
-                total_quantity += quantity
-            else:
-                # Product not found, remove from cart
-                cart_storage[user_id].pop(str(product_id), None)
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            user_id=user_id,
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
             items=cart_items,
-            total_items=len(cart_items),
-            total_quantity=total_quantity
+            total_items=cart["total_items"]
         )
         
         return APIResponse(
-            message=f"Cart retrieved successfully for user {user_id}",
+            message=f"Cart retrieved successfully for user {external_user_id}",
             data=cart_response
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to get cart due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Get cart failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get cart due to server error")
 
-@router.post("/{user_id}", response_model=APIResponse)
-async def update_user_cart(user_id: str, cart_items: List[AddCartItemRequest]) -> APIResponse:
+@router.post("/", response_model=APIResponse, status_code=201)
+async def create_cart(cart_request: CreateCartRequest) -> APIResponse:
+    """Create a new cart for a user"""
+    try:
+        # Create cart using db_service
+        create_result = await db_service.create_entity("carts", cart_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(create_result, cart_request.external_user_id, "create cart", "Failed to create cart")
+        
+        cart_data = create_result.get("data", [])
+        
+        if not cart_data:
+            raise HTTPException(status_code=500, detail="Cart creation returned no data", headers={"X-Handled-Error": "true"})
+        
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
+        
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=cart_items,
+            total_items=cart["total_items"]
+        )
+        
+        return APIResponse(
+            message="Cart created successfully",
+            data=cart_response
+        )
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to create cart due to server error")
+    except Exception as e:
+        print(f"Create cart failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create cart due to server error")
+
+@router.put("/{external_user_id}", response_model=APIResponse)
+async def update_user_cart(external_user_id: str, cart_request: UpdateCartRequest) -> APIResponse:
     """Replace entire cart for a user"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Update cart using db_service
+        update_result = await db_service.update_entity("carts", external_user_id, cart_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(update_result, external_user_id, "update cart", "Failed to update cart")
         
-        # Validate all products exist
-        for item in cart_items:
-            product_result = await db_service.get_product_by_id(item.product_id)
-            if not product_result.get("success", True) or not product_result.get("data", []):
-                raise HTTPException(status_code=400, detail=f"Product {item.product_id} not found")
+        cart_data = update_result.get("data", [])
         
-        # Replace cart in storage
-        new_cart = {}
-        for item in cart_items:
-            if item.quantity > 0:  # Only add items with positive quantity
-                new_cart[str(item.product_id)] = item.quantity
+        if not cart_data:
+            raise HTTPException(status_code=404, detail=f"Cart not found for user {external_user_id}", headers={"X-Handled-Error": "true"})
         
-        cart_storage[user_id] = new_cart
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
-        # Return updated cart
-        return await get_user_cart(user_id)
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=cart_items,
+            total_items=cart["total_items"]
+        )
         
-    except HTTPException:
-        raise
+        return APIResponse(
+            message="Cart updated successfully",
+            data=cart_response
+        )
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to update cart due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Update cart failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update cart due to server error")
 
-@router.post("/{user_id}/items", response_model=APIResponse)
-async def add_cart_item(user_id: str, item_request: AddCartItemRequest) -> APIResponse:
+@router.delete("/{external_user_id}", response_model=APIResponse)
+async def delete_user_cart(external_user_id: str) -> APIResponse:
+    """Delete a user's cart"""
+    try:
+        # Delete cart using db_service
+        delete_result = await db_service.delete_entity("carts", external_user_id)
+        _handle_db_service_error(delete_result, external_user_id, "delete cart", "Failed to delete cart")
+        
+        return APIResponse(
+            message=f"Cart deleted successfully for user {external_user_id}",
+            data={"external_user_id": external_user_id, "deleted": True}
+        )
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to delete cart due to server error")
+    except Exception as e:
+        print(f"Delete cart failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete cart due to server error")
+
+@router.post("/{external_user_id}/items", response_model=APIResponse)
+async def add_cart_item(external_user_id: str, item_request: AddCartItemRequest) -> APIResponse:
     """Add an item to user's cart"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Add item to cart using db_service
+        add_result = await db_service.create_entity(f"carts/{external_user_id}/items", item_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(add_result, external_user_id, "add cart item", "Failed to add item to cart")
         
-        # Verify product exists
-        product_result = await db_service.get_product_by_id(item_request.product_id)
-        if not product_result.get("success", True) or not product_result.get("data", []):
-            raise HTTPException(status_code=400, detail=f"Product {item_request.product_id} not found")
+        cart_data = add_result.get("data", [])
         
-        # Initialize cart if doesn't exist
-        if user_id not in cart_storage:
-            cart_storage[user_id] = {}
+        if not cart_data:
+            raise HTTPException(status_code=500, detail="Add cart item returned no data", headers={"X-Handled-Error": "true"})
         
-        # Add or update item in cart
-        product_key = str(item_request.product_id)
-        current_quantity = cart_storage[user_id].get(product_key, 0)
-        new_quantity = current_quantity + item_request.quantity
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
-        if new_quantity <= 0:
-            # Remove item if quantity becomes 0 or negative
-            cart_storage[user_id].pop(product_key, None)
-        else:
-            cart_storage[user_id][product_key] = new_quantity
-        
-        product = product_result["data"][0]
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=cart_items,
+            total_items=cart["total_items"]
+        )
         
         return APIResponse(
-            message=f"Item {product['product_name']} added to cart",
-            data={
-                "user_id": user_id,
-                "product_id": item_request.product_id,
-                "product_name": product["product_name"],
-                "previous_quantity": current_quantity,
-                "added_quantity": item_request.quantity,
-                "new_quantity": new_quantity if new_quantity > 0 else 0
-            }
+            message="Item added to cart successfully",
+            data=cart_response
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to add item to cart due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Add cart item failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add item to cart due to server error")
 
-@router.put("/{user_id}/items/{product_id}", response_model=APIResponse)
-async def update_cart_item(user_id: str, product_id: int, update_request: UpdateCartItemRequest) -> APIResponse:
+@router.put("/{external_user_id}/items/{product_id}", response_model=APIResponse)
+async def update_cart_item(external_user_id: str, product_id: int, update_request: UpdateCartItemRequest) -> APIResponse:
     """Update quantity of a specific item in cart"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Update cart item using db_service
+        update_result = await db_service.update_entity(f"carts/{external_user_id}/items", str(product_id), update_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(update_result, external_user_id, "update cart item", "Failed to update cart item")
         
-        # Verify product exists
-        product_result = await db_service.get_product_by_id(product_id)
-        if not product_result.get("success", True) or not product_result.get("data", []):
-            raise HTTPException(status_code=400, detail=f"Product {product_id} not found")
+        cart_data = update_result.get("data", [])
         
-        # Check if user has cart and item
-        if user_id not in cart_storage or str(product_id) not in cart_storage[user_id]:
-            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
+        if not cart_data:
+            raise HTTPException(status_code=404, detail=f"Cart item not found", headers={"X-Handled-Error": "true"})
         
-        product_key = str(product_id)
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
-        if update_request.quantity <= 0:
-            # Remove item from cart
-            cart_storage[user_id].pop(product_key, None)
-            message = f"Product {product_id} removed from cart"
-            new_quantity = 0
-        else:
-            # Update quantity
-            cart_storage[user_id][product_key] = update_request.quantity
-            message = f"Product {product_id} quantity updated"
-            new_quantity = update_request.quantity
-        
-        product = product_result["data"][0]
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=cart_items,
+            total_items=cart["total_items"]
+        )
         
         return APIResponse(
-            message=message,
-            data={
-                "user_id": user_id,
-                "product_id": product_id,
-                "product_name": product["product_name"],
-                "new_quantity": new_quantity
-            }
+            message="Cart item updated successfully",
+            data=cart_response
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to update cart item due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Update cart item failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update cart item due to server error")
 
-@router.delete("/{user_id}/items/{product_id}", response_model=APIResponse)
-async def remove_cart_item(user_id: str, product_id: int) -> APIResponse:
+@router.delete("/{external_user_id}/items/{product_id}", response_model=APIResponse)
+async def remove_cart_item(external_user_id: str, product_id: int) -> APIResponse:
     """Remove a specific item from cart"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Remove cart item using db_service
+        delete_result = await db_service.delete_entity(f"carts/{external_user_id}/items", str(product_id))
+        _handle_db_service_error(delete_result, external_user_id, "remove cart item", "Failed to remove cart item")
         
-        # Check if user has cart and item
-        if user_id not in cart_storage or str(product_id) not in cart_storage[user_id]:
-            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
+        cart_data = delete_result.get("data", [])
         
-        # Get product name for response
-        product_result = await db_service.get_product_by_id(product_id)
-        product_name = "Unknown Product"
-        if product_result.get("success", True) and product_result.get("data", []):
-            product_name = product_result["data"][0]["product_name"]
+        if not cart_data:
+            raise HTTPException(status_code=404, detail=f"Cart item not found", headers={"X-Handled-Error": "true"})
         
-        # Remove item from cart
-        removed_quantity = cart_storage[user_id].pop(str(product_id), 0)
+        # Convert cart data to response format
+        cart = cart_data[0]
+        cart_items = [CartItem(**item) for item in cart.get("items", [])]
+        
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=cart_items,
+            total_items=cart["total_items"]
+        )
         
         return APIResponse(
-            message=f"Product {product_name} removed from cart",
-            data={
-                "user_id": user_id,
-                "product_id": product_id,
-                "product_name": product_name,
-                "removed_quantity": removed_quantity
-            }
+            message="Item removed from cart successfully",
+            data=cart_response
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to remove cart item due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Remove cart item failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to remove cart item due to server error")
 
-@router.delete("/{user_id}", response_model=APIResponse)
-async def clear_user_cart(user_id: str) -> APIResponse:
+@router.delete("/{external_user_id}/clear", response_model=APIResponse)
+async def clear_user_cart(external_user_id: str) -> APIResponse:
     """Clear entire cart for a user"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Clear cart using db_service
+        clear_result = await db_service.delete_entity(f"carts/{external_user_id}", "clear")
+        _handle_db_service_error(clear_result, external_user_id, "clear cart", "Failed to clear cart")
         
-        # Clear cart
-        items_count = len(cart_storage.get(user_id, {}))
-        cart_storage[user_id] = {}
+        cart_data = clear_result.get("data", [])
+        
+        if not cart_data:
+            raise HTTPException(status_code=404, detail=f"Cart not found", headers={"X-Handled-Error": "true"})
+        
+        # Convert cart data to response format
+        cart = cart_data[0]
+        
+        cart_response = CartResponse(
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
+            items=[],
+            total_items=0
+        )
         
         return APIResponse(
-            message=f"Cart cleared for user {user_id}",
-            data={
-                "user_id": user_id,
-                "cleared_items": items_count,
-                "cart_empty": True
-            }
+            message=f"Cart cleared successfully for user {external_user_id}",
+            data=cart_response
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to clear cart due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Clear cart failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to clear cart due to server error")
 
-@router.post("/{user_id}/checkout", response_model=APIResponse)
-async def checkout_cart(user_id: str) -> APIResponse:
+@router.post("/{external_user_id}/checkout", response_model=APIResponse)
+async def checkout_cart(external_user_id: str) -> APIResponse:
     """Convert cart to order (checkout process)"""
     try:
-        # Verify user exists
-        user_result = await db_service.get_user_by_id(user_id)
-        if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        # Checkout cart using db_service
+        checkout_result = await db_service.create_entity(f"carts/{external_user_id}/checkout", {})
+        _handle_db_service_error(checkout_result, external_user_id, "checkout cart", "Failed to checkout cart")
         
-        # Get current cart
-        user_cart = cart_storage.get(user_id, {})
+        checkout_data = checkout_result.get("data", [])
         
-        if not user_cart:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-        
-        # Prepare order items from cart
-        order_items = []
-        for product_id, quantity in user_cart.items():
-            order_items.append({
-                "product_id": int(product_id),
-                "quantity": quantity
-            })
-        
-        # TODO: Create actual order using the order creation endpoint
-        # For now, simulate the checkout process
-        
-        # Clear cart after checkout
-        cart_storage[user_id] = {}
+        if not checkout_data:
+            raise HTTPException(status_code=500, detail="Checkout returned no data", headers={"X-Handled-Error": "true"})
         
         return APIResponse(
-            message=f"Checkout completed for user {user_id}",
-            data={
-                "user_id": user_id,
-                "order_items": order_items,
-                "total_items": len(order_items),
-                "status": "order_created",
-                "note": "This is a simulation - actual order creation would be implemented here"
-            }
+            message=f"Checkout completed successfully for user {external_user_id}",
+            data=checkout_data[0]
         )
-    except HTTPException:
-        raise
+        
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to checkout cart due to server error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Checkout failed with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to checkout cart due to server error")

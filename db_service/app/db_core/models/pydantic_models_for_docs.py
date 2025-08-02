@@ -1,9 +1,10 @@
 # pydantic_models.py
 
-from pydantic import BaseModel, Field, EmailStr, constr
+from pydantic import BaseModel, Field, EmailStr, constr, UUID4
 from typing import Optional, List
 from datetime import datetime
 import enum
+import uuid
 
 # ----- Enum -----
 class OrderStatus(str, enum.Enum):
@@ -35,13 +36,14 @@ class OrderStatus(str, enum.Enum):
 # ----- User -----
 class User(BaseModel):
     """
-    Database model for registered users.
+    Database model for registered users with dual-ID architecture.
 
     Stores a user account, authentication credentials, and optional contact/delivery details,
     and links to all associated orders and carts.
 
     Attributes:
-        user_id (int): Unique identifier for the user (primary key).
+        id (int): Internal unique identifier for the user (primary key).
+        external_user_id (UUID4): External unique identifier for the user.
         first_name (str): User's first name (not required to be unique).
         last_name (str): User's last name (not required to be unique).
         hashed_password (str): Securely hashed password for authentication.
@@ -54,7 +56,6 @@ class User(BaseModel):
         last_login (Optional[datetime]): When the user last logged in. Nullable.
         last_notifications_viewed_at (Optional[datetime]): When the user last viewed their order status notifications. Nullable.
 
-
     Relationships:
         - orders: List of all orders placed by this user.
         - carts: List of all shopping carts owned by this user.
@@ -66,7 +67,8 @@ class User(BaseModel):
 
     Example:
         User(
-            user_id=1,
+            id=1,
+            external_user_id=UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             first_name="Alice",
             last_name="Smith",
             hashed_password="$2b$12$...",
@@ -77,6 +79,8 @@ class User(BaseModel):
             postal_code="12345",
             country="USA")
     """
+    id: Optional[int] = Field(None, description="Internal unique identifier for the user")
+    external_user_id: UUID4 = Field(default_factory=uuid.uuid4, description="External unique identifier for the user")
     first_name: str = Field(..., description="User's first name (not required to be unique)")
     last_name: str = Field(..., description="User's last name (not required to be unique)")
     hashed_password: str = Field(..., description="Securely hashed password for authentication")

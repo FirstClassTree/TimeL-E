@@ -60,14 +60,14 @@ def populate_orders_created_at():
                 db.close()
                 return
             first_order_id = int(first_row['order_id'])
-            order = db.query(Order).filter(Order.order_id == first_order_id).first()
+            order = db.query(Order).filter(Order.id == first_order_id).first()
             if order and order.created_at is not None and not is_today(order.created_at):
                 print(f"Order.created_at already set for order_id {first_order_id} ({order.created_at}); skipping all created_at loading.")
                 db.close()
                 return
 
         print(f"Updating orders.created_at from: {filename}")
-        batch_size = 200
+        batch_size = 50  # Reduced for memory stability
         batch_orders = []
         updated, missing, errors = 0, 0, 0
 
@@ -77,7 +77,7 @@ def populate_orders_created_at():
                 try:
                     order_id = int(row['order_id'])
                     created_at = parse_dt(row['created_at'])
-                    order = db.query(Order).filter(Order.order_id == order_id).first()
+                    order = db.query(Order).filter(Order.id == order_id).first()
                     if order:
                         order.created_at = created_at
                         batch_orders.append(order)
@@ -253,7 +253,7 @@ def populate_order_status_history():
         batch_size = 200
 
         for idx, (order_id, (last_status, last_changed_at)) in enumerate(last_status_per_order.items(), 1):
-            order = db.query(Order).filter(Order.order_id == order_id).first()
+            order = db.query(Order).filter(Order.id == order_id).first()
             if order:
                 order.status = last_status
                 order.updated_at = last_changed_at
