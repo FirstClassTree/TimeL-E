@@ -42,26 +42,30 @@ All endpoints continue to use their existing URL patterns.
 ```
 
 **NEW Response:**
+
 ```json
 {
-  "message": "User profile retrieved successfully",
-  "data": {
-    "userId": "123",
-    "firstName": "John",
-    "lastName": "Doe",
-    "emailAddress": "john@example.com",
-    "phoneNumber": "+1-555-0123",
-    "streetAddress": "123 Main St",
-    "city": "Demo City",
-    "postalCode": "12345",
-    "country": "US",
-    "daysBetweenOrderNotifications": 7,
-    "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",
-    "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",
-    "pendingOrderNotification": false,
-    "orderNotificationsViaEmail": true,
-    "lastNotificationSentAt": "2025-07-29T10:00:00Z"
-  }
+   "message": "User profile retrieved successfully",
+   "data": {
+      "userId": "123",
+      "firstName": "John",
+      "lastName": "Doe",
+      "emailAddress": "john@example.com",
+      "phoneNumber": "+1-555-0123",
+      "streetAddress": "123 Main St",
+      "city": "Demo City",
+      "postalCode": "12345",
+      "country": "US",
+      "daysBetweenOrderNotifications": 7,
+      "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",
+      "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",
+      "pendingOrderNotification": false,
+      "orderNotificationsViaEmail": true,
+      "lastNotificationSentAt": "2025-07-29T10:00:00Z",
+      "lastLogin": "2025-08-01T08:30:00Z",
+      "lastNotificationsViewedAt": "2025-08-01T09:15:00Z",
+      "hasActiveCart": true
+   }
 }
 ```
 
@@ -278,7 +282,8 @@ Content-Type: application/json
 
 ### 1. **POST `/api/users/login` - Real Authentication**
 
-**Purpose**: Authenticate users with email and password (not just demo)
+**Purpose**: Authenticate users with email and password (not just demo)  
+Returns full user information, including `lastLogin` and `lastNotificationsViewedAt` (ISO strings), and `hasActiveCart` (bool).
 
 **Request:**
 ```json
@@ -298,7 +303,7 @@ Content-Type: application/json
     "lastName": "Doe",
     "emailAddress": "john@example.com",
     "phoneNumber": "+1-555-0123",
-    // ... full user profile with notification fields
+    // ... full user profile with notification fields and timestamps
   }
 }
 ```
@@ -425,6 +430,39 @@ POST /api/users/logout
 }
 ```
 
+### 6. **GET `/api/users/{user_id}/order-status-notifications` - Get Order Status Notifications**
+
+**Purpose**: Retrieve list of user's notifications for updates in order statuses.  
+
+**Request:**
+```
+GET /api/users/{user_id}/order-status-notifications
+```
+
+**Response (Success - 200):**
+```json
+{
+  "message": "Found 2 order status notifications for user 123",
+  "data": {
+    "notifications": [
+      {
+        "orderId": 456,
+        "status": "shipped",
+        "changedAt": "2025-08-01T14:30:00Z"
+      },
+      {
+        "orderId": 789,
+        "status": "delivered",
+        "changedAt": "2025-08-01T16:45:00Z"
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+- **404**: "User {user_id} not found"
+- **500**: "Failed to get order status notifications due to a server error"
 ---
 
 ## ENHANCED ERROR HANDLING
@@ -543,19 +581,45 @@ The following endpoints now automatically convert between camelCase (frontend) a
 ```
 
 #### **Order Endpoints (`/api/orders/*`)**
-- **Request Fields**: `userId`, `productId`, `quantity`
-- **Response Fields**: `orderId`, `userId`, `orderNumber`, `totalItems`, `productId`, `productName`
+- **Request Fields**: `userId`, `productId`, `quantity`, `deliveryName`
+- **Response Fields**: `orderId`, `userId`, `orderNumber`, `totalItems`, `totalPrice`, `deliveryName`, `productId`, `productName`, `price`
 
 **Example Order Request:**
 ```json
 {
     "userId": 456,
+    "deliveryName": "John Doe",
     "items": [
       {
         "productId": 123,
-        "quantity": 2
+        "quantity": 2,
+        "price": 4.99
       }
     ]
+}
+```
+
+**Example Order Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": 789,
+    "userId": "456",
+    "orderNumber": 1,
+    "totalItems": 1,
+    "totalPrice": 9.98,
+    "deliveryName": "John Doe",
+    "status": "pending",
+    "items": [
+      {
+        "productId": 123,
+        "quantity": 2,
+        "price": 4.99,
+        "productName": "Organic Milk"
+      }
+    ]
+  }
 }
 ```
 

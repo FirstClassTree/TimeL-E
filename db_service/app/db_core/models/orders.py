@@ -8,7 +8,7 @@ shopping carts, and cart items. Models define business logic constraints, relati
 and metadata for use in API, admin, and business logic layers.
 """
 
-from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint
+from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint, Text, Index, Float
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
 from .base import Base
@@ -43,6 +43,12 @@ class OrderStatus(enum.Enum):
     RETURNED = "returned"                   # Returned and processed
     REFUNDED = "refunded"                   # Payment has been refunded
 
+OrderStatusEnum = SqlEnum(
+    OrderStatus,
+    name="order_status_enum",
+    values_callable=lambda x: [e.value for e in x]
+)
+
 class Order(Base):
     """
     Database model for a customer's placed order.
@@ -55,7 +61,7 @@ class Order(Base):
         user_id (int): User who placed the order (foreign key).
         order_number (int): Sequential order number for this user.
         order_dow (int): Day of week order was placed (0=Sunday, 6=Saturday).
-        order_hour_of_day (int): Hour of day order was placed (0–23).
+        order_hour_of_day (int): Hour of day order was placed (0-23).
         days_since_prior_order (Optional[int]): Days since user's prior order.
         total_items (int): Total items in this order.
         status (OrderStatus): Current order status (enum).
@@ -83,6 +89,8 @@ class Order(Base):
     __tablename__ = 'orders'
     __table_args__ = (
         CheckConstraint('total_items >= 0', name='ck_order_total_items_nonnegative'),
+        CheckConstraint('total_price >= 0', name='ck_order_total_price_nonnegative'),
+        Index('ix_orders_userid_orderid', 'user_id', 'order_id'),   # for order status notifications
         {"schema": "orders"}
     )
 
@@ -94,11 +102,13 @@ class Order(Base):
     order_hour_of_day: Mapped[int] = mapped_column(Integer, nullable=False)
     days_since_prior_order: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     total_items: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[OrderStatus] = mapped_column(SqlEnum(OrderStatus, name="order_status_enum"),
+    total_price: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    status: Mapped[OrderStatus] = mapped_column(OrderStatusEnum,
                                                  default=OrderStatus.PENDING, nullable=False)
 
     # Optional delivery and invoice details
-    phone_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    delivery_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    phone_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     street_address:  Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     city:  Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     postal_code:  Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
@@ -164,6 +174,7 @@ class OrderItem(Base):
         CheckConstraint('reordered IN (0, 1)', name='ck_orderitem_reordered_bool'),
         CheckConstraint('add_to_cart_order >= 0', name='ck_orderitem_add_to_cart_order_nonnegative'),
         CheckConstraint('quantity > 0', name='ck_orderitem_quantity_positive'),
+        CheckConstraint('price >= 0', name='ck_orderitem_price_nonnegative'),
         {"schema": "orders"}
     )
 
@@ -172,6 +183,7 @@ class OrderItem(Base):
     add_to_cart_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reordered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    price: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
 
     # Enables navigating back to the order this item belongs to
     order: Mapped["Order"]  = relationship(
@@ -286,3 +298,50 @@ class CartItem(Base):
         "Product",
         doc="The product associated with this cart item.")
 
+
+class OrderStatusHistory(Base):
+    """
+    Database model for tracking changes to order statuses.
+
+    Stores a history of status changes for orders, including who made the change
+    and any relevant notes.
+
+    Attributes:
+        history_id (int): Unique history identifier (primary key).
+        order_id (int): Order that was changed (foreign key).
+        old_status (str): Previous status of the order.
+        new_status (str): New status of the order.
+        changed_at (datetime): When the change occurred (UTC).
+        changed_by (int): Optional user or system identifier who made the change.
+        note (str): Optional note about the change.
+
+    Relationships:
+        - order: The Order associated with this status change
+
+    OpenAPI Description:
+        Audit table for tracking order status changes over time.
+    """
+    __tablename__ = 'order_status_history'
+    __table_args__ = (
+        Index('ix_orderstatushistory_orderid_changedat', 'order_id', 'changed_at'),   # for order status notifications
+        {"schema": "orders"}
+    )
+    
+    history_id: Mapped[int] = mapped_column(
+        Integer, 
+        primary_key=True, 
+        autoincrement=True
+    )
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey('orders.orders.order_id'), index=True)
+    old_status: Mapped[Optional[OrderStatus]] = mapped_column(OrderStatusEnum,
+                                                      default=OrderStatus.PENDING, nullable=True)
+    new_status: Mapped[OrderStatus] = mapped_column(OrderStatusEnum,
+                                            default=OrderStatus.PENDING, nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.now(UTC), index=True)
+    changed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Enables accessing the order associated with this status change
+    order: Mapped["Order"] = relationship(
+        "Order",
+        doc="The order associated with this status change.")

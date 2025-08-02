@@ -91,6 +91,8 @@ class UserResponse(BaseModel):
     pending_order_notification: Optional[bool] = None
     order_notifications_via_email: Optional[bool] = None
     last_notification_sent_at: Optional[datetime] = None
+    last_notifications_viewed_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
 
 class CreateUserRequest(BaseModel):
     """Create user request model"""
@@ -163,6 +165,41 @@ class DeleteUserRequest(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
     password: str
+
+class OrderStatusNotificationsResponse(BaseModel):
+    """Order status notifications response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    order_id: int
+    status: str
+    changed_at: datetime
+
+class DeleteUserResponse(BaseModel):
+    """Delete user response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    user_id: str
+    deleted: bool
+
+class UpdatePasswordResponse(BaseModel):
+    """Update password response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    user_id: str
+    password_updated: bool
+
+class UpdateEmailResponse(BaseModel):
+    """Update email response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    user_id: str
+    email_address: str
+
+class LogoutResponse(BaseModel):
+    """Logout response model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    logged_out: bool
 
 # --- Routes ---
 
@@ -338,9 +375,10 @@ async def delete_user(user_id: str, request: DeleteUserRequest = Body(...)) -> A
         if not deleted_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
         
+        delete_response = DeleteUserResponse(user_id=user_id, deleted=True)
         return APIResponse(
             message=f"User {user_id} deleted successfully",
-            data={"user_id": user_id, "deleted": True}
+            data=delete_response
         )
     except HTTPException as e:
         _handle_unhandled_http_exception(e, "User deletion failed due to a server error")
@@ -364,9 +402,10 @@ async def update_user_password(user_id: str, password_request: UpdatePasswordReq
         if not updated_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
         
+        password_response = UpdatePasswordResponse(user_id=user_id, password_updated=True)
         return APIResponse(
             message="Password updated successfully",
-            data={"user_id": user_id, "password_updated": True}
+            data=password_response
         )
     except HTTPException as e:
         _handle_unhandled_http_exception(e, "Password update failed due to a server error")
@@ -498,12 +537,10 @@ async def update_user_email(user_id: str, email_request: UpdateEmailRequest) -> 
         if not updated_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
 
+        email_response = UpdateEmailResponse(user_id=user_id, email_address=updated_data[0]["email_address"])
         return APIResponse(
             message="Email address updated successfully",
-            data={
-                "user_id": user_id,
-                "email_address": updated_data[0]["email_address"]
-            }
+            data=email_response
         )
     except HTTPException as e:
         _handle_unhandled_http_exception(e, "Email update failed due to a server error")
@@ -514,8 +551,36 @@ async def update_user_email(user_id: str, email_request: UpdateEmailRequest) -> 
 @router.post("/logout", response_model=APIResponse)
 async def logout_user() -> APIResponse:
     """Logout endpoint; placeholder until JWT implementation"""
+    logout_response = LogoutResponse(logged_out=True)
     return APIResponse(
         message="Logout successful",
-        data={"logged_out": True}
+        data=logout_response
     )
 
+@router.get("/{user_id}/order-status-notifications", response_model=APIResponse)
+async def get_order_status_notifications(
+    user_id: str) -> APIResponse:
+    """
+    Get the latest unchecked status change updates per order for a user.
+    """
+    try:
+        result = await db_service.get_entity("users", user_id, sub_resource="order-status-notifications")
+        _handle_db_service_error(result, user_id, "get order status notifications", "Failed to get order status notifications")
+
+        notifications_data = result.get("data", [])
+        
+        # Convert raw data to Pydantic models for proper camelCase conversion
+        notifications = [
+            OrderStatusNotificationsResponse(**notification).model_dump(by_alias=True)
+            for notification in notifications_data
+        ]
+        
+        return APIResponse(
+            message=f"Found {len(notifications)} order status notifications for user {user_id}",
+            data={"notifications": notifications}
+        )
+    except HTTPException as e:
+        _handle_unhandled_http_exception(e, "Failed to get order status notifications due to a server error")
+    except Exception as e:
+        print(f"Failed to get order status notifications with error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get order status notifications due to a server error")

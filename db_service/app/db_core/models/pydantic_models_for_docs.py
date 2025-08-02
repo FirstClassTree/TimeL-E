@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, Field, EmailStr, constr
 from typing import Optional, List
-import datetime
+from datetime import datetime
 import enum
 
 # ----- Enum -----
@@ -51,8 +51,8 @@ class User(BaseModel):
         city (Optional[str]): City for delivery address. Nullable.
         postal_code (Optional[str]): Postal or ZIP code for delivery. Nullable.
         country (Optional[str]): Country for delivery address. Nullable.
-        orders (List[Order]): List of all orders placed by this user.
-        carts (List[Cart]): List of all shopping carts owned by this user.
+        last_login (Optional[datetime]): When the user last logged in. Nullable.
+        last_notifications_viewed_at (Optional[datetime]): When the user last viewed their order status notifications. Nullable.
 
 
     Relationships:
@@ -86,6 +86,41 @@ class User(BaseModel):
     city: Optional[str] = Field(None, description="City for delivery address. Nullable")
     postal_code: Optional[str] = Field(None, description="Postal or ZIP code for delivery. Nullable")
     country: Optional[str] = Field(None, description="Country for delivery address. Nullable")
+    last_login: Optional[datetime] = Field(None, description="When the user last logged in. Nullable")
+    last_notifications_viewed_at: Optional[datetime] = Field(None, description="When the user last viewed their order status notifications. Nullable")
+
+    class Config:
+        from_attributes = True
+
+class OrderStatusHistory(BaseModel):
+    """
+    Database model for tracking changes to order statuses.
+
+    Stores a history of status changes for orders, including who made the change
+    and any relevant notes.
+
+    Attributes:
+        history_id (int): Unique history identifier (primary key).
+        order_id (int): Order that was changed (foreign key).
+        old_status (Optional[OrderStatus]): Previous status of the order.
+        new_status (OrderStatus): New status of the order.
+        changed_at (datetime): When the change occurred (UTC).
+        changed_by (Optional[int]): Optional user or system identifier who made the change.
+        note (Optional[str]): Optional note about the change.
+
+    Relationships:
+        - order: The Order associated with this status change
+
+    OpenAPI Description:
+        Audit table for tracking order status changes over time.
+    """
+    history_id: int
+    order_id: int
+    old_status: Optional[OrderStatus] = None
+    new_status: OrderStatus
+    changed_at: datetime
+    changed_by: Optional[int] = None
+    note: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -186,6 +221,7 @@ class OrderItem(BaseModel):
         - add_to_cart_order: Sequential order in which this item was added to the order
         - reordered: Boolean as int (0 or 1), if item was reordered from prior order
         - quantity: Number of units ordered
+        - price: Price per unit of the product at the time of order
 
     Relationships:
         - order: The parent Order
@@ -199,6 +235,7 @@ class OrderItem(BaseModel):
     add_to_cart_order: int = 0
     reordered: int = 0
     quantity: int = 1
+    price: float = Field(..., description="Price per unit of the product at the time of order")
 
     class Config:
         from_attributes = True
@@ -251,8 +288,8 @@ class Cart(BaseModel):
     cart_id: int
     user_id: int
     total_items: int
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: datetime
+    updated_at: datetime
     cart_items: Optional[List[CartItem]] = None
 
     class Config:
@@ -270,10 +307,11 @@ class Order(BaseModel):
         user_id (int): User who placed the order (foreign key).
         order_number (int): Sequential order number for this user.
         order_dow (int): Day of week order was placed (0=Sunday, 6=Saturday).
-        order_hour_of_day (int): Hour of day order was placed (0–23).
+        order_hour_of_day (int): Hour of day order was placed (0-23).
         days_since_prior_order (Optional[int]): Days since user's prior order.
         total_items (int): Total items in this order.
         status (OrderStatus): Current order status (enum).
+        delivery_name (Optional[str]): Name for delivery contact.
         phone_number (Optional[str]): Delivery contact phone.
         street_address (Optional[str]): Delivery address street.
         city (Optional[str]): Delivery city.
@@ -302,7 +340,9 @@ class Order(BaseModel):
     order_hour_of_day: int
     days_since_prior_order: Optional[int] = None
     total_items: int
+    total_price: float = Field(0.0, description="Total price of the order, must be non-negative")
     status: OrderStatus
+    delivery_name: Optional[str] = None
     phone_number: Optional[str] = None
     street_address: Optional[str] = None
     city: Optional[str] = None
@@ -312,8 +352,8 @@ class Order(BaseModel):
     shipping_carrier: Optional[str] = None
     tracking_url: Optional[str] = None
     invoice: Optional[bytes] = None
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: datetime
+    updated_at: datetime
     order_items: Optional[List[OrderItem]] = None
 
     class Config:

@@ -45,7 +45,9 @@ OPTIONAL_USER_FIELDS = [
     "orderNotificationsNextScheduledTime",
     "pendingOrderNotification",
     "orderNotificationsViaEmail",
-    "lastNotificationSentAt"
+    "lastNotificationSentAt",
+    "lastNotificationsViewedAt",
+    "lastLogin"
 ]
 OPTIONAL_NOTIFICATION_SETTINGS_FIELDS = [
     "daysBetweenOrderNotifications",
@@ -918,4 +920,3 @@ class TestBackendFieldMapping:
         assert db_user["first_name"] == backend_data["firstName"]
         assert db_user["last_name"] == backend_data["lastName"]
         assert db_user["email_address"] == backend_data["email"]
-

@@ -17,10 +17,12 @@ import sys
 import datetime
 from .populate_from_csv import populate_tables
 from .populate_enriched_data import populate_enriched_data
+from .populate_order_status_history_from_csv import populate_orders_created_at, populate_order_status_history
 from .db_core.config import settings
 from .scheduler import process_scheduled_user_notifications
 from apscheduler.schedulers.background import BackgroundScheduler
 import logging
+from fastapi.responses import JSONResponse
 
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -65,6 +67,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logging.error(f"Error while populating enriched product data: {e}")
 
+    # load created_at data from orders_demo_created_at.csv into orders table (function will skip if already populated)
+    try:
+        populate_orders_created_at()
+    except Exception as e:
+        logging.error(f"Error while populating table orders with created_at from CSV: {e}")
+
+    # load data from orders_demo_status_history.csv into respective table (function will skip if already populated)
+    try:
+        populate_order_status_history()
+    except Exception as e:
+        logging.error(f"Error while populating order status history table from CSV: {e}")
+
     logging.info(f"Database Service ready! ({datetime.datetime.now().isoformat(timespec='seconds')})")
 
     logging.info("Starting notifications scheduler...")
@@ -99,7 +113,7 @@ app.include_router(carts_router)
 app.include_router(schema_doc_router)
 
 @app.get("/health")
-async def health() -> dict:
+async def health():
     """Combined health check for DB service API and database connectivity."""
 
     # Database connection check
@@ -133,6 +147,8 @@ async def health() -> dict:
     # Only show error if in local/dev
     if settings.NODE_ENV == "development" and db_error:
         resp["data"]["db_error"] = db_error
+    if db_status == "unreachable":
+        return JSONResponse(resp, status_code=503)
     return resp
 
 

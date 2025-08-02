@@ -19,9 +19,51 @@ def create_schemas():
             conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {schema}"))
         conn.commit()
 
+def create_order_status_history_trigger():
+    trigger_sql = """
+    CREATE OR REPLACE FUNCTION orders.log_order_status_change() RETURNS TRIGGER AS $$
+    DECLARE
+        changed_by_user INTEGER;
+    BEGIN
+        changed_by_user := NULLIF(current_setting('app.current_user_id', TRUE), '')::INTEGER;
+        
+        IF NEW.status IS DISTINCT FROM OLD.status THEN
+            INSERT INTO orders.order_status_history (
+                order_id,
+                old_status,
+                new_status,
+                changed_at,
+                changed_by,
+                note
+            )
+            VALUES (
+                NEW.order_id,
+                OLD.status,
+                NEW.status,
+                NOW(),
+                changed_by_user,
+                NULL
+            );
+        END IF;
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    DROP TRIGGER IF EXISTS trg_order_status_change ON orders.orders;
+    CREATE TRIGGER trg_order_status_change
+    AFTER UPDATE OF status ON orders.orders  -- trigger only when status changes
+    FOR EACH ROW
+    EXECUTE FUNCTION orders.log_order_status_change();
+    """
+    
+    with engine.connect() as conn:
+        conn.execute(text(trigger_sql))
+        conn.commit()
+
 def init_db():
     # create the schemas users, products, and orders
     create_schemas()
     # generate the tables defined in the SQLAlchemy models under those schemas
     Base.metadata.create_all(bind=engine)
 
+    create_order_status_history_trigger()

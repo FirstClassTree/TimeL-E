@@ -2,4 +2,4 @@
 
 from .users import User
 from .products import Product, Department, Aisle, ProductEnriched
-from .orders import Order, OrderItem, OrderStatus
+from .orders import Order, OrderItem, OrderStatus, OrderStatusHistory, Cart, CartItem

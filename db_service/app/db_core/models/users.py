@@ -87,8 +87,19 @@ class User(Base):
     postal_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     country: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    # Notification and scheduling settings
+    # Last login timestamp
+    last_login: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
+                                                           default=None,
+                                                           nullable=True)
+
+    # Last accessed /users/{user_id}/order-status-notifications
+    last_notifications_viewed_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
+                                                                             nullable=True,
+                                                                             doc="When the user last viewed their order status notifications.")
+
+    # Notification for order scheduling
     days_between_order_notifications: Mapped[Optional[int]] = mapped_column(Integer, default=7, nullable=True)
+
     order_notifications_start_date_time: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
                                                       default=lambda: datetime.now(UTC),
                                                       nullable=True)
@@ -96,11 +107,15 @@ class User(Base):
     order_notifications_next_scheduled_time: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
                                                           default=lambda: datetime.now(UTC)  + timedelta(days=7),
                                                           nullable=True)
+
     last_notification_sent_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True),
                                                           default=None,
                                                           nullable=True)
+
     pending_order_notification: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     order_notifications_via_email: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
 
     # Enables accessing all orders by this user
     orders: Mapped[List["Order"]]  = relationship("Order", back_populates="user")
