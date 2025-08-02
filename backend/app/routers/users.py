@@ -76,7 +76,7 @@ class UserResponse(BaseModel):
     """User response model (without sensitive data)"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: str
+    external_user_id: str
     first_name: str
     last_name: str
     email_address: str
@@ -178,21 +178,21 @@ class DeleteUserResponse(BaseModel):
     """Delete user response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: str
+    external_user_id: str
     deleted: bool
 
 class UpdatePasswordResponse(BaseModel):
     """Update password response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: str
+    external_user_id: str
     password_updated: bool
 
 class UpdateEmailResponse(BaseModel):
     """Update email response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    user_id: str
+    external_user_id: str
     email_address: str
 
 class LogoutResponse(BaseModel):
@@ -375,7 +375,7 @@ async def delete_user(user_id: str, request: DeleteUserRequest = Body(...)) -> A
         if not deleted_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
         
-        delete_response = DeleteUserResponse(user_id=user_id, deleted=True)
+        delete_response = DeleteUserResponse(external_user_id=user_id, deleted=True)
         return APIResponse(
             message=f"User {user_id} deleted successfully",
             data=delete_response
@@ -402,7 +402,7 @@ async def update_user_password(user_id: str, password_request: UpdatePasswordReq
         if not updated_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
         
-        password_response = UpdatePasswordResponse(user_id=user_id, password_updated=True)
+        password_response = UpdatePasswordResponse(external_user_id=user_id, password_updated=True)
         return APIResponse(
             message="Password updated successfully",
             data=password_response
@@ -443,7 +443,7 @@ async def login_user(login_request: LoginRequest) -> APIResponse:
 class NotificationSettingsResponse(BaseModel):
     """Notification settings response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
-    user_id: str
+    external_user_id: str
     days_between_order_notifications: Optional[int] = Field(None, ge=1, le=365)
     order_notifications_start_date_time: Optional[datetime] = None
     order_notifications_next_scheduled_time: Optional[datetime] = None
@@ -537,7 +537,7 @@ async def update_user_email(user_id: str, email_request: UpdateEmailRequest) -> 
         if not updated_data:
             raise HTTPException(status_code=404, detail=f"User {user_id} not found", headers={"X-Handled-Error": "true"})
 
-        email_response = UpdateEmailResponse(user_id=user_id, email_address=updated_data[0]["email_address"])
+        email_response = UpdateEmailResponse(external_user_id=user_id, email_address=updated_data[0]["email_address"])
         return APIResponse(
             message="Email address updated successfully",
             data=email_response

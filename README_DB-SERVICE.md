@@ -49,9 +49,70 @@ db_service/
 
 ## How It Works
 
-The backend service sends requests to this service.
-
+The backend service sends requests to this service.  
 These are handled by db-service's internal router and routed to the appropriate model.
+
+## Overview
+
+...
+
+### internal vs. external ID Architecture Implementation
+
+**The db_service utilizes a dual-ID architecture for optimal performance, scalability, and security:**
+
+- **Internal IDs**: Numeric primary keys (`BIGSERIAL`) used internally for database operations and foreign key relationships
+- **External IDs**: UUID4 strings exposed to the backend (and from there to the frontend) via API endpoints
+- **Security Enhancement**: Prevents exposure of sequential integer IDs in URLs, eliminating enumeration attacks
+- **URL Parameters**: All endpoints use `{external_user_id}`,`{externalOrderId }` and `{externalCartId}` in URL paths
+- **Response Fields**: All API responses return `externalUserId`, `externalOrderId`  and `externalCartId` serialized as UUID4 strings
+- **Backward Compatibility**: The frontend experience remains unchanged; all IDs are still strings
+
+**Keynotes:**
+- User endpoints: `/api/users/{external_user_id}` (UUID4 string)
+- Order endpoints: `/api/orders/{external_order_id}` (UUID4 string)  
+- All response fields like `externalUserId`, `externalOrderId` remain as UUID4 strings
+- Internal database uses numeric IDs for optimal PostgreSQL performance
+
+#### Overview
+For all major domain objects (Users, Orders, Carts), the system uses:
+- An internal numeric primary key (never exposed externally)
+- An external UUID (exposed to clients via the API)
+This provides migration stability and fast, safe, public lookup for every resource.
+UUID Validation performed at each point.
+
+### User ID Strategy: Legacy Users vs. New Users
+
+#### Legacy Records (migrated from `users_demo.csv`)
+- Internal Database Key: Integer (from original legacy data)
+- API/Public ID (`external_user_id`):
+- Deterministically generated using UUID version 5 (`uuid.uuid5`)
+- Namespace is fixed for the application (e.g., `USER_UUID_NAMESPACE`)
+- Formula:
+```python
+external_user_id = uuid.uuid5(USER_UUID_NAMESPACE, str(legacy_integer_id))
+```
+
+This ensures that the same legacy ID always maps to the same UUID, providing stable references for migration and testing.
+
+#### New Records
+- Internal Database Key: Integer (autoincrement)
+- API/Public ID (external_user_id):
+  - Randomly generated using UUID version 4 (`uuid.uuid4()`)
+  - Recommended for all new users created after migration
+```python
+external_user_id = uuid.uuid4()
+```
+### Fast UUID Lookup with Database Indexing
+- To make user lookups efficient via the public API, the `external_user_id` column is both unique and indexed.
+- This allows instant retrieval by UUID, essential for APIs that never expose or use the internal numeric PK.
+
+
+
+### Password generation and hashing
+
+...
+
+
 
 ## Running the Service
 

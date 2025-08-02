@@ -5,7 +5,6 @@ import psycopg2
 from datetime import datetime
 import time
 from dateutil.parser import parse as parse_datetime, parse as parse_datetime
-# from uuid_utils import uuid7
 
 def assert_db_success(json_resp, what="operation"):
     """

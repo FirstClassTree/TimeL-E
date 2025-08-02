@@ -71,7 +71,7 @@ def populate_enriched_data(force_reset=False):
         success_count = 0
         error_count = 0
 
-        BATCH_SIZE = 200  # tune this as needed
+        BATCH_SIZE = 50  # Reduced for memory stability
 
         for batch_start in range(0, len(combined_df), BATCH_SIZE):
             batch_end = batch_start + BATCH_SIZE

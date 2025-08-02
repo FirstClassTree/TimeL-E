@@ -14,7 +14,8 @@ OpenAPI Description:
     and relationships to order and cart records.
 """
 
-from sqlalchemy import String, Integer,TIMESTAMP, Boolean, CheckConstraint
+from sqlalchemy import String, Integer, TIMESTAMP, Boolean, CheckConstraint, Uuid, text
+from sqlalchemy.types import BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timedelta, UTC
 from .base import Base
@@ -28,7 +29,7 @@ class User(Base):
     and links to all associated orders and carts.
 
     Attributes:
-        user_id (int): Unique identifier for the user (primary key).
+        user_id (UUID): Unique identifier for the user (primary key).
         first_name (str): User's first name (not required to be unique).
         last_name (str): User's last name (not required to be unique).
         hashed_password (str): Securely hashed password for authentication.
@@ -74,7 +75,11 @@ class User(Base):
         {"schema": "users"}
     )
 
-    user_id: Mapped[int] = mapped_column(Integer, primary_key=True, unique=True)
+    # Internal numeric primary key (never exposed externally)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    
+    # External UUID4 for API interface (exposed to clients)
+    external_user_id: Mapped[Uuid] = mapped_column(Uuid(as_uuid=True), server_default=text("gen_random_uuid()"), unique=True, nullable=False, index=True)
     first_name: Mapped[str] = mapped_column(String, nullable=False)     # allow repeating names
     last_name: Mapped[str] = mapped_column(String, nullable=False)      # allow repeating names
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
