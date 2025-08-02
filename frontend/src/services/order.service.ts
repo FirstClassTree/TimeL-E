@@ -155,7 +155,6 @@ class OrderService {
     return api.get<Product[]>(`/orders/recommendations?limit=${limit}`);
   }
 
-  // Admin functions
   async getAllOrders(filters: OrderFilters & { userId?: string } = {}): Promise<OrdersResponse> {
     const params = new URLSearchParams();
     

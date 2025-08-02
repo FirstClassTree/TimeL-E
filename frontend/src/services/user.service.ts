@@ -1,24 +1,31 @@
 import { api } from './api.client';
 
-export interface User {
-  id: string;
-  email: string;
+export interface UserProfile {
+  userId: string;
   firstName: string;
   lastName: string;
-  role: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UserProfile {
-  id: string;
-  email: string;
-  name: string;
+  emailAddress: string;
+  phoneNumber: string;
+  streetAddress: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  daysBetweenOrderNotifications: number;
+  orderNotificationsStartDateTime: string;
+  orderNotificationsNextScheduledTime: string
+  pendingOrderNotification: boolean;
+  orderNotificationsViaEmail: boolean;
+  lastNotificationSentAt: string;
+  lastLogin: string;
+  lastNotificationsViewedAt: string;
+  hasActiveCart: boolean;
 }
 
 export interface UpdateProfileRequest {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
+  phone?: string;
 }
 
 export interface ChangePasswordRequest {
@@ -26,10 +33,48 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface ChangePasswordResponse {
+  userId: string;
+  passwordUpdated: string;
+}
+
+export interface ChangeEmailRequest {
+  currentPassword: string;
+  newEmailAddress: string;
+}
+
+export interface DeleteUserRequest {
+  password: string;
+}
+
+export  interface UpdateNotificationSettingsRequest {
+  daysBetweenOrderNotifications: number;
+  orderNotificationsStartDateTime: string;
+  orderNotificationsViaEmail: boolean;
+}
+
+export  interface UpdateNotificationSettingsResponse {
+  userId: string;
+  daysBetweenOrderNotifications: number;
+  orderNotificationsStartDateTime: string;
+  orderNotificationsViaEmail: boolean;
+  orderNotificationsNextScheduledTime: string;
+}
+
+export interface GetAllOrderNotificationsRequest {
+  notifications: OrderNotification[];
+}
+
+export interface OrderNotification {
+  orderId: number;
+  status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  changedAt: string;
+}
+
 class UserService {
   // Get user profile
   async getProfile(userId: string): Promise<UserProfile> {
-    return api.get<UserProfile>(`/users/${userId}`);
+    return api.post<UserProfile>(`/users/${userId}`);
   }
 
   // Update user profile
@@ -38,8 +83,8 @@ class UserService {
   }
 
   // Change user password
-  async changePassword(userId: string, data: ChangePasswordRequest): Promise<void> {
-    return api.put<void>(`/users/${userId}/password`, data);
+  async changePassword(userId: string, data: ChangePasswordRequest): Promise<ChangePasswordResponse> {
+    return api.put<ChangePasswordResponse>(`/users/${userId}/password`, data);
   }
 
   // Get user preferences
@@ -53,15 +98,23 @@ class UserService {
   }
 
   // Delete user
-  async deleteAccount(userId: string): Promise<void> {
-    return api.delete(`/users/${userId}`);
+  async deleteAccount(userId: string, data: DeleteUserRequest): Promise<void> {
+    return api.delete(`/users/${userId}`, data);
   }
 
-  // Get user statistics
-  async getStats(): Promise<any> {
-    return api.get('/users/stats');
+  //Update Notification Settings
+  async updateNotificationSettings(userId : string, data: UpdateNotificationSettingsRequest) : Promise<UpdateNotificationSettingsResponse> {
+    return api.put(`/users/${userId}/notification`, data)
   }
+
+  //Update Email
+  async updateEmail(userId : string, data: ChangeEmailRequest) : Promise<void> {
+    return api.put(`/users/${userId}/email`, data)
+  }
+
+    async GetOrderNotifications(userId: string, data: GetAllOrderNotificationsRequest) : Promise<void> {
+        return api.put(`/users/${userId}/order-status-notifications`, data)
+    }
 }
 
-// Export as singleton instance to match your import pattern
 export const userService = new UserService();

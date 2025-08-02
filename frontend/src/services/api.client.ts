@@ -23,15 +23,18 @@ export const apiClient: AxiosInstance = axios.create({
   }
 });
 
-// ============================================================================
-// REQUEST INTERCEPTOR - Add Authentication
-// ============================================================================
-
 apiClient.interceptors.request.use(
   (config: AxiosRequestConfig) => {
     const token = authService.getAccessToken();
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    // Remove null fields from request
+    if (config.data && typeof config.data === 'object') {
+      config.data = Object.fromEntries(
+        Object.entries(config.data).filter(([_, value]) => value != null)
+      );
     }
     return config;
   },
@@ -96,7 +99,7 @@ export const api = {
     apiClient.patch<GeneralResponse<T>>(url, data, config)
         .then(response => response.data.data),
     
-  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<T> =>
+  delete: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> =>
     apiClient.delete<GeneralResponse<T>>(url, config)
         .then(response => response.data.data),
 };

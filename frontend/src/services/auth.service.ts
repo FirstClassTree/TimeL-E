@@ -1,4 +1,3 @@
-// frontend/src/services/auth.service.ts
 import { api } from '@/services/api.client';
 
 interface LoginCredentials {
@@ -7,11 +6,18 @@ interface LoginCredentials {
 }
 
 interface RegisterData {
-  email: string;
-  password: string;
   firstName: string;
   lastName: string;
+  email: string;
+  password: string;
   phone?: string;
+  streetAddress?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  daysBetweenOrderNotifications?: number;
+  orderNotificationsViaEmail?: boolean;
+  orderNotificationsStartDateTime?: string;
 }
 
 interface AuthResponse {
@@ -22,8 +28,9 @@ interface AuthResponse {
 
 interface User {
   id: string;
-  email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
 }
 
 class AuthService {
@@ -38,15 +45,16 @@ class AuthService {
     
     // Transform backend format to frontend expected format
     const user = {
-      id: response.user_id,
-      email: response.email_address,
-      name: response.name
+      id: response.userId,
+      firstName: response.firstName,
+      lastName: response.lastName,
+      emailAddress: response.emailAddress,
     };
     
     // Create mock tokens since backend doesn't provide them
     const mockAuth = {
       user,
-      accessToken: `demo_token_${response.user_id}`,
+      accessToken: `demo_token_${response.userId}`,
       refreshToken: `demo_refresh_${response.user_id}`
     };
     
