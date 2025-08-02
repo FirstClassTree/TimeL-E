@@ -8,7 +8,8 @@ shopping carts, and cart items. Models define business logic constraints, relati
 and metadata for use in API, admin, and business logic layers.
 """
 
-from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint, Text, Index, Float
+from sqlalchemy import Integer, String, ForeignKey, LargeBinary, TIMESTAMP, CheckConstraint, Text, Index, Float, Uuid, text
+from sqlalchemy.types import BigInteger
 from sqlalchemy import Enum as SqlEnum
 from typing import Optional
 from .base import Base
@@ -57,8 +58,10 @@ class Order(Base):
     and links to all associated order items.
 
         Attributes:
-        order_id (int): Unique order identifier (primary key).
-        user_id (int): User who placed the order (foreign key).
+        id (int): Internal numeric primary key (never exposed externally).
+        external_order_id (UUID): External UUID4 for API interface (exposed to clients).
+        user_id (int): Internal user ID who placed the order (foreign key to users.id).
+        legacy_order_id (Optional[int]): Original order ID from CSV data for reference.
         order_number (int): Sequential order number for this user.
         order_dow (int): Day of week order was placed (0=Sunday, 6=Saturday).
         order_hour_of_day (int): Hour of day order was placed (0-23).
@@ -90,12 +93,18 @@ class Order(Base):
     __table_args__ = (
         CheckConstraint('total_items >= 0', name='ck_order_total_items_nonnegative'),
         CheckConstraint('total_price >= 0', name='ck_order_total_price_nonnegative'),
-        Index('ix_orders_userid_orderid', 'user_id', 'order_id'),   # for order status notifications
+        Index('ix_orders_userid_orderid', 'user_id', 'id'),   # for order status notifications
         {"schema": "orders"}
     )
 
-    order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.users.user_id'), index=True, nullable=False)
+    # Internal numeric primary key (never exposed externally)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    
+    # External UUID4 for API interface (exposed to clients)
+    external_order_id: Mapped[Uuid] = mapped_column(Uuid(as_uuid=True), server_default=text("gen_random_uuid()"), unique=True, nullable=False, index=True)
+    
+    # Foreign key to internal user ID (references users.id)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.users.id'), index=True, nullable=False)
     # eval_set: Mapped[str] = mapped_column(String())
     order_number: Mapped[int] = mapped_column(Integer, nullable=False)
     order_dow: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -178,7 +187,7 @@ class OrderItem(Base):
         {"schema": "orders"}
     )
 
-    order_id: Mapped[int] = mapped_column(Integer, ForeignKey('orders.orders.order_id'), primary_key=True)
+    order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('orders.orders.id'), primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.products.product_id'), primary_key=True, index=True)
     add_to_cart_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reordered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -200,8 +209,9 @@ class Cart(Base):
     Shopping cart for a user, storing items added before checkout.
 
     Attributes:
-        - cart_id: Primary key
-        - user_id: Foreign key to user
+        - id: Internal numeric primary key (never exposed externally)
+        - external_cart_id: External UUID4 for API interface (exposed to clients)
+        - user_id: Internal user ID who owns this cart (foreign key to users.id)
         - total_items: Total items in the cart
         - created_at: When the cart was created
         - updated_at: When the cart was last updated
@@ -219,9 +229,14 @@ class Cart(Base):
         {"schema": "orders"}
     )
 
-    # currently only one cart will be stored per user, but multiple carts are supported.
-    cart_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True) #  rendered as PostgreSQL SERIAL
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.users.user_id'), index=True, nullable=False)
+    # Internal numeric primary key (never exposed externally)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    
+    # External UUID4 for API interface (exposed to clients)
+    external_cart_id: Mapped[Uuid] = mapped_column(Uuid(as_uuid=True), server_default=text("gen_random_uuid()"), unique=True, nullable=False, index=True)
+    
+    # Foreign key to internal user ID (references users.id)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.users.id'), index=True, nullable=False)
     total_items: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True),
                                                           default=lambda: datetime.now(UTC),
@@ -281,7 +296,7 @@ class CartItem(Base):
         {"schema": "orders"}
     )
 
-    cart_id: Mapped[int] = mapped_column(Integer, ForeignKey('orders.carts.cart_id'), primary_key=True)
+    cart_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('orders.carts.id'), primary_key=True)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.products.product_id'), primary_key=True, index=True)
     add_to_cart_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     reordered: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -332,13 +347,13 @@ class OrderStatusHistory(Base):
         primary_key=True, 
         autoincrement=True
     )
-    order_id: Mapped[int] = mapped_column(Integer, ForeignKey('orders.orders.order_id'), index=True)
+    order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('orders.orders.id'), index=True)
     old_status: Mapped[Optional[OrderStatus]] = mapped_column(OrderStatusEnum,
                                                       default=OrderStatus.PENDING, nullable=True)
     new_status: Mapped[OrderStatus] = mapped_column(OrderStatusEnum,
                                             default=OrderStatus.PENDING, nullable=False)
     changed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=datetime.now(UTC), index=True)
-    changed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    changed_by: Mapped[Optional[Uuid]] = mapped_column(Uuid(as_uuid=True), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Enables accessing the order associated with this status change

@@ -1,23 +1,42 @@
 # app/carts_routers.py
 
-from fastapi import APIRouter, Query, HTTPException, status, Body, Path
+from fastapi import APIRouter, Query, HTTPException, status, Body, Path, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from .db_core.database import SessionLocal
-import asyncpg
-from .db_core.models import Order, OrderItem, OrderStatus, Product, Department, Aisle, User
-from pydantic import BaseModel, Field
-from typing import List, Dict, Optional, Any
-# Removed UUID imports since we're using integer user_ids and order_ids
+from .db_core.models import Cart, CartItem, Product, Department, Aisle, User
+from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Dict, Optional, Any, Generic, TypeVar
 import datetime
+from datetime import UTC
 
 router = APIRouter(prefix="/carts", tags=["carts"])
 
-class CartItem(BaseModel):
-    """Cart item model"""
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Generic response model
+T = TypeVar('T')
+
+class ServiceResponse(BaseModel, Generic[T]):
+    success: bool
+    data: List[T] = []
+    error: Optional[str] = None
+    message: Optional[str] = None
+
+class CartItemData(BaseModel):
+    """Cart item model for API responses"""
+    model_config = ConfigDict(from_attributes=True)
+    
     product_id: int
     quantity: int = 1
+    add_to_cart_order: int = 0
+    reordered: int = 0
     product_name: Optional[str] = None
     aisle_name: Optional[str] = None
     department_name: Optional[str] = None
@@ -25,19 +44,15 @@ class CartItem(BaseModel):
     price: Optional[float] = None
     image_url: Optional[str] = None
 
-class Cart(BaseModel):
-    cart_id: Optional[int] = None      # used when db returns cart with cart_id
-    user_id: int
-    items: List[CartItem] = []
-    updated_at: Optional[datetime.datetime] = Field(default_factory=lambda: datetime.datetime.now(datetime.UTC))
-    metadata: Optional[Dict[str, Any]] = None
-
-class CartResponse(BaseModel):
+class CartData(BaseModel):
     """Cart response model"""
-    user_id: int
-    items: List[CartItem]
+    model_config = ConfigDict(from_attributes=True)
+    
+    external_cart_id: str
+    external_user_id: str
+    items: List[CartItemData] = []
     total_items: int
-    total_quantity: int
+    created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 
 class AddCartItemRequest(BaseModel):
@@ -52,414 +67,647 @@ class UpdateCartItemRequest(BaseModel):
     quantity: int
 
 class CreateCartRequest(BaseModel):
-    user_id: int
-    items: List[CartItem]
+    """Create cart request"""
+    external_user_id: str
+    items: List[AddCartItemRequest] = []
 
 class UpdateCartRequest(BaseModel):
-    items: List[CartItem]
+    """Update entire cart request"""
+    items: List[AddCartItemRequest] = []
 
-# ====================
-# MOCKED IN-MEMORY STORE FOR DEMO PURPOSES
-carts_db: Dict[int, Cart] = {}
-
-
-# Helper function to verify user existence
-def verify_user_exists(session: Session, user_id: int):
-    user = session.query(User).filter(User.user_id == user_id).first()
+def verify_user_exists(session: Session, external_user_id: str) -> User:
+    """Verify user exists and return User object"""
+    user = session.query(User).filter(User.external_user_id == external_user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail=f"User {user_id} not found")
+        raise HTTPException(status_code=404, detail=f"User not found")
     return user
 
-# Helper function to verify all products exist
-def verify_all_products_exist(session: Session, product_ids: List[int]):
+def verify_products_exist(session: Session, product_ids: List[int]):
+    """Verify all products exist"""
     existing_ids = {p.product_id for p in session.query(Product).filter(Product.product_id.in_(product_ids)).all()}
-    for pid in product_ids:
-        if pid not in existing_ids:
-            raise HTTPException(status_code=400, detail=f"Product {pid} not found")
+    missing_ids = [pid for pid in product_ids if pid not in existing_ids]
+    if missing_ids:
+        raise HTTPException(status_code=400, detail=f"Products not found: {', '.join(map(str, missing_ids))}")
 
-def build_cart_response(session: Session, user_id: int, cart: Cart) -> CartResponse:
-    """
-    Given a Cart object, enrich items and return CartResponse.
-    """
+def build_cart_response(session: Session, cart: Cart) -> CartData:
+    """Build enriched cart response with product details"""
     cart_items = []
-    total_quantity = 0
-    product_ids = [item.product_id for item in cart.items]
-    if not product_ids:
-        return CartResponse(
-            user_id=user_id,
-            items=[],
-            total_items=0,
-            total_quantity=0,
-            updated_at=getattr(cart, "updated_at", None)
-        )
-    products = (
-        session.query(Product)
-        .filter(Product.product_id.in_(product_ids))
-        .options(
-            joinedload(Product.enriched),
-            joinedload(Product.aisle),
-            joinedload(Product.department)
-        )
-        .all()
-    )
-    products_map = {p.product_id: p for p in products}
-    for item in cart.items:
-        if item.quantity > 0:
-            p = products_map.get(item.product_id)
-            enriched = p.enriched if p else None
-            cart_item = CartItem(
-                product_id=item.product_id,
-                quantity=item.quantity,
-                product_name=p.product_name if p else None,
-                aisle_name=p.aisle.aisle_name if p and p.aisle else None,
-                department_name=p.department.department_name if p and p.department else None,
-                description=enriched.description if enriched else None,
-                price=enriched.price if enriched else None,
-                image_url=enriched.image_url if enriched else None
+    
+    if cart.cart_items:
+        # Get all product IDs from cart items
+        product_ids = [item.product_id for item in cart.cart_items]
+        
+        # Fetch products with enriched data
+        products = (
+            session.query(Product)
+            .filter(Product.product_id.in_(product_ids))
+            .options(
+                joinedload(Product.enriched),
+                joinedload(Product.aisle),
+                joinedload(Product.department)
             )
-            cart_items.append(cart_item)
-            total_quantity += item.quantity
-    return CartResponse(
-        user_id=user_id,
+            .all()
+        )
+        products_map = {p.product_id: p for p in products}
+        
+        # Build cart items with enriched data
+        for cart_item in cart.cart_items:
+            if cart_item.quantity > 0:
+                product = products_map.get(cart_item.product_id)
+                enriched = product.enriched if product else None
+                
+                item_data = CartItemData(
+                    product_id=cart_item.product_id,
+                    quantity=cart_item.quantity,
+                    add_to_cart_order=cart_item.add_to_cart_order,
+                    reordered=cart_item.reordered,
+                    product_name=product.product_name if product else None,
+                    aisle_name=product.aisle.aisle if product and product.aisle else None,
+                    department_name=product.department.department if product and product.department else None,
+                    description=enriched.description if enriched else None,
+                    price=enriched.price if enriched else None,
+                    image_url=enriched.image_url if enriched else None
+                )
+                cart_items.append(item_data)
+    
+    return CartData(
+        external_cart_id=str(cart.external_cart_id),
+        external_user_id=str(cart.user.external_user_id),
         items=cart_items,
         total_items=len(cart_items),
-        total_quantity=total_quantity
+        created_at=cart.created_at,
+        updated_at=cart.updated_at
     )
 
-def get_enriched_product_info(session: Session, product_id: int):
-    # Query the main Product and join the related tables
-    product = (
-        session.query(Product)
-        .options(
-            joinedload(Product.enriched),
-            joinedload(Product.aisle),
-            joinedload(Product.department)
+@router.get("/{external_user_id}", response_model=ServiceResponse[CartData])
+def get_user_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+    """
+    Get cart for external_user_id. If no cart exists, return an empty cart.
+    """
+    try:
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Get user's cart (use internal user ID for FK lookup)
+        cart = (
+            session.query(Cart)
+            .filter(Cart.user_id == user.id)
+            .options(joinedload(Cart.cart_items), joinedload(Cart.user))
+            .first()
         )
-        .filter(Product.product_id == product_id)
-        .first()
-    )
-
-    if not product:
-        return None
-
-    # Compose the dict for API response
-    enriched = product.enriched  # ProductEnriched object or None
-    return {
-        "product_id": product.product_id,
-        "product_name": product.product_name,
-        "aisle_name": product.aisle.aisle_name if product.aisle else None,
-        "department_name": product.department.department_name if product.department else None,
-        "description": enriched.description if enriched else None,
-        "price": enriched.price if enriched else None,
-        "image_url": enriched.image_url if enriched else None,
-    }
-
-@router.get("/{user_id}", response_model=CartResponse)
-def get_user_cart(user_id: int):
-    """
-    Get cart for user_id. If no cart exists, return an empty cart with no cart_id.
-    """
-    session = SessionLocal()
-    try:
-        # --- User Validation ---
-        verify_user_exists(session, user_id)
-
-        # TODO: Fetch cart for user_id. empty if not found.
-        # TODO: Actually fetch from DB, or create new empty cart
-
-        # --- Cart Fetch (mocked) ---
-        cart = carts_db.get(user_id)    # TODO: read from DB
+        
         if not cart:
-            cart = Cart(user_id=user_id, items=[])
-
-        # # auto-create an empty cart
-        # if not cart:
-        #     cart = Cart(user_id=user_id, items=[])
-        #     carts_db[user_id] = cart        # TODO: insert into DB
-        #     cart = carts_db.get(user_id)    # TODO: read from DB
-
-        # # error when cart does not exist
-        # if cart is None:
-        #     raise HTTPException(status_code=404, detail=f"Cart for user {user_id} not found")
-
-        return build_cart_response(session, user_id, cart)
-
-    except Exception as e:
-        print(f"Error fetching cart: {e}")
-        raise HTTPException(status_code=500, detail="Error fetching cart")
-    finally:
-        session.close()
-
-@router.put("/{user_id}", response_model=CartResponse)
-def update_user_cart(user_id: int, cart: Cart):
-    """
-    Replace the entire cart for a user.
-    If cart does not exist, creates new.
-    Validates user and all products.
-    """
-    session = SessionLocal()
-    try:
-        # --- Validate user ---
-        verify_user_exists(session, user_id)
-
-        # --- Validate all products ---
-        product_ids = [item.product_id for item in cart.items]
-        if product_ids:
-            verify_all_products_exist(session, product_ids)
-
-        # --- Replace (or create) cart ---
-        cart.user_id = user_id  # ensure consistency
-        cart.updated_at = datetime.datetime.now(datetime.UTC)
-        carts_db[user_id] = cart  # TODO: Replace with DB upsert
-
-        # --------- CRUCIAL: Re-read latest cart state -----------
-        # In production: Fetch the cart and all related items from DB, not from input
-        # In mock, just read from the carts_db dict for consistency:
-        saved_cart = carts_db.get(user_id)  # TODO: Fetch the cart and all related items from DB
-        if not saved_cart:
-            raise HTTPException(status_code=500, detail="Failed to persist cart")
-
-        # --- Build enriched response ---
-        return build_cart_response(session, saved_cart.user_id, saved_cart)
-
+            # Return empty cart response
+            return ServiceResponse[CartData](
+                success=True,
+                message=f"No cart found for user {external_user_id}",
+                data=[]
+            )
+        
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Cart retrieved successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
-        print(f"Error updating cart: {e}")
-        raise HTTPException(status_code=500, detail="Error updating cart")
-    finally:
-        session.close()
+        session.rollback()
+        print(f"Error fetching cart: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error fetching cart: {str(e)}",
+            data=[]
+        )
 
-@router.post("/", response_model=CartResponse, status_code=201)
-def create_cart(cart: Cart):
+@router.post("/", response_model=ServiceResponse[CartData], status_code=201)
+def create_cart(cart_request: CreateCartRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """
     Create a new cart for a user.
-    - Fails if a cart already exists for the user.
-    - Validates user existence and all products.
-    - Returns the full, enriched cart.
     """
-    session = SessionLocal()
     try:
-        # --- Validate user existence ---
-        verify_user_exists(session, cart.user_id)
-
-        # --- Validate all product IDs ---
-        product_ids = [item.product_id for item in cart.items]
-        if product_ids:
-            verify_all_products_exist(session, product_ids)
-
-        # --- Fail if cart already exists ---
-        if cart.user_id in carts_db:    # TODO: check in DB
-            raise HTTPException(status_code=409, detail="Cart already exists for user")
-
-        cart.cart_id = len(carts_db) + 1    # TODO: remove for db
-
-        # --- Set updated_at ---
-        cart.updated_at = datetime.datetime.now(datetime.UTC)
-
-        # --- Save to (mock) DB ---
-        carts_db[cart.user_id] = cart  # TODO: replace with real DB insert
-
-        # --------- CRUCIAL: Re-read latest cart state -----------
-        # In production: Fetch the cart and all related items from DB, not from input
-        # In mock, just read from the carts_db dict for consistency:
-        saved_cart = carts_db.get(cart.user_id)  # TODO: Fetch the cart and all related items from DB
-        if not saved_cart:
-            raise HTTPException(status_code=500, detail="Failed to persist cart")
-
-        # --- Return enriched response ---
-        return build_cart_response(session, saved_cart.user_id, saved_cart)
-
+        # Verify user exists
+        user = verify_user_exists(session, cart_request.external_user_id)
+        
+        # Check if cart already exists for user
+        existing_cart = session.query(Cart).filter(Cart.user_id == user.id).first()
+        if existing_cart:
+            return ServiceResponse[CartData](
+                success=False,
+                error="Cart already exists for user",
+                data=[]
+            )
+        
+        # Validate products if items provided
+        if cart_request.items:
+            product_ids = [item.product_id for item in cart_request.items]
+            verify_products_exist(session, product_ids)
+        
+        # Create new cart
+        cart = Cart(
+            user_id=user.id,  # Use internal user ID for FK
+            total_items=len(cart_request.items)
+        )
+        session.add(cart)
+        session.flush()  # Get the auto-generated cart ID
+        
+        # Add cart items if provided
+        if cart_request.items:
+            cart_items = []
+            for i, item in enumerate(cart_request.items):
+                cart_item = CartItem(
+                    cart_id=cart.id,  # Use internal cart ID for FK
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    add_to_cart_order=item.add_to_cart_order or (i + 1),
+                    reordered=item.reordered
+                )
+                cart_items.append(cart_item)
+            
+            session.add_all(cart_items)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Cart created successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
+        session.rollback()
         print(f"Error creating cart: {e}")
-        raise HTTPException(status_code=500, detail="Error creating cart")
-    finally:
-        session.close()
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error creating cart: {str(e)}",
+            data=[]
+        )
 
-@router.delete("/{user_id}", status_code=200)
-def delete_cart(user_id: int):
+@router.put("/{external_user_id}", response_model=ServiceResponse[CartData])
+def update_user_cart(external_user_id: str, cart_request: UpdateCartRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+    """
+    Replace the entire cart for a user.
+    """
+    try:
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Validate products if items provided
+        if cart_request.items:
+            product_ids = [item.product_id for item in cart_request.items]
+            verify_products_exist(session, product_ids)
+        
+        # Get or create cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
+        if not cart:
+            cart = Cart(user_id=user.id, total_items=0)
+            session.add(cart)
+            session.flush()
+        
+        # Remove all existing cart items
+        session.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+        
+        # Add new cart items
+        if cart_request.items:
+            cart_items = []
+            for i, item in enumerate(cart_request.items):
+                cart_item = CartItem(
+                    cart_id=cart.id,
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    add_to_cart_order=item.add_to_cart_order or (i + 1),
+                    reordered=item.reordered
+                )
+                cart_items.append(cart_item)
+            
+            session.add_all(cart_items)
+        
+        # Update cart total
+        cart.total_items = len(cart_request.items)
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Cart updated successfully",
+            data=[cart_data]
+        )
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating cart: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error updating cart: {str(e)}",
+            data=[]
+        )
+
+@router.delete("/{external_user_id}", response_model=ServiceResponse[Dict[str, Any]])
+def delete_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
     """
     Delete a user's cart.
-    - 404 if user does not exist or cart not found.
     """
-    session = SessionLocal()
     try:
-        # --- Validate user existence ---
-        verify_user_exists(session, user_id)
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Find and delete cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
+        if not cart:
+            return ServiceResponse[Dict[str, Any]](
+                success=False,
+                error="Cart not found",
+                data=[]
+            )
+        
+        session.delete(cart)
+        session.commit()
+        
+        return ServiceResponse[Dict[str, Any]](
+            success=True,
+            message="Cart deleted successfully",
+            data=[{"external_user_id": external_user_id, "deleted": True}]
+        )
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[Dict[str, Any]](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
+    except Exception as e:
+        session.rollback()
+        print(f"Error deleting cart: {e}")
+        return ServiceResponse[Dict[str, Any]](
+            success=False,
+            error=f"Error deleting cart: {str(e)}",
+            data=[]
+        )
 
-        # --- Delete from (mock) DB ---
-        if user_id in carts_db: # TODO: check in realDB
-            del carts_db[user_id]  # TODO: Remove from real DB
-            return {"message": f"Cart deleted successfully for user {user_id}"}
+@router.post("/{external_user_id}/items", response_model=ServiceResponse[CartData])
+def add_cart_item(external_user_id: str, item_request: AddCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+    """Add an item to user's cart, or increment if exists."""
+    try:
+        # Verify user and product
+        user = verify_user_exists(session, external_user_id)
+        verify_products_exist(session, [item_request.product_id])
+        
+        # Get or create cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
+        if not cart:
+            cart = Cart(user_id=user.id, total_items=0)
+            session.add(cart)
+            session.flush()
+        
+        # Check if item already exists in cart
+        existing_item = session.query(CartItem).filter(
+            CartItem.cart_id == cart.id,
+            CartItem.product_id == item_request.product_id
+        ).first()
+        
+        if existing_item:
+            # Update existing item quantity
+            existing_item.quantity += item_request.quantity
         else:
-            raise HTTPException(status_code=404, detail="Cart not found")
-
+            # Add new item
+            current_count = session.query(CartItem).filter(CartItem.cart_id == cart.id).count()
+            new_item = CartItem(
+                cart_id=cart.id,
+                product_id=item_request.product_id,
+                quantity=item_request.quantity,
+                add_to_cart_order=item_request.add_to_cart_order or (current_count + 1),
+                reordered=item_request.reordered
+            )
+            session.add(new_item)
+        
+        # Update cart total
+        cart.total_items = session.query(CartItem).filter(CartItem.cart_id == cart.id).count()
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Item added to cart successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
-        print(f"Error deleting cart: {e}")
-        raise HTTPException(status_code=500, detail="Error deleting cart")
-    finally:
-        session.close()
-
-# Utility: get cart
-def get_cart(session: Session, user_id: int) -> Cart:
-    cart = carts_db.get(user_id)
-    # TODO: change to DB call
-    # cart = session.query(Cart).filter(Cart.user_id == user_id).first()
-    return cart
-
-@router.post("/{user_id}/items", response_model=CartResponse)
-def add_cart_item(user_id: int, item: AddCartItemRequest):
-    """Add an item to user's cart, or increment if exists.
-       Initializes a new cart if it doesn't exist."""
-    session = SessionLocal()
-    try:
-        # Validate user and product
-        verify_user_exists(session, user_id)
-        verify_all_products_exist(session, [item.product_id])
-
-        # Fetch cart (or create)
-        cart = get_cart(session, user_id)
-        if not cart:
-            cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
-
-        found = False
-        for cart_item in cart.items:
-            if cart_item.product_id == item.product_id:
-                cart_item.quantity += item.quantity
-                found = True
-                break
-        if not found:
-            # Determine next add_to_cart_order
-            current_count = len(carts_db[user_id].items())  #TODO: DB
-            # current_count = session.query(CartItem).filter_by(cart_id=cart.cart_id).count()
-            next_cart_order = current_count + 1
-
-            cart.items.append(CartItem(product_id=item.product_id, quantity=item.quantity))
-        cart.updated_at = datetime.datetime.now(datetime.UTC)
-        carts_db[user_id] = cart  # TODO: Replace with DB store
-
-        saved_cart = carts_db.get(cart.user_id)  # TODO: Fetch the cart and all related items from DB
-        if not saved_cart:
-            raise HTTPException(status_code=500, detail="Failed to persist cart")
-
-        return build_cart_response(session, user_id, saved_cart)
-    except HTTPException:
-        raise
-    except Exception as e:
+        session.rollback()
         print(f"Error adding cart item: {e}")
-        raise HTTPException(status_code=500, detail="Error adding cart item")
-    finally:
-        session.close()
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error adding cart item: {str(e)}",
+            data=[]
+        )
 
-@router.put("/{user_id}/items/{product_id}", response_model=CartResponse)
-def update_cart_item(user_id: int, product_id: int, update: UpdateCartItemRequest):
+@router.put("/{external_user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
+def update_cart_item(external_user_id: str, product_id: int, update_request: UpdateCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Update quantity of a specific item in cart"""
-    session = SessionLocal()
     try:
-        verify_user_exists(session, user_id)
-        verify_all_products_exist(session, [product_id])
-        cart = carts_db.get(user_id)    # TODO: DB
+        # Verify user and product
+        user = verify_user_exists(session, external_user_id)
+        verify_products_exist(session, [product_id])
+        
+        # Get cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
         if not cart:
-            raise HTTPException(status_code=404, detail=f"Cart not found for user {user_id}")
-        updated = False
-        for cart_item in cart.items:
-            if cart_item.product_id == product_id:
-                if update.quantity <= 0:
-                    cart.items.remove(cart_item)
-                else:
-                    cart_item.quantity = update.quantity
-                    updated = True
-                break
-        if not updated:
-            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
-        cart.updated_at = datetime.datetime.now(datetime.UTC)
-        carts_db[user_id] = cart    # TODO: DB
-        saved_cart = carts_db.get(user_id)  # TODO: Fetch the cart and all related items from DB
-        if not saved_cart:
-            raise HTTPException(status_code=500, detail="Failed to persist cart")
-
-        return build_cart_response(session, user_id, saved_cart)
+            return ServiceResponse[CartData](
+                success=False,
+                error="Cart not found",
+                data=[]
+            )
+        
+        # Find cart item
+        cart_item = session.query(CartItem).filter(
+            CartItem.cart_id == cart.id,
+            CartItem.product_id == product_id
+        ).first()
+        
+        if not cart_item:
+            return ServiceResponse[CartData](
+                success=False,
+                error=f"Product {product_id} not found in cart",
+                data=[]
+            )
+        
+        if update_request.quantity <= 0:
+            # Remove item from cart
+            session.delete(cart_item)
+        else:
+            # Update quantity
+            cart_item.quantity = update_request.quantity
+        
+        # Update cart total and timestamp
+        cart.total_items = session.query(CartItem).filter(CartItem.cart_id == cart.id).count()
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Cart item updated successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
+        session.rollback()
         print(f"Error updating cart item: {e}")
-        raise HTTPException(status_code=500, detail="Error updating cart item")
-    finally:
-        session.close()
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error updating cart item: {str(e)}",
+            data=[]
+        )
 
-@router.delete("/{user_id}/items/{product_id}", response_model=CartResponse)
-def remove_cart_item(user_id: int, product_id: int):
+@router.delete("/{external_user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
+def remove_cart_item(external_user_id: str, product_id: int, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Remove a specific item from cart"""
-    session = SessionLocal()
     try:
-        verify_user_exists(session, user_id)
-        cart = carts_db.get(user_id)   # TODO: DB
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Get cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
         if not cart:
-            raise HTTPException(status_code=404, detail=f"Cart not found for user {user_id}")
-        if product_id not in (i.product_id for i in cart.items):
-            raise HTTPException(status_code=404, detail=f"Product {product_id} not found in cart")
-        cart.items = [item for item in cart.items if item.product_id != product_id]   # TODO: DB
-        cart.updated_at = datetime.datetime.now(datetime.UTC)
-        carts_db[user_id] = cart   # TODO: DB
-        saved_cart = carts_db.get(user_id)  # TODO: Fetch the cart and all related items from DB
-        if not saved_cart:
-            raise HTTPException(status_code=500, detail="Failed to persist cart")
-
-        return build_cart_response(session, user_id, saved_cart)
+            return ServiceResponse[CartData](
+                success=False,
+                error="Cart not found",
+                data=[]
+            )
+        
+        # Find and remove cart item
+        cart_item = session.query(CartItem).filter(
+            CartItem.cart_id == cart.id,
+            CartItem.product_id == product_id
+        ).first()
+        
+        if not cart_item:
+            return ServiceResponse[CartData](
+                success=False,
+                error=f"Product {product_id} not found in cart",
+                data=[]
+            )
+        
+        session.delete(cart_item)
+        
+        # Update cart total and timestamp
+        cart.total_items = session.query(CartItem).filter(CartItem.cart_id == cart.id).count()
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Item removed from cart successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
-        print(f"Error removing item from cart: {e}")
-        raise HTTPException(status_code=500, detail="Error removing item from cart")
-    finally:
-        session.close()
+        session.rollback()
+        print(f"Error removing cart item: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error removing cart item: {str(e)}",
+            data=[]
+        )
 
-@router.delete("/{user_id}", response_model=CartResponse)
-def clear_user_cart(user_id: int):
+@router.delete("/{external_user_id}/clear", response_model=ServiceResponse[CartData])
+def clear_user_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Clear all items from cart for a user"""
-    session = SessionLocal()
     try:
-        verify_user_exists(session, user_id)
-        cart = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
-        items_count = len(carts_db.pop(user_id, cart))
-        return build_cart_response(session, user_id, cart)
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Get cart
+        cart = session.query(Cart).filter(Cart.user_id == user.id).first()
+        if not cart:
+            return ServiceResponse[CartData](
+                success=False,
+                error="Cart not found",
+                data=[]
+            )
+        
+        # Remove all cart items
+        session.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+        
+        # Update cart
+        cart.total_items = 0
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        session.refresh(cart)
+        
+        # Build response with enriched data
+        cart_data = build_cart_response(session, cart)
+        
+        return ServiceResponse[CartData](
+            success=True,
+            message="Cart cleared successfully",
+            data=[cart_data]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
-        print(f"Error deleting cart: {e}")
-        raise HTTPException(status_code=500, detail="Error deleting cart")
-    finally:
-        session.close()
+        session.rollback()
+        print(f"Error clearing cart: {e}")
+        return ServiceResponse[CartData](
+            success=False,
+            error=f"Error clearing cart: {str(e)}",
+            data=[]
+        )
 
-@router.post("/{user_id}/checkout")
-def checkout_cart(user_id: int):
+@router.post("/{external_user_id}/checkout", response_model=ServiceResponse[Dict[str, Any]])
+def checkout_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
     """Convert cart to order (checkout process)"""
-    # This should create an order, and clear the cart
-    session = SessionLocal()
     try:
-        verify_user_exists(session, user_id)
-        cart = carts_db.get(user_id)    # TODO: DB
-        if not cart or not cart.items:
-            raise HTTPException(status_code=400, detail="Cart is empty")
-        # TODO: Implement order creation
-        # Simulate for now:
-        order_id = "TODO"
-        carts_db[user_id] = Cart(user_id=user_id, items=[], updated_at=datetime.datetime.now(datetime.UTC))
-        return {
-                "user_id": user_id,
-                "order_id": order_id,
-                "status": "order_created",
-                "total_items": [item.model_dump() for item in cart.items]
-            }
+        # Verify user exists
+        user = verify_user_exists(session, external_user_id)
+        
+        # Get cart with items
+        cart = (
+            session.query(Cart)
+            .filter(Cart.user_id == user.id)
+            .options(joinedload(Cart.cart_items))
+            .first()
+        )
+        
+        if not cart or not cart.cart_items:
+            return ServiceResponse[Dict[str, Any]](
+                success=False,
+                error="Cart is empty",
+                data=[]
+            )
+        
+        # TODO: Implement actual order creation
+        # For now, simulate checkout and clear cart
+        
+        # Clear cart items
+        session.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
+        cart.total_items = 0
+        cart.updated_at = datetime.datetime.now(UTC)
+        
+        session.commit()
+        
+        return ServiceResponse[Dict[str, Any]](
+            success=True,
+            message="Checkout completed successfully",
+            data=[{
+                "external_user_id": external_user_id,
+                "status": "checkout_completed",
+                "note": "Cart cleared - order creation would be implemented here"
+            }]
+        )
+        
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        session.rollback()
+        print(f"Database error: {e}")
+        return ServiceResponse[Dict[str, Any]](
+            success=False,
+            error="Database error occurred",
+            data=[]
+        )
     except Exception as e:
+        session.rollback()
         print(f"Error at checkout: {e}")
-        raise HTTPException(status_code=500, detail="Error at check out")
-    finally:
-        session.close()
-
+        return ServiceResponse[Dict[str, Any]](
+            success=False,
+            error=f"Error at checkout: {str(e)}",
+            data=[]
+        )

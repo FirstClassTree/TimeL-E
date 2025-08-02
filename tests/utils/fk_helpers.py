@@ -125,12 +125,12 @@ class FKTestDataManager:
             
             raise Exception(f"Failed to create aisle after {max_retries} attempts")
     
-    def get_existing_user_id(self) -> Optional[int]:
-        """Get an existing user ID from the database"""
+    def get_existing_user_id(self) -> Optional[str]:
+        """Get an existing user ID from the database as string"""
         with self.conn.cursor() as cur:
             cur.execute("SELECT user_id FROM users.users LIMIT 1")
             result = cur.fetchone()
-            return result[0] if result else None
+            return str(result[0]) if result else None
     
     def get_existing_product_id(self) -> Optional[int]:
         """Get an existing product ID from the database"""
@@ -139,8 +139,8 @@ class FKTestDataManager:
             result = cur.fetchone()
             return result[0] if result else None
     
-    def create_test_user(self, email_suffix: Optional[str] = None) -> int:
-        """Create a test user and return user_id"""
+    def create_test_user(self, email_suffix: Optional[str] = None) -> str:
+        """Create a test user and return user_id as string"""
         if email_suffix is None:
             email_suffix = str(int(time.time()))
 
@@ -263,7 +263,7 @@ class FKTestDataManager:
             self.created_records['product_enriched'].append(enriched_product_id)
             return enriched_product_id
     
-    def create_test_cart(self, user_id: Optional[int] = None, total_items: int = 0) -> int:
+    def create_test_cart(self, user_id: Optional[str] = None, total_items: int = 0) -> int:
         """Create a test cart with valid user_id FK"""
         if user_id is None:
             # Get existing user or create one
@@ -286,7 +286,7 @@ class FKTestDataManager:
             self.created_records['carts'].append(cart_id)
             return cart_id
     
-    def create_test_order(self, user_id: Optional[int] = None, order_number: Optional[int] = None,
+    def create_test_order(self, user_id: Optional[str] = None, order_number: Optional[int] = None,
                          total_items: int = 1, status: str = OrderStatus.PENDING.value,
                          delivery_name: Optional[str] = None, total_price: Optional[float] = None) -> int:
         """Create a test order with valid user_id FK"""
