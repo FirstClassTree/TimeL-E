@@ -8,9 +8,9 @@ interface LoginCredentials {
 interface RegisterData {
   firstName: string;
   lastName: string;
-  email: string;
+  emailAddress: string;
   password: string;
-  phone?: string;
+  phoneNumber?: string;
   streetAddress?: string;
   city?: string;
   postalCode?: string;
@@ -31,6 +31,7 @@ interface User {
   firstName: string;
   lastName: string;
   emailAddress: string;
+  phone: string;
 }
 
 class AuthService {
@@ -49,13 +50,14 @@ class AuthService {
       firstName: response.firstName,
       lastName: response.lastName,
       emailAddress: response.emailAddress,
+      phoneNumber: response.phoneNumber
     };
     
     // Create mock tokens since backend doesn't provide them
     const mockAuth = {
       user,
       accessToken: `demo_token_${response.userId}`,
-      refreshToken: `demo_refresh_${response.user_id}`
+      refreshToken: `demo_refresh_${response.userId}`
     };
     
     this.setTokens(mockAuth.accessToken, mockAuth.refreshToken);

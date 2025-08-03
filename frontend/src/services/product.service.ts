@@ -1,7 +1,7 @@
 import { api } from '@/services/api.client';
 
 export interface Product {
-  product_id: number;
+  productId: number;
   product_name: string;
   aisle_id: number;
   department_id: number;

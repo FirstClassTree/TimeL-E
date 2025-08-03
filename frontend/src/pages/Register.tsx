@@ -1,4 +1,3 @@
-// frontend/src/pages/Register.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,8 +12,8 @@ import toast from 'react-hot-toast';
 interface RegisterFormData {
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
+  emailAddress: string;
+  phoneNumber: string;
   password: string;
   confirmPassword: string;
   agreeToTerms: boolean;
@@ -51,11 +50,11 @@ const Register: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       await registerUser({
-        email: data.email,
+        emailAddress: data.emailAddress,
         password: data.password,
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone
+        phoneNumber: data.phoneNumber
       });
       
       toast.success('Account created successfully!');
@@ -73,9 +72,9 @@ const Register: React.FC = () => {
     let fieldsToValidate: (keyof RegisterFormData)[] = [];
     
     if (currentStep === 1) {
-      fieldsToValidate = ['firstName', 'lastName', 'phone'];
+      fieldsToValidate = ['firstName', 'lastName', 'phoneNumber'];
     } else if (currentStep === 2) {
-      fieldsToValidate = ['email', 'password', 'confirmPassword'];
+      fieldsToValidate = ['emailAddress', 'password', 'confirmPassword'];
     }
     
     const isValid = await trigger(fieldsToValidate);
@@ -261,7 +260,7 @@ const Register: React.FC = () => {
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <input
-                        {...register('phone')}
+                        {...register('phoneNumber')}
                         type="tel"
                         className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                         placeholder="+1 (555) 123-4567"
@@ -297,7 +296,7 @@ const Register: React.FC = () => {
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                       <input
-                        {...register('email', {
+                        {...register('emailAddress', {
                           required: 'Email is required',
                           pattern: {
                             value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -306,14 +305,14 @@ const Register: React.FC = () => {
                         })}
                         type="email"
                         className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                          errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                          errors.emailAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                         }`}
                         placeholder="you@example.com"
                       />
                     </div>
-                    {errors.email && (
+                    {errors.emailAddress && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                        {errors.email.message}
+                        {errors.emailAddress.message}
                       </p>
                     )}
                   </div>

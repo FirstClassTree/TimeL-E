@@ -11,11 +11,18 @@ interface AuthState {
   // Actions
   login: (email: string, password: string) => Promise<void>;
   register: (data: {
-    email: string;
+    emailAddress: string;
     password: string;
     firstName: string;
     lastName: string;
-    phone?: string;
+    phoneNumber?: string;
+    streetAddress?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    daysBetweenOrderNotifications?: number;
+    orderNotificationsViaEmail?: boolean;
+    orderNotificationsStartDateTime?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -40,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: true,
               isLoading: false
             });
-            toast.success(`Welcome back, ${response.user.name}!`);
+            toast.success(`Welcome back, ${response.user.firstName} ${response.user.lastName}!`);
           } catch (error: any) {
             set({ isLoading: false });
             throw error;

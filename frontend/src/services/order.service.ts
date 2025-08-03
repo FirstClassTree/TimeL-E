@@ -11,9 +11,9 @@ export interface OrderItem {
 }
 
 export interface Order {
-  order_id: number;
-  order_number: number;
-  user_id: string;
+  orderId: number;
+  orderNumber: number;
+  userId: string;
   status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   items: OrderItem[];
   total: number;
@@ -89,40 +89,40 @@ class OrderService {
   }
 
   // Get order by ID
-  async getOrder(orderId: string): Promise<Order> {
+  async getOrder(orderId: number): Promise<Order> {
     return api.get<Order>(`/orders/${orderId}`);
   }
 
-  async getOrderItems(orderId: string): Promise<Order> {
+  async getOrderItems(orderId: number): Promise<Order> {
     return api.get<Order>(`/orders/${orderId}/items`);
   }
 
-    async addItemsToOrder(orderId: string): Promise<Order> {
+    async addItemsToOrder(orderId: number): Promise<Order> {
     return api.post<Order>(`/orders/${orderId}/items`);
   }
 
   // Cancel an order
-  async cancelOrder(orderId: string, reason?: string): Promise<Order> {
+  async cancelOrder(orderId: number, reason?: string): Promise<Order> {
     return api.post<Order>(`/orders/${orderId}/cancel`, { reason });
   }
 
   // Request refund
-  async requestRefund(orderId: string, reason: string, items?: string[]): Promise<Order> {
+  async requestRefund(orderId: number, reason: string, items?: string[]): Promise<Order> {
     return api.post<Order>(`/orders/${orderId}/refund`, { reason, items });
   }
 
   // Reorder items from a previous order
-  async reorder(orderId: string): Promise<{ cartId: string }> {
+  async reorder(orderId: number): Promise<{ cartId: string }> {
     return api.post<{ cartId: string }>(`/orders/${orderId}/reorder`);
   }
 
   // Get order tracking information
-  async getTracking(orderId: string): Promise<TrackingInfo> {
+  async getTracking(orderId: number): Promise<TrackingInfo> {
     return api.get<TrackingInfo>(`/orders/${orderId}/tracking`);
   }
 
   // Download order invoice
-  async downloadInvoice(orderId: string): Promise<Blob> {
+  async downloadInvoice(orderId: number): Promise<Blob> {
     const response = await api.get(`/orders/${orderId}/invoice`, {
       responseType: 'blob'
     });
@@ -141,12 +141,12 @@ class OrderService {
   }
 
   // Update delivery instructions
-  async updateDeliveryInstructions(orderId: string, instructions: string): Promise<Order> {
+  async updateDeliveryInstructions(orderId: number, instructions: string): Promise<Order> {
     return api.put<Order>(`/orders/${orderId}/delivery-instructions`, { instructions });
   }
 
   // Rate order
-  async rateOrder(orderId: string, rating: number, comment?: string): Promise<void> {
+  async rateOrder(orderId: number, rating: number, comment?: string): Promise<void> {
     return api.post(`/orders/${orderId}/rate`, { rating, comment });
   }
 
@@ -167,7 +167,7 @@ class OrderService {
     return api.get<OrdersResponse>(`/admin/orders?${params.toString()}`);
   }
 
-  async updateOrderStatus(orderId: string, update: OrderStatusUpdate): Promise<Order> {
+  async updateOrderStatus(orderId: number, update: OrderStatusUpdate): Promise<Order> {
     return api.put<Order>(`/admin/orders/${orderId}/status`, update);
   }
 
@@ -194,10 +194,6 @@ class OrderService {
       returned: 'rotate-ccw'
     };
     return icons[status] || 'package';
-  }
-
-  formatOrderNumber(orderNumber: string): string {
-    return `#${orderNumber.toUpperCase()}`;
   }
 
   canCancel(order: Order): boolean {

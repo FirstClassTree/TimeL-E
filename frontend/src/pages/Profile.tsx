@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   User, Mail, Settings,
-  Edit3, Save, X, CheckCircle, Eye, EyeOff
+  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
@@ -13,9 +13,11 @@ import toast from 'react-hot-toast';
 import { useUser } from '@/components/auth/UserProvider';
 
 interface ProfileFormData {
-  id: string;
-  name: string;
-  email: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
+  phoneNumber?: string;
 }
 
 interface PasswordFormData {
@@ -36,8 +38,10 @@ const Profile: React.FC = () => {
   // Create a mock user if none exists
   const currentUser = user || {
     id: userId,
-    name: 'Demo User',
-    email: 'demo@example.com'
+    firstName: 'Demo',
+    lastName: 'User',
+    emailAddress: 'demo@example.com',
+    phoneNumber: '+555 555 5550'
   };
 
   const {
@@ -47,9 +51,11 @@ const Profile: React.FC = () => {
     reset: resetProfile
   } = useForm<ProfileFormData>({
     defaultValues: {
-      id: currentUser.id,
-      name: currentUser.name,
-      email: currentUser.email,
+      userId: currentUser.id,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName,
+      emailAddress: currentUser.emailAddress,
+      phoneNumber: currentUser.phoneNumber
     }
   });
 
@@ -117,8 +123,10 @@ const Profile: React.FC = () => {
     setIsEditing(false);
     resetProfile({
       id: currentUser.id,
-      name: currentUser.name,
+      firstName: currentUser.firstName,
+      lastName: currentUser.lastName,
       email: currentUser.email,
+      phone: currentUser.phone
     });
   };
 
@@ -145,12 +153,12 @@ const Profile: React.FC = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-xl">
-                      {currentUser.name?.charAt(0) || 'D'}
+                      {currentUser.firstName?.charAt(0)}{currentUser.lastName?.charAt(0)}
                     </span>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {currentUser.name}
+                      {currentUser.firstName} {currentUser.lastName}
                     </h3>
                     <p className="text-gray-600 dark:text-gray-400">{currentUser.email}</p>
                   </div>
@@ -170,28 +178,49 @@ const Profile: React.FC = () => {
 
             <form onSubmit={handleSubmitProfile(onSubmitProfile)} className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Name */}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Name
+                    First Name
                   </label>
                   {isEditing ? (
-                    <input
-                      type="text"
-                      {...registerProfile('name', { required: 'Name is required' })}
-                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
+                      <input
+                          type="text"
+                          {...registerProfile('firstName', {required: 'First Name is required'})}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      />
                   ) : (
-                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                      <User size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">{currentUser.name}</span>
-                    </div>
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <User size={16} className="text-gray-500 dark:text-gray-400"/>
+                        <span className="text-gray-900 dark:text-white">{currentUser.firstName}</span>
+                      </div>
                   )}
-                  {profileErrors.name && (
-                    <p className="text-red-500 text-sm mt-1">{profileErrors.name.message}</p>
+                  {profileErrors.firstName && (
+                      <p className="text-red-500 text-sm mt-1">{profileErrors.firstName.message}</p>
                   )}
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Last Name
+                  </label>
+                  {isEditing ? (
+                      <input
+                          type="text"
+                          {...registerProfile('lastName', {required: 'Last name is required'})}
+                          className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                  ) : (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                        <User size={16} className="text-gray-500 dark:text-gray-400"/>
+                        <span className="text-gray-900 dark:text-white">{currentUser.lastName}</span>
+                      </div>
+                  )}
+                  {profileErrors.lastName && (
+                      <p className="text-red-500 text-sm mt-1">{profileErrors.lastName.message}</p>
+                  )}
+                </div>
+
 
                 {/* Email */}
                 <div>
@@ -199,36 +228,58 @@ const Profile: React.FC = () => {
                     Email Address
                   </label>
                   <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-                    <Mail size={16} className="text-gray-500 dark:text-gray-400" />
-                    <span className="text-gray-900 dark:text-white">{currentUser.email}</span>
+                    <Mail size={16} className="text-gray-500 dark:text-gray-400"/>
+                    <span className="text-gray-900 dark:text-white">{currentUser.emailAddress}</span>
                   </div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     Email cannot be changed in demo mode
                   </p>
                 </div>
-              </div>
+
+               {/* Phone Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phone Number
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="tel"
+                      {...registerProfile('phoneNumber')}
+                      className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="Optional"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
+                      <Phone size={16} className="text-gray-500 dark:text-gray-400" />
+                      <span className="text-gray-900 dark:text-white">
+                        {currentUser.phoneNumber || 'Not provided'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+             </div>
 
               {/* Action Buttons */}
               <AnimatePresence>
                 {isEditing && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700"
-                  >
-                    <button
-                      type="button"
-                      onClick={handleCancelEdit}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    <motion.div
+                        initial={{opacity: 0, height: 0}}
+                        animate={{opacity: 1, height: 'auto'}}
+                        exit={{opacity: 0, height: 0}}
+                        className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700"
                     >
-                      <X size={16} />
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={updateProfileMutation.isLoading}
-                      className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <X size={16}/>
+                        Cancel
+                      </button>
+                      <button
+                          type="submit"
+                          disabled={updateProfileMutation.isLoading}
+                          className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {updateProfileMutation.isLoading ? (
                         <>

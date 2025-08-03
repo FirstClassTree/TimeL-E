@@ -12,9 +12,9 @@ import EmptyState from '@/components/common/EmptyState';
 import { useUser } from '@/components/auth/UserProvider'
 
 interface Order {
-  id: string;
-  orderNumber: string;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
+  orderId: number;
+  orderNumber: number;
+  status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   total: number;
   items: Array<{
     id: string;
@@ -42,7 +42,7 @@ const Orders: React.FC = () => {
 
   const getStatusIcon = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
+      case 'PENDING':
         return <Clock className="text-yellow-500" size={16} />;
       case 'processing':
         return <Package className="text-blue-500" size={16} />;
@@ -59,7 +59,7 @@ const Orders: React.FC = () => {
 
   const getStatusColor = (status: Order['status']) => {
     switch (status) {
-      case 'pending':
+      case 'PENDING':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
       case 'processing':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
@@ -177,7 +177,7 @@ const Orders: React.FC = () => {
       <div className="space-y-6">
         {filteredOrders.map((order) => (
           <motion.div
-            key={order.id}
+            key={order.orderId}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
@@ -195,7 +195,7 @@ const Orders: React.FC = () => {
                   </div>
                 </div>
                 <Link
-                  to={`/orders/${order.id}`}
+                  to={`/orders/${order.orderId}`}
                   className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 transition-colors"
                 >
                   <Eye size={16} />
