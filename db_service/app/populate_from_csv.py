@@ -392,16 +392,34 @@ def _dev_overwrite_user_from_csv(existing_user, csv_row, db, row_num):
         f"Old user details: {old_dict}\n"
         f"New (Demo) user details: {csv_row}"
     )
-    for field in csv_row:
-        if field != "user_id":  # Don't update the primary key
-            val = csv_row.get(field)
-            if field in ("last_login", "last_notification_sent_at", "last_notifications_viewed_at") and val and val.strip():
-                try:
-                    val = parse_dt(val)
-                except Exception as e:
-                    print(f"Warning: Could not parse datetime for {field}: {val} ({e})")
-                    val = None
-            setattr(existing_user, field, val)
+
+    # Datetime fields to parse
+    dt_fields = ['last_login', 'last_notifications_viewed_at', 'order_notifications_start_date_time',
+    'last_notification_sent_at', 'order_notifications_next_scheduled_time']
+
+    skip_fields = ["user_id", "external_user_id"]
+
+    for field, val in csv_row.items():
+        if field in skip_fields:  # Don't update the primary key or external user id
+            continue
+        if field in dt_fields and val and val.strip():
+            try:
+                val = parse_dt(val)
+            except Exception as e:
+                print(f"Warning: Could not parse datetime for {field}: {val} ({e})")
+                val = None
+        setattr(existing_user, field, val)
+
+    # default logic for derived fields
+    if csv_row.get("last_login"):
+        last_login_dt = parse_dt(csv_row["last_login"])
+        existing_user.order_notifications_start_date_time = last_login_dt
+        existing_user.order_notifications_next_scheduled_time = last_login_dt + timedelta(days=7) if last_login_dt else None
+        existing_user.last_notification_sent_at = last_login_dt
+
+    existing_user.days_between_order_notifications = 7
+    existing_user.pending_order_notification = True
+
     db.flush()
 
 def load_users(db: Session):
