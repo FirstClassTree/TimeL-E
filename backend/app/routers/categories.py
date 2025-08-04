@@ -4,7 +4,7 @@ from ..models.base import APIResponse
 from ..models.grocery import Department
 from ..services.database_service import db_service
 
-router = APIRouter(prefix="/departments", tags=["Categories"])
+router = APIRouter(prefix="/departments", tags=["Departments"])
 
 # Department endpoints
 @router.get("/", response_model=APIResponse)

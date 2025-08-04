@@ -37,6 +37,11 @@ class Department(Base):
 
     department_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     department: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    
+    # enriched department data
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    parent_id: Mapped[int] = mapped_column(default=None, nullable=True)
 
     # Enables accessing all products in this department
     products: Mapped[list["Product"]] = relationship("Product", back_populates="department")

@@ -20,7 +20,9 @@ All request and response field names are now consistently camelCase for the fron
 **Key Changes:**
 - User endpoints: `/api/users/{external_user_id}` (UUID4 string)
 - Order endpoints: `/api/orders/{external_order_id}` (UUID4 string)  
-- All response fields like `userId`, `orderId` remain as UUID4 strings
+- Cart endpoints: `/api/cart/{external_order_id}` (UUID4 string)
+- All response fields `userId`, `orderId`, `cartId` remain as strings (now in UUID4 format),  
+  but parameter name starts with `external`.  
 - Internal database uses numeric IDs for optimal PostgreSQL performance
 
 
@@ -28,7 +30,7 @@ All request and response field names are now consistently camelCase for the fron
 This document details all API changes made to the backend endpoints including:
 - Major user management system overhaul with security enhancements and notification features
 - Complete camelCase standardization for frontend communication
-- Cart, orders, and product endpoint camelCase support
+- Users, cart, orders, and product endpoint camelCase support
 
 **Note**: The `/api` prefix remains unchanged from the frontend perspective.  
 All endpoints continue to use their existing URL patterns.
@@ -662,3 +664,42 @@ The following endpoints now automatically convert between camelCase (frontend) a
   }
 }
 ```
+
+___
+##	Suggested Steps for Frontend to Display Notifications for order status updates and cart reminder on login;
+___
+A. On Login:
+
+- Send login request (`POST /api/users/login`) with credentials.   V
+
+- On success:   V
+
+  - Route user to dashboard/home.   V
+
+B. Immediately After Login:
+
+- Fire parallel API requests:
+
+   - `/api/users/{external_user_id}/order-status-notifications` (get orders with changed status)
+
+   - If in login response returned `hasActiveCart=True`;
+       `/api/cart/{external_user_id}` (get cart, if exists)
+   
+   - Optional [render notifications and cart];
+       - For the notification bell icon at the top of the page;
+           - show a faded badge for the number of notifications.
+             (same for cart badge).
+
+C. When Data Arrives:
+-  Show notifications:
+   - For each changed order, show a clickable notification (e.g “Order #1234 shipped!” V).
+      - On click, navigate to `/orders/{external_order_id}` (`/api/orders/{external_order_id}`).
+       - Show cart reminder notification:
+           - If cart exists and isn’t empty, show reminder (e.g., “You have 3 items in your cart from 2 days ago.” V)  
+           On click, navigate to `/cart/{external_user_id}` (`/api/cart/{external_user_id}`).   V  
+       - Optional [render notifications and cart];
+           - Notification bell updates;
+               - badge shows “2” if there are 2 new notifications (order status changes, order scheduler etc.).  
+                 (same for the cart icon (shows count of cart items once loaded)).
+___
+
