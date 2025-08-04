@@ -29,15 +29,15 @@ const Cart: React.FC = () => {
   const { userId } = useUser();
 
   useEffect(() => {
-    fetchCart(user?.id ?? userId);
+    fetchCart(user?.userId ?? userId);
   }, []);
 
   const handleQuantityChange = async (itemId: number, currentQuantity: number, delta: number) => {
     const newQuantity = currentQuantity + delta;
     if (newQuantity < 1) {
-      await removeItem(user?.id ?? userId, itemId);
+      await removeItem(user?.userId ?? userId, itemId);
     } else {
-      await updateQuantity(user?.id ?? userId, itemId, newQuantity);
+      await updateQuantity(user?.userId ?? userId, itemId, newQuantity);
     }
   };
 
@@ -52,7 +52,7 @@ const Cart: React.FC = () => {
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
       try {
-        await clearCart(user?.id ?? userId);
+        await clearCart(user?.userId ?? userId);
       } catch (error) {
         console.error('Failed to clear cart:', error);
       }
@@ -159,7 +159,7 @@ const Cart: React.FC = () => {
                             </div>
                             
                             <button
-                              onClick={() => removeItem(user?.id ?? userId, item.id)}
+                              onClick={() => removeItem(user?.userId ?? userId, item.id)}
                               disabled={isUpdating}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 disabled:opacity-50"
                             >

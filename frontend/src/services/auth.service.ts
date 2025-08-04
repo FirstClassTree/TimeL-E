@@ -27,11 +27,11 @@ interface AuthResponse {
 }
 
 interface User {
-  id: string;
+  userId: string;
   firstName: string;
   lastName: string;
   emailAddress: string;
-  phone: string;
+  phoneNumber: string;
 }
 
 class AuthService {

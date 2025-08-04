@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Grid, List } from 'lucide-react';
@@ -20,17 +20,41 @@ interface FilterState {
 const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [searchInput, setSearchInput] = useState(searchParams.get('q') || '');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showFilters, setShowFilters] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOption, setSortOption] = useState<SortOption>('popularity');
-  
+
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     priceRange: [0, 300]
   });
 
   const itemsPerPage = 25;
+
+  // Fetch price range for filter initialization
+  const { data: priceRangeData } = useQuery(
+    'price-range',
+    () => productService.getPriceRange(),
+    {
+      staleTime: 10 * 60 * 1000,
+      onSuccess: (data) => {
+        // Initialize price range filter with actual min/max values
+        setFilters(prev => ({
+          ...prev,
+          priceRange: [data.min, data.max]
+        }));
+      }
+    }
+  );
+
+  // Fetch departments for filter
+  const { data: departments, isLoading: departmentsLoading } = useQuery(
+    'departments',
+    () => productService.getDepartments(),
+    { staleTime: 10 * 60 * 1000 }
+  );
 
   // Fetch products with all dependencies properly tracked
   const { data, isLoading, error, refetch } = useQuery(
@@ -39,63 +63,90 @@ const Products: React.FC = () => {
       offset: itemsPerPage * (currentPage - 1),
       limit: itemsPerPage,
       sort: sortOption,
-      search: searchQuery,
-      categories: filters.categories,
+      search: searchQuery || undefined, // Don't send empty string
+      categories: filters.categories.length > 0 ? filters.categories : undefined,
       minPrice: filters.priceRange[0],
       maxPrice: filters.priceRange[1]
     }),
-    { 
+    {
       keepPreviousData: true,
-      staleTime: 1 * 60 * 1000, // Reduced cache time for testing
+      staleTime: 1 * 60 * 1000,
       enabled: true,
     }
   );
 
-  // Fetch categories for filter
-  const { data: categories } = useQuery(
-    'categories',
-    () => productService.getDepartments(),
-    { staleTime: 10 * 60 * 1000 }
-  );
-
-  // Handle search
-  const handleSearch = (e: React.FormEvent) => {
+  // Handle search form submission
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    const trimmedQuery = searchInput.trim();
+    setSearchQuery(trimmedQuery);
     setCurrentPage(1);
-    setSearchParams(searchQuery ? { q: searchQuery } : {});
-  };
 
-  // Handle filter changes
-  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    // Update URL params
+    if (trimmedQuery) {
+      setSearchParams({ q: trimmedQuery });
+    } else {
+      setSearchParams({});
+    }
+  }, [searchInput, setSearchParams]);
+
+  // Handle filter changes with debouncing for better UX
+  const handleFilterChange = useCallback((newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
-    setCurrentPage(1);
-  };
+    setCurrentPage(1); // Reset to first page when filters change
+  }, []);
 
   // Clear all filters
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
+    const defaultPriceRange: [number, number] = priceRangeData
+      ? [priceRangeData.min, priceRangeData.max]
+      : [0, 300];
+
     setFilters({
       categories: [],
-      priceRange: [0, 100]
+      priceRange: defaultPriceRange
     });
     setCurrentPage(1);
-  };
+  }, [priceRangeData]);
 
-  // Update URL when search changes
+  // Handle page change
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Handle sort change
+  const handleSortChange = useCallback((newSort: SortOption) => {
+    setSortOption(newSort);
+    setCurrentPage(1); // Reset to first page when sort changes
+  }, []);
+
+  // Update search input when URL changes
   useEffect(() => {
-    const currentSearch = searchParams.get('q') || '';
-    if (currentSearch !== searchQuery) {
-      setSearchQuery(currentSearch);
+    const urlSearch = searchParams.get('q') || '';
+    if (urlSearch !== searchInput) {
+      setSearchInput(urlSearch);
+      setSearchQuery(urlSearch);
     }
   }, [searchParams]);
 
+  // Initialize filters when price range data is loaded
+  useEffect(() => {
+    if (priceRangeData && filters.priceRange[0] === 0 && filters.priceRange[1] === 300) {
+      setFilters(prev => ({
+        ...prev,
+        priceRange: [priceRangeData.min, priceRangeData.max]
+      }));
+    }
+  }, [priceRangeData, filters.priceRange]);
+
   const products = data?.products || [];
-  const totalProducts = data?.total || 0;
-  const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
   // Calculate active filter count
-  const activeFilterCount = 
+  const activeFilterCount =
     filters.categories.length +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 100 ? 1 : 0);
+    (priceRangeData && (filters.priceRange[0] > priceRangeData.min || filters.priceRange[1] < priceRangeData.max) ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -109,11 +160,17 @@ const Products: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search products..."
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                 />
+                <button
+                  type="submit"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 transition-colors"
+                >
+                  Search
+                </button>
               </div>
             </form>
 
@@ -132,7 +189,7 @@ const Products: React.FC = () => {
                 )}
               </button>
 
-              <SortDropdown value={sortOption} onChange={setSortOption} />
+              <SortDropdown value={sortOption} onChange={handleSortChange} />
 
               <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
                 <button
@@ -179,7 +236,7 @@ const Products: React.FC = () => {
                     {activeFilterCount > 0 && (
                       <button
                         onClick={clearFilters}
-                        className="text-sm text-indigo-600 hover:text-indigo-700"
+                        className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
                       >
                         Clear all
                       </button>
@@ -187,19 +244,34 @@ const Products: React.FC = () => {
                   </div>
 
                   <div className="space-y-6">
-                    {/* Categories */}
-                    <CategoryFilter
-                      categories={categories || []}
-                      selected={filters.categories}
-                      onChange={(categories) => handleFilterChange({ categories })}
-                    />
+                    {/* Department Filter */}
+                    {departmentsLoading ? (
+                      <div className="animate-pulse">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                        <div className="space-y-2">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <CategoryFilter
+                        categories={departments || []}
+                        selected={filters.categories}
+                        onChange={(categories) => handleFilterChange({ categories })}
+                        title="Departments"
+                      />
+                    )}
 
-                    {/* Price Range */}
-                    <PriceRangeFilter
-                      value={filters.priceRange}
-                      onChange={(priceRange) => handleFilterChange({ priceRange })}
-                    />
-
+                    {/* Price Range Filter */}
+                    {priceRangeData && (
+                      <PriceRangeFilter
+                        value={filters.priceRange}
+                        onChange={(priceRange) => handleFilterChange({ priceRange })}
+                        min={priceRangeData.min}
+                        max={priceRangeData.max}
+                      />
+                    )}
                   </div>
                 </div>
               </motion.aside>
@@ -215,7 +287,8 @@ const Products: React.FC = () => {
                   {searchQuery ? `Search results for "${searchQuery}"` : 'All Products'}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {totalProducts} products found
+                  {isLoading ? 'Loading...' : `${data?.total?.toLocaleString()} products found`}
+                  {currentPage > 1 && ` • Page ${currentPage}`}
                 </p>
               </div>
             </div>
@@ -230,9 +303,15 @@ const Products: React.FC = () => {
             {/* Error State */}
             {error && (
               <div className="text-center py-12">
-                <p className="text-red-600 dark:text-red-400">
+                <p className="text-red-600 dark:text-red-400 mb-4">
                   Error loading products. Please try again.
                 </p>
+                <button
+                  onClick={() => refetch()}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Retry
+                </button>
               </div>
             )}
 
@@ -241,9 +320,15 @@ const Products: React.FC = () => {
               <>
                 {products.length === 0 ? (
                   <div className="text-center py-12">
-                    <p className="text-gray-600 dark:text-gray-400">
-                      No products found. Try adjusting your filters.
+                    <p className="text-gray-600 dark:text-gray-400 mb-4">
+                      No products found matching your criteria.
                     </p>
+                    <button
+                      onClick={clearFilters}
+                      className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      Clear filters to see all products
+                    </button>
                   </div>
                 ) : (
                   <>
@@ -251,7 +336,7 @@ const Products: React.FC = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                         {products.map((product, index) => (
                           <motion.div
-                            key={product.product_id}
+                            key={product.productId}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
@@ -264,7 +349,7 @@ const Products: React.FC = () => {
                       <div className="space-y-4">
                         {products.map((product, index) => (
                           <motion.div
-                            key={product.product_id}
+                            key={product.productId}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
@@ -276,12 +361,12 @@ const Products: React.FC = () => {
                     )}
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {data?.has_next == true && (
                       <div className="mt-12 flex justify-center">
                         <Pagination
                           currentPage={currentPage}
-                          totalPages={totalPages}
-                          onPageChange={setCurrentPage}
+                          totalPages={5}
+                          onPageChange={handlePageChange}
                         />
                       </div>
                     )}

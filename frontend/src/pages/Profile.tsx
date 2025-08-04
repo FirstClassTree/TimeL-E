@@ -37,7 +37,7 @@ const Profile: React.FC = () => {
 
   // Create a mock user if none exists
   const currentUser = user || {
-    id: userId,
+    userId: userId,
     firstName: 'Demo',
     lastName: 'User',
     emailAddress: 'demo@example.com',
@@ -51,7 +51,7 @@ const Profile: React.FC = () => {
     reset: resetProfile
   } = useForm<ProfileFormData>({
     defaultValues: {
-      userId: currentUser.id,
+      userId: currentUser.userId,
       firstName: currentUser.firstName,
       lastName: currentUser.lastName,
       emailAddress: currentUser.emailAddress,
@@ -101,7 +101,7 @@ const Profile: React.FC = () => {
   });
 
   const onSubmitProfile = (data: ProfileFormData) => {
-    let id = user?.id || userId;
+    let id = user?.userId || userId;
     updateProfileMutation.mutate({id, data});
   };
 
@@ -110,7 +110,7 @@ const Profile: React.FC = () => {
       toast.error('New passwords do not match');
       return;
     }
-    let id = user?.id || userId;
+    let id = user?.userId || userId;
     changePasswordMutation.mutate({
       id : id,
       passwordData:  {
@@ -122,11 +122,11 @@ const Profile: React.FC = () => {
   const handleCancelEdit = () => {
     setIsEditing(false);
     resetProfile({
-      id: currentUser.id,
+      userId: currentUser.userId,
       firstName: currentUser.firstName,
       lastName: currentUser.lastName,
-      email: currentUser.email,
-      phone: currentUser.phone
+      emailAddress: currentUser.emailAddress,
+      phoneNumber: currentUser.phoneNumber
     });
   };
 
@@ -160,7 +160,7 @@ const Profile: React.FC = () => {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {currentUser.firstName} {currentUser.lastName}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-400">{currentUser.email}</p>
+                    <p className="text-gray-600 dark:text-gray-400">{currentUser.emailAddress}</p>
                   </div>
                 </div>
                 

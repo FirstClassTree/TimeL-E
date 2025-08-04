@@ -15,7 +15,7 @@ interface LoginFormData {
 }
 
 interface QuickLoginUser {
-  id: string;
+  userId: string;
   name: string;
   email: string;
   avatar: string;
@@ -23,19 +23,19 @@ interface QuickLoginUser {
 
 const quickLoginUsers: QuickLoginUser[] = [
     {
-      id: "39993",
+      userId: "2d8c1a3a-06d5-5f98-84ad-365c7b015ac1",
       name: "John",
       email: "user39993@timele-demo.com",
       avatar: "👨‍💼"
     },
     {
-      id: "688",
+      userId: "8450d218-5822-55af-8818-961027c51a6e",
       name: "Sarah",
       email: "user688@timele-demo.com",
       avatar: "👩‍💻"
     },
     {
-      id: "82420",
+      userId: "e8f65487-32a9-5c3d-a0b6-716676e25a53",
       name: "Mike",
       email: "user82420@timele-demo.com",
       avatar: "👨‍🎨"
@@ -71,8 +71,8 @@ const Login: React.FC = () => {
       
       // Fetch cart after successful login
       const loggedInUser = useAuthStore.getState().user;
-      if (loggedInUser?.id) {
-        await fetchCart(loggedInUser.id);
+      if (loggedInUser?.userId) {
+        await fetchCart(loggedInUser.userId);
       }
       
       // Redirect to intended page or home
@@ -88,14 +88,14 @@ const Login: React.FC = () => {
 
   const handleQuickLogin = async (quickUser: QuickLoginUser) => {
     try {
-      setUserId(quickUser.id);
+      setUserId(quickUser.userId);
       // Use the demo login which will return a random user
       await login('demo@timele.com', 'password');
       
       // Fetch cart after successful login
       const loggedInUser = useAuthStore.getState().user;
-      if (loggedInUser?.id) {
-        await fetchCart(loggedInUser.id);
+      if (loggedInUser?.userId) {
+        await fetchCart(loggedInUser.userId);
       }
       
       toast.success(`Welcome ${quickUser.name}!`);
@@ -282,7 +282,7 @@ const Login: React.FC = () => {
             <div className="grid grid-cols-1 gap-2">
               {quickLoginUsers.map((quickUser) => (
                 <motion.button
-                  key={quickUser.id}
+                  key={quickUser.userId}
                   onClick={() => handleQuickLogin(quickUser)}
                   disabled={isLoading}
                   className="w-full p-3 bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -298,7 +298,7 @@ const Login: React.FC = () => {
                       {quickUser.email}
                     </p>
                   </div>
-                  {isLoading && userId === quickUser.id && (
+                  {isLoading && userId === quickUser.userId && (
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                   )}
                 </motion.button>

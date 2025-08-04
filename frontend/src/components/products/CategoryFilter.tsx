@@ -1,5 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { Department } from '@/services/product.service';
 
 interface Category {
   id: string;
@@ -8,9 +9,10 @@ interface Category {
 }
 
 interface CategoryFilterProps {
-  categories: Category[];
+  categories: Department[];
   selected: string[];
   onChange: (categoryIds: string[]) => void;
+  title?: string;
 }
 
 const CategoryFilter: React.FC<CategoryFilterProps> = ({
