@@ -43,7 +43,7 @@ class User(BaseModel):
 
     Attributes:
         id (int): Internal unique identifier for the user (primary key).
-        external_user_id (UUID4): External unique identifier for the user.
+        user_id (UUID4): External unique identifier for the user (API interface).
         first_name (str): User's first name (not required to be unique).
         last_name (str): User's last name (not required to be unique).
         hashed_password (str): Securely hashed password for authentication.
@@ -68,7 +68,7 @@ class User(BaseModel):
     Example:
         User(
             id=1,
-            external_user_id=UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
+            user_id=UUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"),
             first_name="Alice",
             last_name="Smith",
             hashed_password="$2b$12$...",
@@ -80,7 +80,7 @@ class User(BaseModel):
             country="USA")
     """
     id: Optional[int] = Field(None, description="Internal unique identifier for the user")
-    external_user_id: UUID4 = Field(default_factory=uuid.uuid4, description="External unique identifier for the user")
+    user_id: UUID4 = Field(default_factory=uuid.uuid4, description="External unique identifier for the user (API interface)")
     first_name: str = Field(..., description="User's first name (not required to be unique)")
     last_name: str = Field(..., description="User's last name (not required to be unique)")
     hashed_password: str = Field(..., description="Securely hashed password for authentication")
@@ -276,8 +276,8 @@ class Cart(BaseModel):
     Shopping cart for a user, storing items added before checkout.
 
     Attributes:
-        - cart_id: Primary key
-        - user_id: Foreign key to user
+        - cart_id: Primary key (integer, sent as string to frontend)
+        - user_id: User ID (UUID4 string for API interface)
         - total_items: Total items in the cart
         - created_at: When the cart was created
         - updated_at: When the cart was last updated
@@ -290,7 +290,7 @@ class Cart(BaseModel):
         Table representing a user's active or historical cart state.
     """
     cart_id: int
-    user_id: int
+    user_id: UUID4
     total_items: int
     created_at: datetime
     updated_at: datetime
@@ -307,8 +307,8 @@ class Order(BaseModel):
     and links to all associated order items.
 
         Attributes:
-        order_id (int): Unique order identifier (primary key).
-        user_id (int): User who placed the order (foreign key).
+        order_id (int): Unique order identifier (primary key, sent as string to frontend).
+        user_id (UUID4): User who placed the order (UUID4 string for API interface).
         order_number (int): Sequential order number for this user.
         order_dow (int): Day of week order was placed (0=Sunday, 6=Saturday).
         order_hour_of_day (int): Hour of day order was placed (0-23).
@@ -338,7 +338,7 @@ class Order(BaseModel):
         Database table for customer orders, including contact, shipping, and tracking details.
     """
     order_id: int
-    user_id: int
+    user_id: UUID4
     order_number: int
     order_dow: int
     order_hour_of_day: int

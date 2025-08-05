@@ -58,10 +58,8 @@ class Order(Base):
     and links to all associated order items.
 
         Attributes:
-        id (int): Internal numeric primary key (never exposed externally).
-        external_order_id (UUID): External UUID4 for API interface (exposed to clients).
+        id (int): Primary key order ID (exposed to clients as string).
         user_id (int): Internal user ID who placed the order (foreign key to users.id).
-        legacy_order_id (Optional[int]): Original order ID from CSV data for reference.
         order_number (int): Sequential order number for this user.
         order_dow (int): Day of week order was placed (0=Sunday, 6=Saturday).
         order_hour_of_day (int): Hour of day order was placed (0-23).
@@ -97,11 +95,8 @@ class Order(Base):
         {"schema": "orders"}
     )
 
-    # Internal numeric primary key (never exposed externally)
+    # Primary key order ID (exposed to clients as string)
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    
-    # External UUID4 for API interface (exposed to clients)
-    external_order_id: Mapped[Uuid] = mapped_column(Uuid(as_uuid=True), server_default=text("gen_random_uuid()"), unique=True, nullable=False, index=True)
     
     # Foreign key to internal user ID (references users.id)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.users.id'), index=True, nullable=False)
@@ -209,8 +204,7 @@ class Cart(Base):
     Shopping cart for a user, storing items added before checkout.
 
     Attributes:
-        - id: Internal numeric primary key (never exposed externally)
-        - external_cart_id: External UUID4 for API interface (exposed to clients)
+        - id: Primary key cart ID (exposed to clients as string)
         - user_id: Internal user ID who owns this cart (foreign key to users.id)
         - total_items: Total items in the cart
         - created_at: When the cart was created
@@ -229,11 +223,8 @@ class Cart(Base):
         {"schema": "orders"}
     )
 
-    # Internal numeric primary key (never exposed externally)
+    # Primary key cart ID (exposed to clients as string)
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    
-    # External UUID4 for API interface (exposed to clients)
-    external_cart_id: Mapped[Uuid] = mapped_column(Uuid(as_uuid=True), server_default=text("gen_random_uuid()"), unique=True, nullable=False, index=True)
     
     # Foreign key to internal user ID (references users.id)
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('users.users.id'), index=True, nullable=False)

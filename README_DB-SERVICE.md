@@ -56,29 +56,36 @@ These are handled by db-service's internal router and routed to the appropriate 
 
 ...
 
-### internal vs. external ID Architecture Implementation
+### Dual-ID Architecture Implementation
 
-**The db_service utilizes a dual-ID architecture for optimal performance, scalability, and security:**
+**The db_service utilizes a selective dual-ID architecture for optimal performance, scalability, and security:**
 
+#### Users: Dual-ID Architecture
 - **Internal IDs**: Numeric primary keys (`BIGSERIAL`) used internally for database operations and foreign key relationships
 - **External IDs**: UUID4 strings exposed to the backend (and from there to the frontend) via API endpoints
 - **Security Enhancement**: Prevents exposure of sequential integer IDs in URLs, eliminating enumeration attacks
-- **URL Parameters**: All endpoints use `{external_user_id}`,`{externalOrderId }` and `{externalCartId}` in URL paths
-- **Response Fields**: All API responses return `externalUserId`, `externalOrderId`  and `externalCartId` serialized as UUID4 strings
-- **Backward Compatibility**: The frontend experience remains unchanged; all IDs are still strings
+- **URL Parameters**: User endpoints use `{user_id}` in URL paths (UUID4 strings)
+- **Response Fields**: All API responses return `user_id` serialized as UUID4 strings
 
-**Keynotes:**
-- User endpoints: `/api/users/{external_user_id}` (UUID4 string)
-- Order endpoints: `/api/orders/{external_order_id}` (UUID4 string)  
-- All response fields like `externalUserId`, `externalOrderId` remain as UUID4 strings
+#### Orders & Carts: Simple Integer IDs
+- **Single ID System**: Uses integer primary keys starting from preserved ranges
+- **Orders**: Integer IDs starting at 3,422,000+ (preserving CSV data integrity)
+- **Carts**: Integer IDs starting at 1+
+- **URL Parameters**: Order endpoints use `{order_id}` (integer as string)
+- **Response Fields**: All API responses return `order_id` and `cart_id` as integer strings
+
+**Current Architecture:**
+- User endpoints: `/api/users/{user_id}` (UUID4 string)
+- Order endpoints: `/api/orders/{order_id}` (integer string)
+- Cart endpoints: `/api/carts/{user_id}` (UUID4 string for user reference)
+- All response fields: `user_id` (UUID4), `order_id` (integer), `cart_id` (integer)
 - Internal database uses numeric IDs for optimal PostgreSQL performance
 
 #### Overview
-For all major domain objects (Users, Orders, Carts), the system uses:
-- An internal numeric primary key (never exposed externally)
-- An external UUID (exposed to clients via the API)
-This provides migration stability and fast, safe, public lookup for every resource.
-UUID Validation performed at each point.
+- **Users**: Dual-ID system with internal numeric PK + external UUID4 for security
+- **Orders & Carts**: Simple integer IDs for performance and CSV data preservation
+- UUID validation performed for user IDs at each endpoint
+- Integer validation performed for order/cart IDs at each endpoint
 
 ### User ID Strategy: Legacy Users vs. New Users
 

@@ -120,7 +120,7 @@ class ServiceResponse(BaseModel, Generic[T]):
     message: Optional[str] = None
 
 class UserData(BaseModel):
-    external_user_id: str
+    user_id: str
     first_name: str
     last_name: str
     email_address: str
@@ -145,23 +145,23 @@ class UserData(BaseModel):
     def from_user(cls, user: User):
         """Convert User ORM object to UserData with external UUID4 conversion"""
         data = cls.model_validate(user)
-        data.external_user_id = str(user.external_user_id)
+        data.user_id = str(user.external_user_id)
         return data
 
 class PasswordUpdateResponse(BaseModel):
-    external_user_id: str
+    user_id: str
     password_updated: bool
 
 class EmailUpdateResponse(BaseModel):
-    external_user_id: str
+    user_id: str
     email_address: str
 
 class DeleteResponse(BaseModel):
-    external_user_id: str
+    user_id: str
     deleted: bool
 
 class NotificationSettingsData(BaseModel):
-    external_user_id: str
+    user_id: str
     days_between_order_notifications: Optional[conint(ge=1, le=365)] = None
     order_notifications_start_date_time: Optional[datetime] = None
     order_notifications_next_scheduled_time: Optional[datetime] = None
@@ -231,7 +231,7 @@ def create_user(user_request: CreateUserRequest, session: Session = Depends(get_
         
         # Explicitly convert external_user_id to string
         user_data = UserData.model_validate(user)
-        user_data.external_user_id = str(user.external_user_id)
+        user_data.user_id = str(user.external_user_id)
         
         return ServiceResponse[UserData](
             success=True,
@@ -271,15 +271,15 @@ class UpdatePasswordRequest(BaseModel):
     new_password: str
 
 
-@router.put("/{external_user_id}/password", response_model=ServiceResponse[PasswordUpdateResponse])
+@router.put("/{user_id}/password", response_model=ServiceResponse[PasswordUpdateResponse])
 def update_user_password(
-        external_user_id: str,
+        user_id: str,
         payload: UpdatePasswordRequest,
         session: Session = Depends(get_db)
 ) -> ServiceResponse[PasswordUpdateResponse]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[PasswordUpdateResponse](
                 success=False,
@@ -302,7 +302,7 @@ def update_user_password(
         session.refresh(user)
         
         password_response = PasswordUpdateResponse(
-            external_user_id=str(user.external_user_id),
+            user_id=str(user.external_user_id),
             password_updated=True
         )
         
@@ -332,15 +332,15 @@ class UpdateEmailRequest(BaseModel):
     current_password: str
     new_email_address: EmailStr
 
-@router.put("/{external_user_id}/email", response_model=ServiceResponse[EmailUpdateResponse])
+@router.put("/{user_id}/email", response_model=ServiceResponse[EmailUpdateResponse])
 def update_user_email(
-        external_user_id: str,
+        user_id: str,
         payload: UpdateEmailRequest,
         session: Session = Depends(get_db)
 ) -> ServiceResponse[EmailUpdateResponse]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[EmailUpdateResponse](
                 success=False,
@@ -359,7 +359,7 @@ def update_user_email(
         # Check for duplicate email (must not already exist)
         existing = session.query(User).filter(
             User.email_address == payload.new_email_address,
-            User.external_user_id != external_user_id  # Exclude current user
+            User.external_user_id != user_id  # Exclude current user
         ).first()
         if existing:
             return ServiceResponse[EmailUpdateResponse](
@@ -374,7 +374,7 @@ def update_user_email(
         session.refresh(user)
         
         email_response = EmailUpdateResponse(
-            external_user_id=str(user.external_user_id),
+            user_id=str(user.external_user_id),
             email_address=user.email_address
         )
         
@@ -400,11 +400,11 @@ def update_user_email(
             data=[]
         )
 
-@router.get("/{external_user_id}", response_model=ServiceResponse[UserData])
-def get_user(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
+@router.get("/{user_id}", response_model=ServiceResponse[UserData])
+def get_user(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[UserData](
                 success=False,
@@ -451,11 +451,11 @@ class UpdateUserRequest(BaseModel):
 
 # Only non-credential fields can be updated here.
 # Attempting to update email/password will have no effect.
-@router.put("/{external_user_id}", response_model=ServiceResponse[UserData])
-def update_user(external_user_id: str, payload: UpdateUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
+@router.put("/{user_id}", response_model=ServiceResponse[UserData])
+def update_user(user_id: str, payload: UpdateUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[UserData]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[UserData](
                 success=False,
@@ -526,11 +526,11 @@ class DeleteUserRequest(BaseModel):
     password: str
 
 
-@router.delete("/{external_user_id}", response_model=ServiceResponse[DeleteResponse])
-def delete_user(external_user_id: str, payload: DeleteUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[DeleteResponse]:
+@router.delete("/{user_id}", response_model=ServiceResponse[DeleteResponse])
+def delete_user(user_id: str, payload: DeleteUserRequest, session: Session = Depends(get_db)) -> ServiceResponse[DeleteResponse]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[DeleteResponse](
                 success=False,
@@ -546,7 +546,7 @@ def delete_user(external_user_id: str, payload: DeleteUserRequest, session: Sess
             )
         
         delete_response = DeleteResponse(
-            external_user_id=str(user.external_user_id),
+            user_id=str(user.external_user_id),
             deleted=True
         )
         
@@ -582,11 +582,11 @@ class NotificationSettingsResponse(BaseModel):
     order_notifications_via_email: bool
     pending_order_notification: bool
 
-@router.get("/{external_user_id}/notification-settings", response_model=ServiceResponse[NotificationSettingsData])
-def get_notification_settings(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[NotificationSettingsData]:
+@router.get("/{user_id}/notification-settings", response_model=ServiceResponse[NotificationSettingsData])
+def get_notification_settings(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[NotificationSettingsData]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[NotificationSettingsData](
                 success=False,
@@ -623,12 +623,12 @@ def get_notification_settings(external_user_id: str, session: Session = Depends(
 #     order_notifications_start_date_time: Optional[datetime] = None
 #     order_notifications_via_email: Optional[bool] = None
 
-@router.put("/{external_user_id}/notification-settings", response_model=ServiceResponse[NotificationSettingsData])
-def update_notification_settings(external_user_id: str, payload: UpdateNotificationSettingsRequest,
+@router.put("/{user_id}/notification-settings", response_model=ServiceResponse[NotificationSettingsData])
+def update_notification_settings(user_id: str, payload: UpdateNotificationSettingsRequest,
                                  session: Session = Depends(get_db)) -> ServiceResponse[NotificationSettingsData]:
     try:
         # Fetch user by external UUID4
-        user = session.query(User).filter(User.external_user_id == external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == user_id).first()
         if not user:
             return ServiceResponse[NotificationSettingsData](
                 success=False,
@@ -728,13 +728,13 @@ class OrderStatusNotification(BaseModel):
     status: str
     changed_at: datetime
 
-@router.get("/{external_user_id}/order-status-notifications", response_model=ServiceResponse[OrderStatusNotification])
+@router.get("/{user_id}/order-status-notifications", response_model=ServiceResponse[OrderStatusNotification])
 def get_order_status_notifications(
-    external_user_id: str,
+    user_id: str,
     session: Session = Depends(get_db)
 ):
     # Fetch user by external UUID4
-    user = session.query(User).filter(User.external_user_id == external_user_id).first()
+    user = session.query(User).filter(User.external_user_id == user_id).first()
     if not user:
         return ServiceResponse[OrderStatusNotification](
             success=False,

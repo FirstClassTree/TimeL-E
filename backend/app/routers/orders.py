@@ -17,19 +17,19 @@ class OrderItemRequest(BaseModel):
 class CreateOrderRequest(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    external_user_id: str
+    user_id: str
     items: List[OrderItemRequest]
 
-@router.get("/user/{external_user_id}", response_model=APIResponse)
+@router.get("/user/{user_id}", response_model=APIResponse)
 async def get_user_orders(
-    external_user_id: str,
+    user_id: str,
     limit: int = Query(20, description="Number of orders to return", ge=1, le=100),
     offset: int = Query(0, description="Number of orders to skip", ge=0)
 ) -> APIResponse:
     """Get order history for a specific user with items included"""
     try:
         # Get user orders using the generic entity approach
-        db_result = await db_service.get_entity("orders", f"user/{external_user_id}")
+        db_result = await db_service.get_entity("orders", f"user/{user_id}")
         
         if not db_result.get("success", True):
             raise HTTPException(status_code=500, detail="Database query failed")
@@ -38,7 +38,7 @@ async def get_user_orders(
         
         if not orders_data:
             return APIResponse(
-                message=f"No orders found for user {external_user_id}",
+                message=f"No orders found for user {user_id}",
                 data={"orders": [], "total": 0, "has_next": False}
             )
         
@@ -71,7 +71,7 @@ async def get_user_orders(
         orders_list.sort(key=lambda x: x["order_number"], reverse=True)
         
         return APIResponse(
-            message=f"Found {len(orders_list)} orders for user {external_user_id}",
+            message=f"Found {len(orders_list)} orders for user {user_id}",
             data={
                 "orders": orders_list,
                 "total": len(orders_list),
@@ -94,9 +94,9 @@ async def create_order(order_request: CreateOrderRequest) -> APIResponse:
             raise HTTPException(status_code=400, detail="Order must contain at least one item")
         
         # Validate user exists using generic entity approach
-        user_result = await db_service.get_entity("users", order_request.external_user_id)
+        user_result = await db_service.get_entity("users", order_request.user_id)
         if not user_result.get("success", True) or not user_result.get("data", []):
-            raise HTTPException(status_code=400, detail=f"User {order_request.external_user_id} not found")
+            raise HTTPException(status_code=400, detail=f"User {order_request.user_id} not found")
         
         # Validate all products exist
         for item in order_request.items:
@@ -106,7 +106,7 @@ async def create_order(order_request: CreateOrderRequest) -> APIResponse:
         
         # Create the order using generic entity approach
         create_result = await db_service.create_entity("orders", {
-            "external_user_id": order_request.external_user_id,
+            "user_id": order_request.user_id,
             "items": [item.model_dump() for item in order_request.items]
         })
         

@@ -24,7 +24,7 @@ class OrderItemRequest(BaseModel):
     reordered: int = 0
 
 class CreateOrderRequest(BaseModel):
-    external_user_id: str  # Accept external UUID4 from clients
+    user_id: str  # Accept external UUID4 from clients
     order_dow: int = None
     order_hour_of_day: int = None
     days_since_prior_order: Optional[int] = None
@@ -54,9 +54,9 @@ def create_order(order_request: CreateOrderRequest, session: Session = Depends(g
 
     try:
         # Convert external UUID4 to internal user ID
-        user = session.query(User).filter(User.external_user_id == order_request.external_user_id).first()
+        user = session.query(User).filter(User.external_user_id == order_request.user_id).first()
         if not user:
-            raise HTTPException(status_code=400, detail=f"User {order_request.external_user_id} not found")
+            raise HTTPException(status_code=400, detail=f"User {order_request.user_id} not found")
         
         # Set user context for order status trigger (use internal ID)
         session.execute(
@@ -92,7 +92,7 @@ def create_order(order_request: CreateOrderRequest, session: Session = Depends(g
             delta = now - last_order.created_at
             days_since_prior_order = int(delta.total_seconds() // 86400)  # in full days
 
-        # Create order with internal user ID, let database auto-generate IDs
+        # Create order with internal user ID, let database auto-generate ID
         order = Order(
             user_id=user.id,  # Use internal user ID for FK
             order_number=next_order_number,
@@ -111,12 +111,12 @@ def create_order(order_request: CreateOrderRequest, session: Session = Depends(g
             tracking_url=order_request.tracking_url
         )
         session.add(order)
-        session.flush()  # Get the auto-generated internal order ID
+        session.flush()  # Get the auto-generated order ID
 
-        # Create order items using internal order ID
+        # Create order items
         order_items = [
             OrderItem(
-                order_id=order.id,  # Use internal order ID for FK
+                order_id=order.id,
                 product_id=item.product_id,
                 quantity=item.quantity,
                 add_to_cart_order=item.add_to_cart_order or (i + 1),
@@ -129,10 +129,10 @@ def create_order(order_request: CreateOrderRequest, session: Session = Depends(g
         session.commit()
         session.refresh(order)  # Ensure order.items is populated
 
-        # Return external UUID4s in response
+        # Return integer order ID and external user UUID4 in response
         return {
-            "external_order_id": str(order.external_order_id),  # Return external UUID4
-            "external_user_id": str(user.external_user_id),     # Return external UUID4
+            "order_id": str(order.id),  # Return integer order ID as string
+            "user_id": str(user.external_user_id),     # Return external UUID4
             "order_number": order.order_number,
             "order_dow": order.order_dow,
             "order_hour_of_day": order.order_hour_of_day,
@@ -176,17 +176,17 @@ class AddOrderItemRequest(BaseModel):
     add_to_cart_order: Optional[int] = 0
     reordered: int = 0
 
-@router.post("/{external_order_id}/items", status_code=201)
+@router.post("/{order_id}/items", status_code=201)
 def add_order_items(
-    external_order_id: str = Path(...),
+    order_id: str = Path(...),
     items: List[AddOrderItemRequest] = Body(...),
     session: Session = Depends(get_db)
 ):
     try:
-        # Get order by external UUID4
-        order = session.query(Order).filter(Order.external_order_id == external_order_id).first()
+        # Get order by integer ID
+        order = session.query(Order).filter(Order.id == int(order_id)).first()
         if not order:
-            raise HTTPException(status_code=404, detail=f"Order {external_order_id} not found")
+            raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
             
         # Set user context for trigger (use internal user ID)
         session.execute(
@@ -226,7 +226,7 @@ def add_order_items(
                 existing.quantity += item.quantity
                 # changes are tracked automatically by SQLAlchemy
                 added_items.append({
-                    "external_order_id": str(order.external_order_id),
+                    "order_id": str(order.id),
                     "product_id": item.product_id,
                     "quantity": existing.quantity,
                     "add_to_cart_order": existing.add_to_cart_order,
@@ -243,7 +243,7 @@ def add_order_items(
                 )
                 to_add.append(new_item)
                 added_items.append({
-                    "external_order_id": str(order.external_order_id),
+                    "order_id": str(order.id),
                     "product_id": new_item.product_id,
                     "quantity": new_item.quantity,
                     "add_to_cart_order": new_item.add_to_cart_order,
@@ -257,8 +257,8 @@ def add_order_items(
             session.add_all(to_add)
         session.commit()
         return {
-            "message": f"Added {len(added_items)} items to order {external_order_id}",
-            "external_order_id": str(order.external_order_id),
+            "message": f"Added {len(added_items)} items to order {order_id}",
+            "order_id": str(order.id),
             "added_items": added_items,
             "total_added": len(added_items)
         }
@@ -274,17 +274,17 @@ def add_order_items(
         print(f"Error adding order items: {e}")
         raise HTTPException(status_code=500, detail=f"Error adding order items")
 
-@router.delete("/{external_order_id}", status_code=204)
-def delete_order(external_order_id: str, session: Session = Depends(get_db)):
+@router.delete("/{order_id}", status_code=204)
+def delete_order(order_id: str, session: Session = Depends(get_db)):
     try:
-        # Get order by external UUID4
-        order = session.query(Order).filter(Order.external_order_id == external_order_id).first()
+        # Get order by integer ID
+        order = session.query(Order).filter(Order.id == int(order_id)).first()
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
         
         session.delete(order)
         session.commit()
-        return {"message": "Order deleted successfully", "external_order_id": external_order_id}
+        return {"message": "Order deleted successfully", "order_id": order_id}
     except SQLAlchemyError as e:
         session.rollback()
         print(f"Database error: {e}")

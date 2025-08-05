@@ -48,8 +48,8 @@ class CartData(BaseModel):
     """Cart response model"""
     model_config = ConfigDict(from_attributes=True)
     
-    external_cart_id: str
-    external_user_id: str
+    cart_id: str
+    user_id: str
     items: List[CartItemData] = []
     total_items: int
     created_at: Optional[datetime.datetime] = None
@@ -68,7 +68,7 @@ class UpdateCartItemRequest(BaseModel):
 
 class CreateCartRequest(BaseModel):
     """Create cart request"""
-    external_user_id: str
+    user_id: str
     items: List[AddCartItemRequest] = []
 
 class UpdateCartRequest(BaseModel):
@@ -131,22 +131,22 @@ def build_cart_response(session: Session, cart: Cart) -> CartData:
                 cart_items.append(item_data)
     
     return CartData(
-        external_cart_id=str(cart.external_cart_id),
-        external_user_id=str(cart.user.external_user_id),
+        cart_id=str(cart.id),
+        user_id=str(cart.user.external_user_id),
         items=cart_items,
         total_items=len(cart_items),
         created_at=cart.created_at,
         updated_at=cart.updated_at
     )
 
-@router.get("/{external_user_id}", response_model=ServiceResponse[CartData])
-def get_user_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.get("/{user_id}", response_model=ServiceResponse[CartData])
+def get_user_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """
     Get cart for external_user_id. If no cart exists, return an empty cart.
     """
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Get user's cart (use internal user ID for FK lookup)
         cart = (
@@ -160,7 +160,7 @@ def get_user_cart(external_user_id: str, session: Session = Depends(get_db)) -> 
             # Return empty cart response
             return ServiceResponse[CartData](
                 success=True,
-                message=f"No cart found for user {external_user_id}",
+                message=f"No cart found for user {user_id}",
                 data=[]
             )
         
@@ -198,7 +198,7 @@ def create_cart(cart_request: CreateCartRequest, session: Session = Depends(get_
     """
     try:
         # Verify user exists
-        user = verify_user_exists(session, cart_request.external_user_id)
+        user = verify_user_exists(session, cart_request.user_id)
         
         # Check if cart already exists for user
         existing_cart = session.query(Cart).filter(Cart.user_id == user.id).first()
@@ -268,14 +268,14 @@ def create_cart(cart_request: CreateCartRequest, session: Session = Depends(get_
             data=[]
         )
 
-@router.put("/{external_user_id}", response_model=ServiceResponse[CartData])
-def update_user_cart(external_user_id: str, cart_request: UpdateCartRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.put("/{user_id}", response_model=ServiceResponse[CartData])
+def update_user_cart(user_id: str, cart_request: UpdateCartRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """
     Replace the entire cart for a user.
     """
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Validate products if items provided
         if cart_request.items:
@@ -342,14 +342,14 @@ def update_user_cart(external_user_id: str, cart_request: UpdateCartRequest, ses
             data=[]
         )
 
-@router.delete("/{external_user_id}", response_model=ServiceResponse[Dict[str, Any]])
-def delete_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
+@router.delete("/{user_id}", response_model=ServiceResponse[Dict[str, Any]])
+def delete_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
     """
     Delete a user's cart.
     """
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Find and delete cart
         cart = session.query(Cart).filter(Cart.user_id == user.id).first()
@@ -366,7 +366,7 @@ def delete_cart(external_user_id: str, session: Session = Depends(get_db)) -> Se
         return ServiceResponse[Dict[str, Any]](
             success=True,
             message="Cart deleted successfully",
-            data=[{"external_user_id": external_user_id, "deleted": True}]
+            data=[{"user_id": user_id, "deleted": True}]
         )
         
     except HTTPException:
@@ -388,12 +388,12 @@ def delete_cart(external_user_id: str, session: Session = Depends(get_db)) -> Se
             data=[]
         )
 
-@router.post("/{external_user_id}/items", response_model=ServiceResponse[CartData])
-def add_cart_item(external_user_id: str, item_request: AddCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.post("/{user_id}/items", response_model=ServiceResponse[CartData])
+def add_cart_item(user_id: str, item_request: AddCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Add an item to user's cart, or increment if exists."""
     try:
         # Verify user and product
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         verify_products_exist(session, [item_request.product_id])
         
         # Get or create cart
@@ -459,12 +459,12 @@ def add_cart_item(external_user_id: str, item_request: AddCartItemRequest, sessi
             data=[]
         )
 
-@router.put("/{external_user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
-def update_cart_item(external_user_id: str, product_id: int, update_request: UpdateCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.put("/{user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
+def update_cart_item(user_id: str, product_id: int, update_request: UpdateCartItemRequest, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Update quantity of a specific item in cart"""
     try:
         # Verify user and product
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         verify_products_exist(session, [product_id])
         
         # Get cart
@@ -531,12 +531,12 @@ def update_cart_item(external_user_id: str, product_id: int, update_request: Upd
             data=[]
         )
 
-@router.delete("/{external_user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
-def remove_cart_item(external_user_id: str, product_id: int, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.delete("/{user_id}/items/{product_id}", response_model=ServiceResponse[CartData])
+def remove_cart_item(user_id: str, product_id: int, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Remove a specific item from cart"""
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Get cart
         cart = session.query(Cart).filter(Cart.user_id == user.id).first()
@@ -597,12 +597,12 @@ def remove_cart_item(external_user_id: str, product_id: int, session: Session = 
             data=[]
         )
 
-@router.delete("/{external_user_id}/clear", response_model=ServiceResponse[CartData])
-def clear_user_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
+@router.delete("/{user_id}/clear", response_model=ServiceResponse[CartData])
+def clear_user_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[CartData]:
     """Clear all items from cart for a user"""
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Get cart
         cart = session.query(Cart).filter(Cart.user_id == user.id).first()
@@ -651,12 +651,12 @@ def clear_user_cart(external_user_id: str, session: Session = Depends(get_db)) -
             data=[]
         )
 
-@router.post("/{external_user_id}/checkout", response_model=ServiceResponse[Dict[str, Any]])
-def checkout_cart(external_user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
+@router.post("/{user_id}/checkout", response_model=ServiceResponse[Dict[str, Any]])
+def checkout_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceResponse[Dict[str, Any]]:
     """Convert cart to order (checkout process)"""
     try:
         # Verify user exists
-        user = verify_user_exists(session, external_user_id)
+        user = verify_user_exists(session, user_id)
         
         # Get cart with items
         cart = (
@@ -687,7 +687,7 @@ def checkout_cart(external_user_id: str, session: Session = Depends(get_db)) -> 
             success=True,
             message="Checkout completed successfully",
             data=[{
-                "external_user_id": external_user_id,
+                "user_id": user_id,
                 "status": "checkout_completed",
                 "note": "Cart cleared - order creation would be implemented here"
             }]

@@ -27,8 +27,8 @@ class CartResponse(BaseModel):
     """Cart response model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    external_cart_id: str
-    external_user_id: str
+    cart_id: str
+    user_id: str
     items: List[CartItem]
     total_items: int
 
@@ -51,7 +51,7 @@ class CreateCartRequest(BaseModel):
     """Create cart request"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    external_user_id: str
+    user_id: str
     items: List[AddCartItemRequest] = []
 
 class UpdateCartRequest(BaseModel):
@@ -109,22 +109,22 @@ def _handle_unhandled_http_exception(e: HTTPException, operation_error_message: 
         print(f"Unknown HTTPException caught: {str(e)}")
         raise HTTPException(status_code=500, detail=operation_error_message)
 
-@router.get("/{external_user_id}", response_model=APIResponse)
-async def get_user_cart(external_user_id: str) -> APIResponse:
+@router.get("/{user_id}", response_model=APIResponse)
+async def get_user_cart(user_id: str) -> APIResponse:
     """Get cart for a specific user"""
     try:
         # Get cart from db_service
-        cart_result = await db_service.get_entity("carts", external_user_id)
-        _handle_db_service_error(cart_result, external_user_id, "get cart", "Failed to get cart")
+        cart_result = await db_service.get_entity("carts", user_id)
+        _handle_db_service_error(cart_result, user_id, "get cart", "Failed to get cart")
         
         cart_data = cart_result.get("data", [])
         
         if not cart_data:
             return APIResponse(
-                message=f"No cart found for user {external_user_id}",
+                message=f"No cart found for user {user_id}",
                 data=CartResponse(
-                    external_cart_id="",
-                    external_user_id=external_user_id,
+                    cart_id="",
+                    user_id=user_id,
                     items=[],
                     total_items=0
                 )
@@ -135,14 +135,14 @@ async def get_user_cart(external_user_id: str) -> APIResponse:
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
         
         return APIResponse(
-            message=f"Cart retrieved successfully for user {external_user_id}",
+            message=f"Cart retrieved successfully for user {user_id}",
             data=cart_response
         )
         
@@ -158,7 +158,7 @@ async def create_cart(cart_request: CreateCartRequest) -> APIResponse:
     try:
         # Create cart using db_service
         create_result = await db_service.create_entity("carts", cart_request.model_dump(exclude_unset=True))
-        _handle_db_service_error(create_result, cart_request.external_user_id, "create cart", "Failed to create cart")
+        _handle_db_service_error(create_result, cart_request.user_id, "create cart", "Failed to create cart")
         
         cart_data = create_result.get("data", [])
         
@@ -170,8 +170,8 @@ async def create_cart(cart_request: CreateCartRequest) -> APIResponse:
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -187,26 +187,26 @@ async def create_cart(cart_request: CreateCartRequest) -> APIResponse:
         print(f"Create cart failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to create cart due to server error")
 
-@router.put("/{external_user_id}", response_model=APIResponse)
-async def update_user_cart(external_user_id: str, cart_request: UpdateCartRequest) -> APIResponse:
+@router.put("/{user_id}", response_model=APIResponse)
+async def update_user_cart(user_id: str, cart_request: UpdateCartRequest) -> APIResponse:
     """Replace entire cart for a user"""
     try:
         # Update cart using db_service
-        update_result = await db_service.update_entity("carts", external_user_id, cart_request.model_dump(exclude_unset=True))
-        _handle_db_service_error(update_result, external_user_id, "update cart", "Failed to update cart")
+        update_result = await db_service.update_entity("carts", user_id, cart_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(update_result, user_id, "update cart", "Failed to update cart")
         
         cart_data = update_result.get("data", [])
         
         if not cart_data:
-            raise HTTPException(status_code=404, detail=f"Cart not found for user {external_user_id}", headers={"X-Handled-Error": "true"})
+            raise HTTPException(status_code=404, detail=f"Cart not found for user {user_id}", headers={"X-Handled-Error": "true"})
         
         # Convert cart data to response format
         cart = cart_data[0]
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -222,17 +222,17 @@ async def update_user_cart(external_user_id: str, cart_request: UpdateCartReques
         print(f"Update cart failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to update cart due to server error")
 
-@router.delete("/{external_user_id}", response_model=APIResponse)
-async def delete_user_cart(external_user_id: str) -> APIResponse:
+@router.delete("/{user_id}", response_model=APIResponse)
+async def delete_user_cart(user_id: str) -> APIResponse:
     """Delete a user's cart"""
     try:
         # Delete cart using db_service
-        delete_result = await db_service.delete_entity("carts", external_user_id)
-        _handle_db_service_error(delete_result, external_user_id, "delete cart", "Failed to delete cart")
+        delete_result = await db_service.delete_entity("carts", user_id)
+        _handle_db_service_error(delete_result, user_id, "delete cart", "Failed to delete cart")
         
         return APIResponse(
-            message=f"Cart deleted successfully for user {external_user_id}",
-            data={"external_user_id": external_user_id, "deleted": True}
+            message=f"Cart deleted successfully for user {user_id}",
+            data={"user_id": user_id, "deleted": True}
         )
         
     except HTTPException as e:

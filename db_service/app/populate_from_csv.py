@@ -133,9 +133,10 @@ def load_orders(db: Session):
     print(f"Loading orders from: {orders_file}")
 
     # Set sequence starting point for new orders (3422000+)
+    # Orders now use simple integer IDs starting from CSV data range
     from sqlalchemy import text
     db.execute(text("SELECT setval('orders.orders_id_seq', 3422000, false)"))
-    print("Set orders.id sequence to start at 3422000 for new orders")
+    print("Set orders.id sequence to start at 3422000 for new orders (single integer ID architecture)")
 
     # Pre-load all existing user internal IDs for foreign key validation
     print("Pre-loading existing user internal IDs for foreign key validation...")
@@ -187,7 +188,7 @@ def load_orders(db: Session):
                 integer_user_id = int(row['user_id'])
 
                 # VALIDATE FOREIGN KEY BEFORE CREATING OBJECT
-                # Now we check against internal user IDs (not UUID7)
+                # Check against internal user IDs
                 if integer_user_id not in existing_users:
                     fk_violations += 1
                     if fk_violations <= 10:  # Show first 10 violations
@@ -199,9 +200,8 @@ def load_orders(db: Session):
                 # Get address/phone from preloaded dict
                 uinfo = user_info.get(integer_user_id, {})
                 order = Order(
-                    id=int(row["order_id"]),  # Use original CSV order ID as internal ID
-                    user_id=integer_user_id,  # Use internal user ID directly
-                    # external_order_id will be auto-generated as UUID4
+                    id=int(row["order_id"]),  # Use original CSV order ID as single integer ID
+                    user_id=integer_user_id,  # Use internal user ID for FK relationship
                     order_number=int(row["order_number"]),
                     order_dow=int(row["order_dow"]),
                     order_hour_of_day=int(row["order_hour_of_day"]),

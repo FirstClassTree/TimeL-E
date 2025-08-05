@@ -5,25 +5,29 @@
 The backend now provides **complete camelCase support** for all frontend-facing endpoints.  
 All request and response field names are now consistently camelCase for the frontend, while maintaining snake_case internally.
 
-## Dual-ID Architecture Implementation
+## Dual-ID Architecture Implementation (Users Only)
 
-**The db_service and backend have migrated to a dual-ID architecture for optimal performance, scalability, and security:**
+**The db_service and backend have implemented a dual-ID architecture for users only, providing optimal performance and security:**
 
-- **Internal IDs**: Numeric primary keys used internally for database operations and foreign key relationships
-- **External IDs**: UUID4 strings exposed to the frontend via API endpoints
-- **Security Enhancement**: Prevents exposure of sequential integer IDs in URLs, eliminating enumeration attacks
-- **Frontend Impact**: From the frontend perspective, all user and order IDs are still strings (UUID4 format)
-- **URL Parameters**: All endpoints now use `{external_user_id}`,`{externalOrderId }` and `{externalCartId}` in URL paths
-- **Response Fields**: All API responses return `externalUserId`, `externalOrderId`  and `externalCartId` as UUID4 strings
-- **Backward Compatibility**: The frontend experience remains unchanged; all IDs are still strings
+- **Users**: Dual-ID architecture with internal numeric IDs and external UUID4 strings
+  - **Internal IDs**: Numeric primary keys used internally for database operations and foreign key relationships
+  - **External IDs**: UUID4 strings exposed to the frontend via API endpoints as `userId`
+  - **Security Enhancement**: Prevents exposure of sequential integer IDs in URLs, eliminating enumeration attacks
+  - **URL Parameters**: User endpoints use `{user_id}` (UUID4 string)
+  - **Response Fields**: All API responses return `userId` as UUID4 strings
+
+- **Orders & Carts**: Simple integer IDs (no dual-ID architecture)
+  - **Single IDs**: BIGINT serial primary keys used both internally and externally
+  - **URL Parameters**: Order endpoints use `{order_id}` (integer), Cart endpoints use `{user_id}` (UUID4 for user reference)
+  - **Response Fields**: `orderId` and `cartId` are integers (sent as strings to frontend)
+  - **Starting Points**: Orders start at 3,422,000+, Carts start at 1+ (preserving CSV data)
 
 **Key Changes:**
-- User endpoints: `/api/users/{external_user_id}` (UUID4 string)
-- Order endpoints: `/api/orders/{external_order_id}` (UUID4 string)  
-- Cart endpoints: `/api/cart/{external_order_id}` (UUID4 string)
-- All response fields `userId`, `orderId`, `cartId` remain as strings (now in UUID4 format),  
-  but parameter name starts with `external`.  
-- Internal database uses numeric IDs for optimal PostgreSQL performance
+- User endpoints: `/api/users/{user_id}` (UUID4 string)
+- Order endpoints: `/api/orders/{order_id}` (integer as string)
+- Cart endpoints: `/api/cart/{user_id}` (UUID4 string for user reference)
+- User `userId` fields are UUID4 strings
+- Order `orderId` and Cart `cartId` fields are integers (sent as strings)
 
 
 ## Overview
@@ -39,7 +43,7 @@ All endpoints continue to use their existing URL patterns.
 
 ## CHANGED ENDPOINTS
 
-### 1. **GET `/api/users/{external_user_id}` - User Profile Response Enhanced**
+### 1. **GET `/api/users/{user_id}` - User Profile Response Enhanced**
 
 **Response Changes:**
 - **ADDED**: Notification-related fields in user profile response
@@ -68,7 +72,7 @@ All endpoints continue to use their existing URL patterns.
 {
    "message": "User profile retrieved successfully",
    "data": {
-      "externalUserId": "123",
+      "userId": "123",
       "firstName": "John",
       "lastName": "Doe",
       "emailAddress": "john@example.com",
@@ -149,7 +153,7 @@ All endpoints continue to use their existing URL patterns.
 - **CHANGED**: Returns full UserResponse model instead of limited fields
 - **ADDED**: All notification fields in response
 
-### 3. **PUT `/api/users/{external_user_id}` - Profile Update Enhanced**
+### 3. **PUT `/api/users/{user_id}` - Profile Update Enhanced**
 
 **Request Changes:**
 - **CHANGED**: Name fields (`name` → `firstName`/`lastName` with aliases)
@@ -196,7 +200,7 @@ All endpoints continue to use their existing URL patterns.
 {
   "message": "User profile updated successfully",
   "data": {
-    "externalUserId": "123",
+    "userId": "123",
     "firstName": "John",
     "lastName": "Smith",
     "emailAddress": "johnsmith@example.com",
@@ -222,7 +226,7 @@ All endpoints continue to use their existing URL patterns.
 - **422**: "Invalid user ID format"
 - **500**: "User update failed due to a server error"
 
-### 4. **DELETE `/api/users/{external_user_id}` - Now Requires Password Verification**
+### 4. **DELETE `/api/users/{user_id}` - Now Requires Password Verification**
 
 **MAJOR SECURITY CHANGE**: Delete now requires password verification in request body.
 
@@ -247,7 +251,7 @@ Content-Type: application/json
 - **404**: "User {user_id} not found"
 - **500**: "Deletion failed due to a server error"
 
-### 5. **PUT `/api/users/{external_user_id}/password` - Enhanced Security**
+### 5. **PUT `/api/users/{user_id}/password` - Enhanced Security**
 
 **Request Unchanged** but **Error Handling Enhanced:**
 - **400**: "Current password is incorrect"
@@ -259,7 +263,7 @@ Content-Type: application/json
 {
   "message": "Password updated successfully",
   "data": {
-    "externalUserId": "123",
+    "userId": "123",
     "passwordUpdated": true
   }
 }
@@ -288,7 +292,7 @@ Content-Type: application/json
 {
   "message": "Demo login successful", 
   "data": {
-    "externalUserId": "688",
+    "userId": "688",
     "firstName": "Demo",
     "lastName": "User 688",
     "emailAddress": "user688@timele-demo.com",
@@ -319,7 +323,7 @@ Returns full user information, including `lastLogin` and `lastNotificationsViewe
 {
   "message": "Login successful",
   "data": {
-    "externalUserId": "123",
+    "userId": "123",
     "firstName": "John",
     "lastName": "Doe",
     "emailAddress": "john@example.com",
@@ -333,7 +337,7 @@ Returns full user information, including `lastLogin` and `lastNotificationsViewe
 - **401**: "Invalid email or password"
 - **500**: "Login failed due to a server error"
 
-### 2. **GET `/api/users/{external_user_id}/notification-settings` - Get Notification Settings**
+### 2. **GET `/api/users/{user_id}/notification-settings` - Get Notification Settings**
 
 **Purpose**: Retrieve user's notification preferences
 
@@ -347,7 +351,7 @@ GET /api/users/123/notification-settings
 {
   "message": "Notification settings retrieved successfully",
   "data": {
-    "externalUserId": "999",
+    "userId": "999",
     "daysBetweenOrderNotifications": 7,
     "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",
     "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",
@@ -362,7 +366,7 @@ GET /api/users/123/notification-settings
 - **404**: "User {user_id} not found"
 - **500**: "Failed to get notification settings due to a server error"
 
-### 3. **PUT `/api/users/{external_user_id}/notification-settings` - Update Notification Settings**
+### 3. **PUT `/api/users/{user_id}/notification-settings` - Update Notification Settings**
 
 **Purpose**: Update user's notification preferences. Supports partial updates.  
 
@@ -387,7 +391,7 @@ GET /api/users/123/notification-settings
 {
   "message": "Notification settings updated successfully",
   "data": {
-    "externalUserId": "999",
+    "userId": "999",
     "daysBetweenOrderNotifications": 14,
     "orderNotificationsStartDateTime": "2025-08-01T09:00:00Z",
     "orderNotificationsViaEmail": true,
@@ -402,7 +406,7 @@ GET /api/users/123/notification-settings
 - **422**: Validation errors for invalid field values
 - **500**: "Failed to update notification settings due to a server error"
 
-### 4. **PUT `/api/users/{external_user_id}/email` - Update Email with Password Verification**
+### 4. **PUT `/api/users/{user_id}/email` - Update Email with Password Verification**
 
 **Purpose**: Update user's email address with password verification for security
 
@@ -419,7 +423,7 @@ GET /api/users/123/notification-settings
 {
   "message": "Email address updated successfully",
   "data": {
-    "externalUserId": "123",
+    "userId": "123",
     "emailAddress": "newemail@example.com"
   }
 }
@@ -451,13 +455,13 @@ POST /api/users/logout
 }
 ```
 
-### 6. **GET `/api/users/{external_user_id}/order-status-notifications` - Get Order Status Notifications**
+### 6. **GET `/api/users/{user_id}/order-status-notifications` - Get Order Status Notifications**
 
 **Purpose**: Retrieve list of user's notifications for updates in order statuses.  
 
 **Request:**
 ```
-GET /api/users/{external_user_id}/order-status-notifications
+GET /api/users/{user_id}/order-status-notifications
 ```
 
 **Response (Success - 200):**
@@ -568,9 +572,11 @@ For questions about these API changes, refer to:
 
 The following endpoints now automatically convert between camelCase (frontend) and snake_case (backend):
 
-#### **Cart Endpoints (`/api/cart/*`)**   --scheduled next for full implementation--
+#### **Cart Endpoints (`/api/cart/*`)**
 - **Request Fields**: `productId`, `quantity` (instead of `product_id`)
-- **Response Fields**: `externalUserId`, `totalItems`, `totalQuantity`, `productId`, `productName`, `aisleName`, `departmentName`
+- **Response Fields**: `userId`, `cartId`, `totalItems`, `totalQuantity`, `productId`, `productName`, `aisleName`, `departmentName`
+- **URL Parameters**: Uses `{user_id}` (UUID4 string for user reference)
+- **ID Types**: `userId` is UUID4 string, `cartId` is integer (sent as string)
 
 **Example Cart Request:**
 ```json
@@ -585,7 +591,8 @@ The following endpoints now automatically convert between camelCase (frontend) a
 {
   "success": true,
   "data": {
-    "externalUserId": "456",
+    "userId": "456",
+    "cartId": "1",
     "items": [
       {
         "productId": 123,
@@ -602,13 +609,15 @@ The following endpoints now automatically convert between camelCase (frontend) a
 ```
 
 #### **Order Endpoints (`/api/orders/*`)**
-- **Request Fields**: `externalUserId`, `productId`, `quantity`, `deliveryName`
-- **Response Fields**: `orderId`, `externalUserId`, `orderNumber`, `totalItems`, `totalPrice`, `deliveryName`, `productId`, `productName`, `price`
+- **Request Fields**: `userId`, `productId`, `quantity`, `deliveryName`
+- **Response Fields**: `orderId`, `userId`, `orderNumber`, `totalItems`, `totalPrice`, `deliveryName`, `productId`, `productName`, `price`
+- **URL Parameters**: Uses `{order_id}` (integer as string)
+- **ID Types**: `userId` is UUID4 string, `orderId` is integer (sent as string)
 
 **Example Order Request:**
 ```json
 {
-    "externalUserId": 456,
+    "userId": "456",
     "deliveryName": "John Doe",
     "items": [
       {
@@ -625,8 +634,8 @@ The following endpoints now automatically convert between camelCase (frontend) a
 {
   "success": true,
   "data": {
-    "orderId": 789,
-    "externalUserId": "456",
+    "orderId": "789",
+    "userId": "456",
     "orderNumber": 1,
     "totalItems": 1,
     "totalPrice": 9.98,
@@ -645,7 +654,8 @@ The following endpoints now automatically convert between camelCase (frontend) a
 ```
 
 #### **Prediction Endpoints (`/api/predictions/*`)**
-- **Response Fields**: `externalUserId`, `productId`, `productName`
+- **Response Fields**: `userId`, `productId`, `productName`
+- **ID Types**: `userId` is UUID4 string
 
 **Example Prediction Response:**
 ```json
@@ -680,10 +690,10 @@ B. Immediately After Login:
 
 - Fire parallel API requests:
 
-   - `/api/users/{external_user_id}/order-status-notifications` (get orders with changed status)
+   - `/api/users/{user_id}/order-status-notifications` (get orders with changed status)
 
    - If in login response returned `hasActiveCart=True`;
-       `/api/cart/{external_user_id}` (get cart, if exists)
+       `/api/cart/{user_id}` (get cart, if exists)
    
    - Optional [render notifications and cart];
        - For the notification bell icon at the top of the page;
@@ -693,13 +703,12 @@ B. Immediately After Login:
 C. When Data Arrives:
 -  Show notifications:
    - For each changed order, show a clickable notification (e.g “Order #1234 shipped!” V).
-      - On click, navigate to `/orders/{external_order_id}` (`/api/orders/{external_order_id}`).
+      - On click, navigate to `/orders/{order_id}` (`/api/orders/{order_id}`).
        - Show cart reminder notification:
-           - If cart exists and isn’t empty, show reminder (e.g., “You have 3 items in your cart from 2 days ago.” V)  
-           On click, navigate to `/cart/{external_user_id}` (`/api/cart/{external_user_id}`).   V  
+           - If cart exists and isn't empty, show reminder (e.g., "You have 3 items in your cart from 2 days ago." V)  
+           On click, navigate to `/cart/{user_id}` (`/api/cart/{user_id}`).   V
        - Optional [render notifications and cart];
            - Notification bell updates;
                - badge shows “2” if there are 2 new notifications (order status changes, order scheduler etc.).  
                  (same for the cart icon (shows count of cart items once loaded)).
 ___
-
