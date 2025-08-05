@@ -1,5 +1,6 @@
 # backend/app/models/base.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import Any, Dict, Optional, List
 from datetime import datetime
 
@@ -12,6 +13,8 @@ class APIResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response format"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     success: bool = False
     message: str
     error_code: Optional[str] = None
@@ -32,6 +35,8 @@ class ServiceRequest(BaseModel):
 
 class CartItem(BaseModel):
     """Cart item model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     item_id: str
     quantity: int
     price: Optional[float] = None
@@ -39,6 +44,8 @@ class CartItem(BaseModel):
 
 class Cart(BaseModel):
     """Cart model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     user_id: str
     items: List[CartItem] = []
     total_price: Optional[float] = None
@@ -46,6 +53,8 @@ class Cart(BaseModel):
 
 class Order(BaseModel):
     """Order model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     user_id: str
     cart_id: Optional[str] = None
     items: List[CartItem]

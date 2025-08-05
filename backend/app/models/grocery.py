@@ -1,10 +1,13 @@
 # backend/app/models/grocery.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
+from pydantic.alias_generators import to_camel
 
 class Product(BaseModel):
     """Product model matching CSV structure"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+
     product_id: int
     product_name: str
     aisle_id: int
@@ -27,11 +30,15 @@ class Department(BaseModel):
 
 class Aisle(BaseModel):
     """Aisle model"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     aisle_id: int
     aisle: str
 
 class Order(BaseModel):
     """Order model matching CSV structure"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     order_id: str  # Changed to str to match UUID
     user_id: str  # Changed to str to match UUID
     eval_set: str
@@ -42,6 +49,8 @@ class Order(BaseModel):
 
 class OrderItem(BaseModel):
     """Order item model matching CSV structure"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     order_id: str  # Changed to str to match UUID
     product_id: int
     add_to_cart_order: int  # sequence in cart
@@ -52,6 +61,8 @@ class OrderItem(BaseModel):
 
 class OrderWithItems(BaseModel):
     """Order with its items for detailed view"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     order_id: str  # Changed to str to match UUID
     user_id: str  # Changed to str to match UUID
     eval_set: str
@@ -74,11 +85,15 @@ class OrderWithItems(BaseModel):
 
 class CreateOrderRequest(BaseModel):
     """Request model for creating new orders"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     user_id: str  # Changed to str to match UUID
     items: List[dict]  # [{"product_id": 123, "quantity": 2}, ...]
 
 class ProductSearchResult(BaseModel):
     """Product search result with pagination info"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     products: List[Product]
     total: int
     page: int
@@ -88,12 +103,16 @@ class ProductSearchResult(BaseModel):
 
 class PredictionItem(BaseModel):
     """Individual prediction item"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     product_id: int
     product_name: str
     score: float
 
 class UserPredictions(BaseModel):
     """User prediction response"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     user_id: str  # Changed to str to match UUID
     predictions: List[PredictionItem]
     total: int
