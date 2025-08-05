@@ -780,3 +780,4 @@ def get_order_status_notifications(
         )
         for change in status_changes]
     )
+

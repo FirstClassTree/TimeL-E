@@ -333,11 +333,7 @@ class OrderStatusHistory(Base):
         {"schema": "orders"}
     )
     
-    history_id: Mapped[int] = mapped_column(
-        Integer, 
-        primary_key=True, 
-        autoincrement=True
-    )
+    history_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(BigInteger, ForeignKey('orders.orders.id'), index=True)
     old_status: Mapped[Optional[OrderStatus]] = mapped_column(OrderStatusEnum,
                                                       default=OrderStatus.PENDING, nullable=True)

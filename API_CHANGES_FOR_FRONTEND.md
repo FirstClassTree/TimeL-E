@@ -22,9 +22,9 @@ All request and response field names are now consistently camelCase for the fron
   - **Response Fields**: `orderId` and `cartId` are integers (sent as strings to frontend)
   - **Starting Points**: Orders start at 3,422,000+, Carts start at 1+ (preserving CSV data)
 
-**Key Changes:**
+**Key Notes:**
 - User endpoints: `/api/users/{user_id}` (UUID4 string)
-- Order endpoints: `/api/orders/{order_id}` (integer as string)
+- Order endpoint: `/api/orders/{order_id}` (integer as string)
 - Cart endpoints: `/api/cart/{user_id}` (UUID4 string for user reference)
 - User `userId` fields are UUID4 strings
 - Order `orderId` and Cart `cartId` fields are integers (sent as strings)
@@ -608,50 +608,398 @@ The following endpoints now automatically convert between camelCase (frontend) a
 }
 ```
 
-#### **Order Endpoints (`/api/orders/*`)**
-- **Request Fields**: `userId`, `productId`, `quantity`, `deliveryName`
-- **Response Fields**: `orderId`, `userId`, `orderNumber`, `totalItems`, `totalPrice`, `deliveryName`, `productId`, `productName`, `price`
-- **URL Parameters**: Uses `{order_id}` (integer as string)
+---
+
+## **Order Endpoints (`/api/orders/*`)**
+
+### 1. **GET `/api/orders/user/{user_id}`**
+
+- **Request Fields**: `userId`, `productId`, `quantity`, `addToCartOrder`, `reordered`, `orderDow`, `orderHourOfDay`, `daysSincePriorOrder`, `totalItems`, `phoneNumber`, `streetAddress`, `city`, `postalCode`, `country`, `trackingNumber`, `shippingCarrier`, `trackingUrl`
+- **Response Fields**: `orderId`, `userId`, `orderNumber`, `totalItems`, `totalPrice`, `status`, `phoneNumber`, `streetAddress`, `city`, `postalCode`, `country`, `trackingNumber`, `shippingCarrier`, `trackingUrl`, `createdAt`, `updatedAt`, `productId`, `productName`, `quantity`, `addToCartOrder`, `reordered`, `price`, `description`, `imageUrl`, `departmentName`, `aisleName`
+- **URL Parameters**: Uses `{user_id}` (UUID4 string for user orders)
 - **ID Types**: `userId` is UUID4 string, `orderId` is integer (sent as string)
+- **Status**: Order status is always "pending" for new orders and cannot be set by clients
+- **Enhanced Features**: 
+  - **Proper Pagination**: `GET /orders/user/{user_id}` now uses correct order-level pagination
+  - **Enriched Product Data**: Order items include full product details (name, price, description, image, department, aisle)
+  - **Complete Order Metadata**: Responses include `totalPrice`, `createdAt`, `updatedAt` timestamps
+  - **UUID4 Compatibility**: Handles UUID4 user IDs with internal conversion
 
-**Example Order Request:**
-```json
-{
-    "userId": "456",
-    "deliveryName": "John Doe",
-    "items": [
-      {
-        "productId": 123,
-        "quantity": 2,
-        "price": 4.99
-      }
-    ]
-}
-```
 
-**Example Order Response:**
+**Old Response Format**
+
 ```json
 {
   "success": true,
+  "message": "Found 2 orders for user 550e8400-e29b-41d4-a716-446655440000",
   "data": {
-    "orderId": "789",
-    "userId": "456",
-    "orderNumber": 1,
-    "totalItems": 1,
-    "totalPrice": 9.98,
+    "orders": [
+      {
+        "order_id": "3422001",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "order_number": 5,
+        "status": "pending",
+        "total_items": 3,
+        "total_price": null,
+        "created_at": null,
+        "updated_at": null,
+        "items": [
+          {
+            "product_id": 123,
+            "product_name": "Organic Milk",
+            "quantity": 2
+          },
+          {
+            "product_id": 456,
+            "product_name": "Whole Wheat Bread",
+            "quantity": 1
+          }
+        ]
+      },
+      {
+        "order_id": "3422002",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "order_number": 4,
+        "status": "shipped",
+        "total_items": 1,
+        "total_price": null,
+        "created_at": null,
+        "updated_at": null,
+        "items": [
+          {
+            "product_id": 789,
+            "product_name": "Cheddar Cheese",
+            "quantity": 1
+          }
+        ]
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "per_page": 2,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+**New Response Format**
+
+```json
+{
+  "success": true,
+  "message": "Found 2 orders for user 550e8400-e29b-41d4-a716-446655440000",
+  "data": {
+    "orders": [
+      {
+        "order_id": "3422001",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "order_number": 5,
+        "total_items": 3,
+        "total_price": 24.97,
+        "status": "pending",
+        "created_at": "2024-01-15T10:30:00Z",
+        "updated_at": "2024-01-15T10:30:00Z",
+        "items": [
+          {
+            "product_id": 123,
+            "product_name": "Organic Milk",
+            "quantity": 2,
+            "add_to_cart_order": 1,
+            "reordered": 0,
+            "price": 4.99,
+            "description": "Fresh organic whole milk from grass-fed cows",
+            "image_url": "https://example.com/images/organic-milk.jpg",
+            "department_name": "Dairy Eggs",
+            "aisle_name": "Milk"
+          },
+          {
+            "product_id": 456,
+            "product_name": "Whole Wheat Bread",
+            "quantity": 1,
+            "add_to_cart_order": 2,
+            "reordered": 0,
+            "price": 3.49,
+            "description": "Freshly baked whole wheat bread with seeds",
+            "image_url": "https://example.com/images/wheat-bread.jpg",
+            "department_name": "Bakery",
+            "aisle_name": "Packaged Bread"
+          },
+          {
+            "product_id": 789,
+            "product_name": "Organic Bananas",
+            "quantity": 1,
+            "add_to_cart_order": 3,
+            "reordered": 1,
+            "price": 2.99,
+            "description": "Sweet organic bananas, perfect for snacking",
+            "image_url": "https://example.com/images/bananas.jpg",
+            "department_name": "Produce",
+            "aisle_name": "Fresh Fruits"
+          }
+        ]
+      },
+      {
+        "order_id": "3422002",
+        "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        "order_number": 4,
+        "total_items": 2,
+        "total_price": 18.47,
+        "status": "shipped",
+        "created_at": "2024-01-14T14:22:00Z",
+        "updated_at": "2024-01-14T16:45:00Z",
+        "items": [
+          {
+            "product_id": 321,
+            "product_name": "Cheddar Cheese",
+            "quantity": 1,
+            "add_to_cart_order": 1,
+            "reordered": 0,
+            "price": 6.99,
+            "description": "Sharp aged cheddar cheese block",
+            "image_url": "https://example.com/images/cheddar.jpg",
+            "department_name": "Dairy Eggs",
+            "aisle_name": "Cheese"
+          },
+          {
+            "product_id": 654,
+            "product_name": "Greek Yogurt",
+            "quantity": 2,
+            "add_to_cart_order": 2,
+            "reordered": 0,
+            "price": 5.74,
+            "description": "Creamy Greek yogurt with live cultures",
+            "image_url": "https://example.com/images/greek-yogurt.jpg",
+            "department_name": "Dairy Eggs",
+            "aisle_name": "Yogurt"
+          }
+        ]
+      }
+    ],
+    "total": 2,
+    "page": 1,
+    "per_page": 2,
+    "has_next": true,
+    "has_prev": false
+  }
+}
+```
+
+### 2. **GET `/api/orders/{order_id}`** - Get Order Details
+
+**NEW ENDPOINT**: Get detailed order information with shipping address, full tracking info, enriched products, and status history.
+
+**Request:**
+```
+GET /api/orders/3422001
+```
+
+**Response (Success - 200):**
+```json
+{
+  "message": "Order 3422001 details retrieved successfully",
+  "data": {
+    "orderId": "3422001",
+    "userId": "550e8400-e29b-41d4-a716-446655440000",
+    "orderNumber": 5,
+    "orderDow": 1,
+    "orderHourOfDay": 14,
+    "daysSincePriorOrder": 7,
+    "totalItems": 3,
+    "totalPrice": 24.97,
+    "status": "shipped",
     "deliveryName": "John Doe",
-    "status": "pending",
+    "phoneNumber": "+1-555-1234",
+    "streetAddress": "123 Main St",
+    "city": "New York",
+    "postalCode": "10001",
+    "country": "US",
+    "trackingNumber": "1Z999AA1234567890",
+    "shippingCarrier": "UPS",
+    "trackingUrl": "https://www.ups.com/track?tracknum=1Z999AA1234567890",
+    "invoice": null,
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T14:45:00Z",
     "items": [
       {
         "productId": 123,
+        "productName": "Organic Milk",
         "quantity": 2,
+        "addToCartOrder": 1,
+        "reordered": 0,
         "price": 4.99,
-        "productName": "Organic Milk"
+        "description": "Fresh organic whole milk from grass-fed cows",
+        "imageUrl": "https://example.com/images/organic-milk.jpg",
+        "departmentName": "Dairy Eggs",
+        "aisleName": "Milk"
+      }
+    ],
+    "statusHistory": [
+      {
+        "historyId": 1,
+        "orderId": "3422001",
+        "status": "pending",
+        "changedAt": "2024-01-15T10:30:00Z",
+        "changedBy": null,
+        "note": "Order created"
+      },
+      {
+        "historyId": 2,
+        "orderId": "3422001",
+        "status": "processing",
+        "changedAt": "2024-01-15T12:00:00Z",
+        "changedBy": "system",
+        "note": "Order processing started"
+      },
+      {
+        "historyId": 3,
+        "orderId": "3422001",
+        "status": "shipped",
+        "changedAt": "2024-01-15T14:45:00Z",
+        "changedBy": "fulfillment_center",
+        "note": "Package shipped via UPS"
       }
     ]
   }
 }
 ```
+
+**Key Features:**
+- **Complete Order Information**: All order metadata including tracking details
+- **Enriched Product Data**: Full product details with descriptions, images, department/aisle info
+- **Status History**: Chronological order status changes with timestamps and notes
+- **Invoice Support**: Returns invoice binary data if available (null in example)
+- **Tracking Integration**: Direct tracking URLs for supported carriers
+
+**Error Responses:**
+- **400**: "Invalid order ID format" (for non-integer order IDs)
+- **404**: "Order {order_id} not found"
+- **500**: "An internal server error occurred while retrieving order {order_id}"
+
+### 3. **POST `/api/orders/`** - Create order
+
+## Complete Order Creation Data Flow
+
+### **Frontend → Backend:**
+Frontend sends camelCase (automatically converted to snake_case by backend):
+```json
+{
+  "userId": "uuid4-string",
+  "items": [
+    {
+      "productId": 123,
+      "quantity": 2,
+      "addToCartOrder": 1,
+      "reordered": 0
+    }
+  ],
+  "deliveryName": "John Doe",
+  "phoneNumber": "+1-555-1234",
+  "streetAddress": "123 Main St",
+  "city": "New York",
+  "postalCode": "10001",
+  "country": "US"
+}
+```
+
+### **Backend → db_service:**
+Backend sends complete snake_case data with all optional fields:
+```json
+{
+  "user_id": "uuid4-string",
+  "order_dow": null,
+  "order_hour_of_day": null,
+  "days_since_prior_order": null,
+  "total_items": 1,
+  "phone_number": "+1-555-1234",
+  "street_address": "123 Main St",
+  "city": "New York",
+  "postal_code": "10001",
+  "country": "US",
+  "tracking_number": null,
+  "shipping_carrier": null,
+  "tracking_url": null,
+  "items": [
+    {
+      "product_id": 123,
+      "quantity": 2,
+      "add_to_cart_order": 1,
+      "reordered": 0
+    }
+  ]
+}
+```
+
+### **db_service → Backend:**
+db_service returns ServiceResponse with complete order data:
+```json
+{
+  "success": true,
+  "message": "Order created successfully",
+  "data": [
+    {
+      "order_id": "3422001",
+      "user_id": "uuid4-string",
+      "order_number": 1,
+      "status": "pending",
+      "total_items": 1,
+      "phone_number": "+1-555-1234",
+      "street_address": "123 Main St",
+      "city": "New York",
+      "postal_code": "10001",
+      "country": "US",
+      "created_at": "2025-01-05T17:30:00Z",
+      "updated_at": "2025-01-05T17:30:00Z",
+      "items": [
+        {
+          "product_id": 123,
+          "quantity": 2,
+          "add_to_cart_order": 1,
+          "reordered": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+### **Backend → Frontend:**
+Backend extracts data and returns APIResponse (automatically converted to camelCase):
+```json
+{
+  "message": "Order created successfully",
+  "data": [
+    {
+      "orderId": "3422001",
+      "userId": "uuid4-string",
+      "orderNumber": 1,
+      "status": "pending",
+      "totalItems": 1,
+      "phoneNumber": "+1-555-1234",
+      "streetAddress": "123 Main St",
+      "city": "New York",
+      "postalCode": "10001",
+      "country": "US",
+      "createdAt": "2025-01-05T17:30:00Z",
+      "updatedAt": "2025-01-05T17:30:00Z",
+      "items": [
+        {
+          "productId": 123,
+          "quantity": 2,
+          "addToCartOrder": 1,
+          "reordered": 0
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Key Features:**
+- **Alignment**: Backend and db_service `CreateOrderRequest` models are identical
+- **Flexibility**: Frontend can send minimal data (just `userId` and `items`) or complete data with all optional fields
+- **Auto-calculation**: Backend automatically sets `totalItems` if not provided
+- **Validation**: DB service validate user existence and product availability in db
 
 #### **Prediction Endpoints (`/api/predictions/*`)**
 - **Response Fields**: `userId`, `productId`, `productName`
