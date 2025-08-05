@@ -61,7 +61,7 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, navLinks }) =>
                   {user.firstName} {user.lastName}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {user.email}
+                  {user.emailAddress}
                 </p>
               </div>
             </div>
@@ -155,22 +155,6 @@ const MobileMenu: React.FC<MobileMenuProps> = ({ isOpen, onClose, navLinks }) =>
                 <ShoppingCart size={20} />
                 <span className="font-medium">Cart</span>
               </Link>
-
-              {/* Admin Link */}
-              {user?.role === 'admin' && (
-                <Link
-                  to="/admin"
-                  onClick={handleLinkClick}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-                    location.pathname.startsWith('/admin')
-                      ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <Settings size={20} />
-                  <span className="font-medium">Admin Dashboard</span>
-                </Link>
-              )}
             </>
           )}
         </nav>

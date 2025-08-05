@@ -78,8 +78,8 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Product Image */}
                   <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                     <img
-                      src={item.product.image_url}
-                      alt={item.product.product_name}
+                      src={item.product.imageUrl}
+                      alt={item.product.productName}
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
@@ -88,7 +88,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Product Info */}
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {item.product.product_name}
+                      {item.product.productName}
                     </h4>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       ${item.price.toFixed(2)}

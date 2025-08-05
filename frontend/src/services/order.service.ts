@@ -36,9 +36,9 @@ export interface OrdersResponse {
   orders: Order[];
   total: number;
   page: number;
-  per_page: number;
-  has_next: boolean;
-  has_prev: boolean;
+  perPage: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface OrderFilters {

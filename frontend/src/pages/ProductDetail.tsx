@@ -23,7 +23,7 @@ const ProductDetail: React.FC = () => {
 
   const { data: product, isLoading, error } = useQuery(
     ['product', id],
-    () => productService.getProduct(product?.product_id ?? Number(id)),
+    () => productService.getProduct(product?.productId ?? Number(id)),
     {
       enabled: !!id,
     }
@@ -33,11 +33,11 @@ const ProductDetail: React.FC = () => {
     if (!product) return;
     
     addToCart(userId,
-        product.product_id,
+        product.productId,
       quantity
     );
     
-    toast.success(`Added ${quantity} ${product.product_name} to cart`);
+    toast.success(`Added ${quantity} ${product.productName} to cart`);
   };
 
   const handleBuyNow = () => {
@@ -91,8 +91,8 @@ const ProductDetail: React.FC = () => {
             className="aspect-square rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800"
           >
             <ProductImage
-              src={product.image_url}
-              alt={product.product_name}
+              src={product.imageUrl}
+              alt={product.productName}
               className="w-full h-full object-cover"
             />
           </motion.div>
@@ -108,7 +108,7 @@ const ProductDetail: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              {product.product_name}
+              {product.productName}
             </h1>
             
             <div className="flex items-center gap-4 mb-4">
@@ -247,7 +247,7 @@ const ProductDetail: React.FC = () => {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Category:</span>
-                <span className="text-gray-900 dark:text-white">{product.department_name}</span>
+                <span className="text-gray-900 dark:text-white">{product.departmentName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">Brand:</span>
@@ -255,7 +255,7 @@ const ProductDetail: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600 dark:text-gray-400">SKU:</span>
-                <span className="text-gray-900 dark:text-white">PRD-{product.product_id}</span>
+                <span className="text-gray-900 dark:text-white">PRD-{product.productId}</span>
               </div>
             </div>
           </div>

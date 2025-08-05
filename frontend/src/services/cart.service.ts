@@ -50,7 +50,7 @@ class CartService {
   // Add item to cart
   async addToCart(userId: string, data: AddToCartData): Promise<Cart> {
     const requestData = {
-      product_id: data.productId,
+      productId: data.productId,
       quantity: data.quantity
     };
     const response = await api.post(`/cart/${userId}/items`, requestData);
@@ -83,7 +83,7 @@ class CartService {
     if (!backendCart || !backendCart.items) {
       return {
         id: `cart_${Date.now()}`,
-        userId: backendCart?.user_id || '',
+        userId: backendCart?.userId || '',
         items: [],
         itemCount: 0,
         subtotal: 0,
@@ -97,18 +97,18 @@ class CartService {
 
     const transformedItems: CartItem[] = backendCart.items.map((item: any, index: number) => ({
       id: index + 1,
-      cartId: `cart_${backendCart.user_id}`,
-      productId: item.product_id,
+      cartId: `cart_${backendCart.userId}`,
+      productId: item.productId,
       product: {
-        product_id: item.product_id,
-        product_name: item.product_name || 'Unknown Product',
-        aisle_id: 0,
-        department_id: 0,
-        aisle_name: item.aisle_name || '',
-        department_name: item.department_name || '',
+        productId: item.productId,
+        productName: item.productName || 'Unknown Product',
+        aisleId: 0,
+        departmentId: 0,
+        aisleName: item.aisleName || '',
+        departmentName: item.departmentName || '',
         description: null,
         price: 0,
-        image_url: null
+        imageUrl: null
       },
       quantity: item.quantity,
       price: 0, // Backend doesn't provide price, would need to fetch
@@ -121,8 +121,8 @@ class CartService {
     const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
 
     return {
-      id: `cart_${backendCart.user_id}`,
-      userId: backendCart.user_id,
+      id: `cart_${backendCart.userId}`,
+      userId: backendCart.userId,
       items: transformedItems,
       itemCount: itemCount,
       subtotal: subtotal,

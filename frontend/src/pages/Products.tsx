@@ -361,7 +361,7 @@ const Products: React.FC = () => {
                     )}
 
                     {/* Pagination */}
-                    {data?.has_next == true && (
+                    {data?.hasNext == true && (
                       <div className="mt-12 flex justify-center">
                         <Pagination
                           currentPage={currentPage}
