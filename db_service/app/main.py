@@ -112,6 +112,14 @@ app.include_router(orders_router)
 app.include_router(carts_router)
 # app.include_router(schema_doc_router)
 
+@app.get("/")
+def root():
+    return {
+        "message": "Welcome to the API!",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 async def health():
     """Combined health check for DB service API and database connectivity."""
