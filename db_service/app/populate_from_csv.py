@@ -82,8 +82,7 @@ def load_products(db: Session):
                         batch_products = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
-                        print(
-                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        print(f"   ERROR[load products]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_product in batch_products:
                             try:
@@ -99,6 +98,7 @@ def load_products(db: Session):
             except Exception as row_error:
                 product_errors += 1
                 print(f"   Row {row_num}: Error creating product: {row_error}")
+                print(f"Row data: {row}")
 
         # Commit any remaining products in the final batch
         if batch_products:
@@ -108,7 +108,7 @@ def load_products(db: Session):
                 print(f"   Committed final batch of {len(batch_products)} products")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
-                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                print(f"   ERROR[load products]: Final batch insert failed (will try individually): {batch_err}")
                 success_count_final = 0
                 for single_product in batch_products:
                     try:
@@ -232,7 +232,7 @@ def load_orders(db: Session):
                         batch_orders = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
-                        print(f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        print(f"   ERROR[load orders]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_order in batch_orders:
                             try:
@@ -257,7 +257,7 @@ def load_orders(db: Session):
                 print(f"   Committed final batch of {len(batch_orders)} orders")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
-                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                print(f"   ERROR[load orders]: Final batch insert failed (will try individually): {batch_err}")
                 success_count_final = 0
                 for single_order in batch_orders:
                     try:
@@ -334,7 +334,7 @@ def load_order_items(db: Session):
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
                         print(
-                            f"   ERROR: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                            f"   ERROR[load order items]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_item in batch_items:
                             try:
@@ -357,7 +357,7 @@ def load_order_items(db: Session):
                 print(f"   Committed final batch of {len(batch_items)} order items")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
-                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                print(f"   ERROR[load order items]: Final batch insert failed (will try individually): {batch_err}")
                 success_count_final = 0
                 for single_order_item in batch_items:
                     try:

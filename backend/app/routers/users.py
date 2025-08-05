@@ -157,7 +157,7 @@ class LoginRequest(BaseModel):
     """Login request model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    email_address: EmailStr
+    email_address: EmailStr = Field(..., alias="email")  # Accept both "email" and "email_address"
     password: str
 
 class DeleteUserRequest(BaseModel):
@@ -225,8 +225,8 @@ async def demo_login() -> APIResponse:
             "userId": str(selected_user["user_id"]),
             "firstName": selected_user["first_name"],
             "lastName": selected_user["last_name"],
-            "email": selected_user["email"],
-            "phone": f"+1-555-0{selected_user['user_id']}",
+            "emailAddress": selected_user["email"],
+            "phoneNumber": f"+1-555-0{selected_user['user_id']}",
             "streetAddress": f"{selected_user['user_id']} Demo Street",
             "city": "Demo City",
             "postalCode": str(selected_user['user_id']),

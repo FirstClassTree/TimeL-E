@@ -177,7 +177,10 @@ def populate_order_status_history():
             reader = csv.DictReader(f)
             for row in reader:
                 order_id = int(row['order_id'])
-                status = row['status']
+                status_str = normalize_status(row.get('status', 'pending'))
+                if status_str is None:
+                    continue
+                status = OrderStatus(status_str)
                 changed_at = parse_dt(row['changed_at'])
                 order_histories[order_id].append((changed_at, status))
                 # Track the latest status and timestamp
