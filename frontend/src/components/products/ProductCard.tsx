@@ -19,7 +19,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
   const { user, isAuthenticated } = useAuthStore();
   const { addToCart, isProductInCart, isUpdating } = useCartStore();
   const {userId } = useUser();
-  const isInCart = isProductInCart(product.product_id);
+  const isInCart = isProductInCart(product.productId);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -31,7 +31,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
     }
 
     try {
-      await addToCart(user?.id ?? userId ,product.product_id);
+      await addToCart(user?.userId ?? userId ,product.productId);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     }
@@ -47,13 +47,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
       onMouseLeave={() => setIsHovered(false)}
       className="group relative bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden h-full flex flex-col"
     >
-      <Link to={`/products/${product.product_id}`} className="block">
+      <Link to={`/products/${product.productId}`} className="block">
         {/* Image Container */}
         <div className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
           <ProductImage
-            src={product.image_url}
-            alt={product.product_name}
-            department={product.department_name}
+            src={product.imageUrl}
+            alt={product.productName}
+            department={product.departmentName}
             className="w-full h-full"
           />
 
@@ -65,7 +65,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
             className="absolute top-3 right-3 flex flex-col gap-2"
           >
             <Link
-              to={`/products/${product.product_id}`}
+              to={`/products/${product.productId}`}
               className="p-2 bg-white/80 dark:bg-gray-800/80 rounded-full backdrop-blur-sm text-gray-700 dark:text-gray-300 hover:bg-indigo-500 hover:text-white transition-all"
             >
               <Eye size={18} />
@@ -78,13 +78,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
           {/* Category & Brand */}
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {product.department_name}
+              {product.departmentName}
             </span>
-            {product.aisle_name && (
+            {product.aisleName && (
               <>
                 <span className="text-xs text-gray-400">•</span>
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {product.aisle_name}
+                  {product.aisleName}
                 </span>
               </>
             )}
@@ -92,7 +92,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
 
           {/* Product Name */}
           <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-            {product.product_name}
+            {product.productName}
           </h3>
 
           {/* Product Description */}

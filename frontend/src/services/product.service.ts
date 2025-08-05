@@ -2,14 +2,14 @@ import { api } from '@/services/api.client';
 
 export interface Product {
   productId: number;
-  product_name: string;
-  aisle_id: number;
-  department_id: number;
-  aisle_name: string;
-  department_name: string;
+  productName: string;
+  aisleId: number;
+  departmentId: number;
+  aisleName: string;
+  departmentName: string;
   description: string | null;
   price: number | null;
-  image_url: string | null;
+  imageUrl: string | null;
 }
 
 export interface Department {
@@ -25,9 +25,9 @@ export interface ProductsResponse {
   products: Product[];
   total: number;
   page: number;
-  per_page: number;
-  has_next: boolean;
-  has_prev: boolean;
+  perPage: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface ProductFilters {

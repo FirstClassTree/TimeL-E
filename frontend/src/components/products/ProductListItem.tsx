@@ -19,7 +19,7 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
   const { userId } = useUser();
 
   const addToCartMutation = useMutation(
-    () => addToCart(user?.id ?? userId, product.product_id),
+    () => addToCart(user?.userId ?? userId, product.productId),
     {
       onSuccess: () => {
         toast.success('Added to cart');
@@ -45,14 +45,14 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:shadow-md transition-shadow">
-      <Link to={`/products/${product.product_id}`} className="block">
+      <Link to={`/products/${product.productId}`} className="block">
         <div className="flex p-4">
           {/* Product Image */}
           <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden">
             <ProductImage
-              src={product.image_url}
-              alt={product.product_name}
-              department={product.department_name}
+              src={product.imageUrl}
+              alt={product.productName}
+              department={product.departmentName}
               className="w-full h-full"
             />
           </div>
@@ -62,10 +62,10 @@ const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1">
-                  {product.product_name}
+                  {product.productName}
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  {product.department_name} • {product.aisle_name}
+                  {product.departmentName} • {product.aisleName}
                 </p>
                 {product.description && (
                   <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">

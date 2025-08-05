@@ -65,10 +65,10 @@ class PredictionService {
         // Try to get user ID from auth store
         const authStore = (await import('@/stores/auth.store')).useAuthStore;
         const user = authStore.getState().user;
-        if (!user?.id) {
+        if (!user?.userId) {
           return null;
         }
-        userId = user.id;
+        userId = user.userId;
       }
 
       // Call the actual backend endpoint
@@ -78,23 +78,23 @@ class PredictionService {
       if (response.predictions && response.predictions.length > 0) {
         const mockBasket: PredictedBasket = {
           id: `basket_${userId}_${Date.now()}`,
-          userId: response.user_id,
+          userId: response.userId,
           weekOf: new Date().toISOString(),
           status: 'generated',
           confidenceScore: 0.8,
           items: response.predictions.map((pred: any, index: number) => ({
-            id: `item_${pred.product_id}_${index}`,
+            id: `item_${pred.productId}_${index}`,
             basketId: `basket_${userId}_${Date.now()}`,
-            productId: pred.product_id,
+            productId: pred.productId,
             product: {
-              product_id: pred.product_id,
-              product_name: pred.product_name,
-              aisle_id: 1,
-              department_id: 1,
-              aisle_name: 'Unknown Aisle',
-              department_name: 'Unknown Department',
+              productId: pred.productId,
+              productName: pred.productName,
+              aisleId: 1,
+              departmentId: 1,
+              aisleName: 'Unknown Aisle',
+              departmentName: 'Unknown Department',
               price: Math.random() * 10 + 2, // Mock price
-              image_url: '/storage/image_not_available.png'
+              imageUrl: '/storage/image_not_available.png'
             },
             quantity: 1,
             confidenceScore: pred.score,

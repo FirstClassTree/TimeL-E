@@ -50,7 +50,7 @@ export const useCartStore = create<CartState>()(
 
           const addedItem = cart.items.find(item => item.productId === productId);
           if (addedItem) {
-            toast.success(`${addedItem.product.product_name} added to cart`);
+            toast.success(`${addedItem.product.productName} added to cart`);
           }
         } catch (error: any) {
           set({ isUpdating: false });
@@ -94,7 +94,7 @@ export const useCartStore = create<CartState>()(
           set({ cart: updatedCart });
 
           if (removedItem) {
-            toast.success(`${removedItem.product.product_name} removed from cart`);
+            toast.success(`${removedItem.product.productName} removed from cart`);
           }
         }
 

@@ -11,8 +11,8 @@ import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 interface OrderDetail {
-  order_id: number;
-  order_number: number;
+  orderId: number;
+  orderNumber: number;
   status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
   total: number;
   items: Array<{
@@ -119,7 +119,7 @@ const OrderDetail: React.FC = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Order #{order.order_number}
+              Order #{order.orderNumber}
             </h1>
             <div className="flex items-center gap-4">
               <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
@@ -232,7 +232,7 @@ const OrderDetail: React.FC = () => {
                 </div>
               )}
               
-              {order.order_number && (
+              {order.orderNumber && (
                 <div className="flex items-center gap-3">
                   <Package className="text-gray-400" size={16} />
                   <div>
@@ -240,7 +240,7 @@ const OrderDetail: React.FC = () => {
                       Order Number
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {order.order_number}
+                      {order.orderNumber}
                     </p>
                   </div>
                 </div>
