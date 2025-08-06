@@ -192,11 +192,36 @@ async def predict_next_cart(user_id: int):
         logger.info(f"Generating prediction for user {user_id}")
         
         # Generate features from CSV data (since we trained on CSV data)
-        features_df = app.state.demo_feature_engineer.generate_features_from_csv_data(
-            str(user_id), 
-            app.state.orders_df, 
-            app.state.order_products_prior_df
-        )
+        # Use debug features to match the actual trained models
+        user_orders = app.state.orders_df[app.state.orders_df['user_id'] == user_id].sort_values('order_number')
+        
+        if user_orders.empty:
+            return {
+                "user_id": user_id,
+                "predicted_cart": [],
+                "message": "No order history found for this user",
+                "success": False
+            }
+        
+        # Build order history in the same format
+        order_history = []
+        for _, order in user_orders.iterrows():
+            # Get products for this order
+            order_products = app.state.order_products_prior_df[app.state.order_products_prior_df['order_id'] == order['order_id']]
+            products = order_products['product_id'].tolist()
+            
+            order_data = {
+                'order_id': order['order_id'],
+                'order_number': order['order_number'],
+                'order_dow': order['order_dow'],
+                'order_hour_of_day': order['order_hour_of_day'],
+                'days_since_prior_order': order['days_since_prior_order'] if pd.notna(order['days_since_prior_order']) else 7,
+                'products': products
+            }
+            order_history.append(order_data)
+        
+        # Extract debug features (3 features matching trained models)
+        features_df = app.state.demo_feature_engineer.extract_debug_features(str(user_id), order_history)
         
         if features_df.empty:
             return {

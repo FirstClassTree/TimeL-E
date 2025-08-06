@@ -57,6 +57,7 @@ RUN mkdir -p /app/models /app/training-data /app/logs && \
 
 # Copy application code
 COPY --chown=mluser:mluser src/ ./src/
+COPY --chown=mluser:mluser training/ ./training/
 COPY --chown=mluser:mluser *.py ./
 
 # Set Python path and other environment variables

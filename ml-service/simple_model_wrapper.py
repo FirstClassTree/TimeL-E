@@ -5,6 +5,7 @@ Fixed version with robust fallback predictions for demo users.
 
 import os
 import pickle
+import joblib
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Any, Optional
@@ -50,12 +51,9 @@ class SimpleStackedBasketModel:
                 logger.warning(f"Stage 2 model not found at {stage2_path}")
                 return False
             
-            # Load models
-            with open(stage1_path, 'rb') as f:
-                self.stage1_model = pickle.load(f)
-                
-            with open(stage2_path, 'rb') as f:
-                self.stage2_model = pickle.load(f)
+            # Load models - use joblib since they were saved with joblib
+            self.stage1_model = joblib.load(stage1_path)
+            self.stage2_model = joblib.load(stage2_path)
                 
             self.model_loaded = True
             logger.info(f"✅ Models loaded successfully from {model_path}")
@@ -167,10 +165,11 @@ class SimpleStackedBasketModel:
     
     def predict_with_scores(self, features_df: pd.DataFrame, user_id: Optional[int] = None, top_k: int = 10) -> List[Dict[str, Any]]:
         """
-        Generate predictions with actual probability scores.
+        Generate predictions using the debug models that expect 3 features:
+        - order_count, reorder_sum, reorder_rate
         
         Args:
-            features_df: DataFrame with user features
+            features_df: DataFrame with debug features
             user_id: User ID (for logging purposes)
             top_k: Number of products to recommend
             
@@ -180,60 +179,48 @@ class SimpleStackedBasketModel:
         # If models are loaded, use them for real ML predictions with scores
         if self.model_loaded and self.stage1_model is not None:
             try:
-                logger.info(f"Generating scored predictions for user {user_id}")
+                logger.info(f"Using debug ML models for user {user_id}")
                 
-                # Prepare features for prediction
-                feature_cols = [col for col in features_df.columns 
-                               if col not in ['user_id', 'product_id']]
-                X_features = features_df[feature_cols]
+                # Prepare features for debug model (3 features: order_count, reorder_sum, reorder_rate)
+                debug_feature_cols = ['order_count', 'reorder_sum', 'reorder_rate']
                 
-                # Stage 1: Get probabilities
+                # Check if we have the right features
+                available_cols = [col for col in debug_feature_cols if col in features_df.columns]
+                if len(available_cols) != 3:
+                    logger.warning(f"Expected 3 debug features, found {len(available_cols)}: {available_cols}")
+                    raise ValueError(f"Missing debug features. Expected: {debug_feature_cols}, Found: {available_cols}")
+                
+                X_features = features_df[debug_feature_cols]
+                
+                logger.info(f"Debug model input shape: {X_features.shape}, columns: {list(X_features.columns)}")
+                
+                # Get Stage 1 probabilities using debug model
                 stage1_probs = self.stage1_model.predict_proba(X_features)
                 if stage1_probs.shape[1] > 1:
-                    candidate_scores = stage1_probs[:, 1]
+                    probabilities = stage1_probs[:, 1]  # Positive class probabilities
                 else:
-                    candidate_scores = stage1_probs[:, 0]
+                    probabilities = stage1_probs[:, 0]
                 
-                # Add scores to dataframe
-                features_with_scores = features_df.copy()
-                features_with_scores['stage1_score'] = candidate_scores
+                # Add probabilities to features
+                features_with_probs = features_df.copy()
+                features_with_probs['probability'] = probabilities
                 
-                # Get top candidates
-                top_candidates = features_with_scores.nlargest(min(50, len(features_df)), 'stage1_score')
+                # Sort by probability and get top predictions
+                final_predictions = features_with_probs.nlargest(top_k, 'probability')
                 
-                # Stage 2: Refine scores if available
-                if self.stage2_model is not None and len(top_candidates) > 0:
-                    stage2_features = top_candidates[feature_cols]
-                    
-                    if hasattr(self.stage2_model, 'predict_proba'):
-                        stage2_probs = self.stage2_model.predict_proba(stage2_features)
-                        if stage2_probs.shape[1] > 1:
-                            stage2_scores = stage2_probs[:, 1]
-                        else:
-                            stage2_scores = stage2_probs[:, 0]
-                    else:
-                        stage2_scores = self.stage2_model.predict(stage2_features)
-                    
-                    # Combine scores
-                    top_candidates['final_score'] = (top_candidates['stage1_score'] + stage2_scores) / 2
-                    final_predictions = top_candidates.nlargest(top_k, 'final_score')
-                else:
-                    final_predictions = top_candidates.head(top_k)
-                    final_predictions['final_score'] = final_predictions['stage1_score']
-                
-                # Format results with real scores
+                # Format results with actual ML scores
                 results = []
                 for _, row in final_predictions.iterrows():
                     results.append({
                         "product_id": int(row['product_id']),
-                        "score": float(row['final_score'])
+                        "score": float(row['probability'])  # Real ML probability from debug model
                     })
                 
-                logger.info(f"Generated {len(results)} ML predictions with scores for user {user_id}")
+                logger.info(f"Generated {len(results)} real debug ML predictions for user {user_id}")
                 return results
                 
             except Exception as e:
-                logger.error(f"Scored prediction failed for user {user_id}: {e}", exc_info=True)
+                logger.error(f"Debug ML prediction failed for user {user_id}: {e}", exc_info=True)
         
         # Fallback: Use feature-based scoring
         if not features_df.empty and 'product_id' in features_df.columns:
