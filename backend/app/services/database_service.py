@@ -148,6 +148,64 @@ class DatabaseService:
         
         return await self.query(query)
 
+    async def get_products_count_with_filters(
+        self, 
+        categories: Optional[List[str]] = None,
+        department_id: Optional[int] = None,
+        aisle_id: Optional[int] = None,
+        search_query: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None
+    ) -> Dict[str, Any]:
+        """Get total count of products matching filters"""
+        query = {
+            "sql": """
+                SELECT COUNT(*) as total_count
+                FROM products.products p
+                JOIN products.departments d ON p.department_id = d.department_id
+                JOIN products.aisles a ON p.aisle_id = a.aisle_id
+                LEFT JOIN products.product_enriched pe ON p.product_id = pe.product_id
+                WHERE 1=1
+            """,
+            "params": []
+        }
+        
+        param_count = 1
+        
+        if department_id:
+            query["sql"] += f" AND p.department_id = ${param_count}"
+            query["params"].append(department_id)
+            param_count += 1
+            
+        if aisle_id:
+            query["sql"] += f" AND p.aisle_id = ${param_count}"
+            query["params"].append(aisle_id)
+            param_count += 1
+            
+        if categories:
+            # Filter by department names
+            placeholders = ", ".join([f"${i}" for i in range(param_count, param_count + len(categories))])
+            query["sql"] += f" AND d.department IN ({placeholders})"
+            query["params"].extend(categories)
+            param_count += len(categories)
+            
+        if search_query:
+            query["sql"] += f" AND LOWER(p.product_name) LIKE LOWER(${param_count})"
+            query["params"].append(f"%{search_query}%")
+            param_count += 1
+            
+        if min_price is not None:
+            query["sql"] += f" AND pe.price >= ${param_count}"
+            query["params"].append(min_price)
+            param_count += 1
+            
+        if max_price is not None:
+            query["sql"] += f" AND pe.price <= ${param_count}"
+            query["params"].append(max_price)
+            param_count += 1
+        
+        return await self.query(query)
+
     async def get_product_by_id(self, product_id: int) -> Dict[str, Any]:
         """Get single product by ID with joined data"""
         query = {

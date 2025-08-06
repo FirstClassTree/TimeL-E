@@ -47,8 +47,18 @@ async def get_products(
             for row in products_data
         ]
         
-        # Get total count for pagination (simplified - would need separate count query in production)
-        total_products = len(products_data)  # This is a limitation - we'd need a count query
+        # Get total count of ALL products matching filters (not just returned products)
+        count_result = await db_service.get_products_count_with_filters(
+            categories=categories,
+            min_price=minPrice,
+            max_price=maxPrice
+        )
+        
+        if not count_result.get("success", True):
+            raise HTTPException(status_code=500, detail="Count query failed")
+        
+        count_data = count_result.get("data", [])
+        total_products = count_data[0]["total_count"] if count_data else 0
         
         has_next = len(products) == limit  # Simplified check
         has_prev = offset > 0
@@ -112,10 +122,10 @@ async def search_products(
         
         result = ProductSearchResult(
             products=products,
-            total=len(products),
+            total=len(products),  # Return actual number of results returned, not database total
             page=1,
             per_page=limit,
-            has_next=False,
+            has_next=len(products) == limit,
             has_prev=False
         )
         
