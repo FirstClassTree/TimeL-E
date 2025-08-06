@@ -1,0 +1,75 @@
+# Exclude other services and their dependencies
+backend/
+db_service/
+ml/
+ml-service/
+tests/
+database/
+
+# Exclude large data files
+data/
+*.csv
+
+# Node.js dependencies and build artifacts (will be installed fresh)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+.yarn/
+
+# Build outputs (will be generated during build)
+dist/
+build/
+coverage/
+
+# Environment and secrets
+.env*
+*.pem
+*.key
+*.crt
+
+# Git and version control
+.git/
+.gitignore
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# Logs and temporary files
+*.log
+*.tmp
+*.pid
+*.DS_Store
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Documentation and non-essential files
+README*
+docs/
+*.png
+*.jpg
+*.gif
+*.svg
+layout.txt
+*.puml
+
+# Python files not needed in frontend
+*.py
+*.pyc
+__pycache__/
+requirements.txt
+
+# Development and test files
+.eslintrc*
+.prettierrc*
+jest.config.*
+*.test.*
+*.spec.*

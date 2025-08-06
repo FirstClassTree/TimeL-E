@@ -1,24 +1,14 @@
 # Exclude other services and their dependencies
 frontend/
-backend/
+db_service/
 ml/
 ml-service/
 tests/
 database/
 
-# Exclude large data files (except necessary demo data)
-data/order_products__prior.csv
-data/order_products__train.csv
-data/orders.csv
-data/processed/
-
-# Keep necessary CSV files for database seeding
-!data/aisles.csv
-!data/departments.csv
-!data/products.csv
-!data/users_demo*.csv
-!data/orders_demo*.csv
-!data/order_items_demo.csv
+# Exclude large data files
+data/
+*.csv
 
 # Python cache and build artifacts
 __pycache__/
@@ -45,6 +35,7 @@ env/
 # Git and version control
 .git/
 .gitignore
+*.md
 
 # Editor/IDE files
 .vscode/
@@ -74,15 +65,9 @@ docs/
 layout.txt
 *.puml
 
-# Frontend files not needed in db_service
+# Root level config files not needed in backend
 package*.json
 postcss.config.js
 tailwind.config.js
 tsconfig*.json
 vite.config.ts
-node_modules/
-
-# Development and test files
-*.test.py
-*.spec.py
-test_*/

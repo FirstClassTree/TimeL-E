@@ -38,7 +38,7 @@ docker-compose down
 
 ### Access the API:
 - **API Gateway**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
+- **API Documentation Recommended**: http://localhost:8000/docs
 - **Health Check**: http://localhost:8000/health
 
 

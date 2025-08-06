@@ -1,0 +1,50 @@
+# Build-optimized Docker Compose configuration
+# Use with: docker-compose -f docker-compose.yml -f docker-compose.build-optimized.yml build
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      cache_from:
+        - timele-backend:latest
+        - python:3.11-slim
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: timele-backend:latest
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      cache_from:
+        - timele-frontend:latest
+        - node:20-alpine
+        - nginx:alpine
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: timele-frontend:latest
+
+  db-service:
+    build:
+      context: ./db_service
+      dockerfile: Dockerfile
+      cache_from:
+        - timele-db-service:latest
+        - python:3.11.9-slim
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: timele-db-service:latest
+
+  postgres:
+    # Use official postgres with performance optimizations
+    image: postgres:17-alpine
+    shm_size: 256mb
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c max_connections=200
+      -c shared_buffers=256MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB

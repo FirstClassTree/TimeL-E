@@ -1,50 +1,69 @@
-FROM python:3.11.9-slim
+# Use a pre-built base image with common scientific Python packages
+FROM python:3.11.9-slim as base
 
-WORKDIR /app
+# Set environment variables for optimization
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install build dependencies for pip install (critical for slim)
-RUN apt-get update && apt-get install -y \
+# Install system dependencies in one optimized layer
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libffi-dev \
     libssl-dev \
     libpq-dev \
     build-essential \
-    curl
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
-# RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Create non-root user
+RUN adduser --disabled-password --gecos '' --uid 1000 dbservice
 
+# Dependency installation stage
+FROM base as deps
+
+WORKDIR /app
+
+# Copy and install Python dependencies (this layer will be cached)
 COPY requirements.txt .
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip list
 
-# Install pip requirements
-RUN pip install --no-cache-dir -r requirements.txt
+# Production stage
+FROM base as production
 
-#RUN pip install --upgrade pip setuptools wheel \
-#    && pip install --no-cache-dir -r requirements.txt
+WORKDIR /app
 
-# stable versions
-#RUN pip install --upgrade "pip<25" "setuptools<70" \
-#    && pip install --no-cache-dir -r requirements.txt
+# Copy installed packages from deps stage
+COPY --from=deps /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY --from=deps /usr/local/bin/ /usr/local/bin/
 
-# Remove build dependencies after pip install (keep image smaller)
-RUN apt-get remove -y build-essential gcc \
+# Remove build dependencies to reduce image size
+RUN apt-get update && apt-get remove -y --purge \
+    build-essential \
+    gcc \
+    libffi-dev \
+    libssl-dev \
+    && apt-get autoremove -y \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY app/ ./app/
+# Copy application code with proper ownership
+COPY --chown=dbservice:dbservice app/ ./app/
 
-RUN find /app -name '*.pyc' -delete && find /app -name '__pycache__' -type d -exec rm -rf {} +
-
-# Create a non-root user and set permissions
-RUN adduser --disabled-password --gecos '' dbservice && \
-    chown -R dbservice /app
-
+# Switch to non-root user
 USER dbservice
 
-#Expose default port
+# Expose default port
 EXPOSE 7000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=120s --retries=5 \
     CMD curl -f http://localhost:${DB_SERVICE_PORT}/health || exit 1
 
-#CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7000"]
+# Run application
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${DB_SERVICE_PORT}"]

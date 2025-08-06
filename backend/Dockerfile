@@ -1,28 +1,53 @@
-# backend/Dockerfile
-FROM python:3.11-slim
+# Backend multi-stage build for better performance
+FROM python:3.11-slim as base
 
-# Set working directory
-WORKDIR /app
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Set environment variables for optimization
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY ./app/ ./app/
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Create non-root user
-RUN useradd --create-home --shell /bin/bash appuser
-RUN chown -R appuser:appuser /app
+RUN useradd --create-home --shell /bin/bash --uid 1000 appuser
+
+# Dependency stage
+FROM base as deps
+
+WORKDIR /app
+
+# Copy requirements and install Python dependencies (cached layer)
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip list
+
+# Production stage
+FROM base as production
+
+WORKDIR /app
+
+# Copy installed packages from deps stage
+COPY --from=deps /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
+COPY --from=deps /usr/local/bin/ /usr/local/bin/
+
+# Remove build dependencies
+RUN apt-get update && apt-get remove -y --purge gcc && \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy application code with proper ownership
+COPY --chown=appuser:appuser ./app/ ./app/
+
+# Switch to non-root user
 USER appuser
 
 # Expose port
