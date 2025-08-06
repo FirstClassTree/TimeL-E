@@ -32,6 +32,12 @@ interface User {
   lastName: string;
   emailAddress: string;
   phoneNumber: string;
+  streetAddress: string;
+  city: string;
+  postalCode: string;
+  country: string;
+  demoUser: boolean;
+  mlPredictionsAvailable: boolean;
 }
 
 class AuthService {
@@ -50,7 +56,13 @@ class AuthService {
       firstName: response.firstName,
       lastName: response.lastName,
       emailAddress: response.emailAddress,
-      phoneNumber: response.phoneNumber
+      phoneNumber: response.phoneNumber,
+      streetAddress: response.streetAddress,
+      city: response.city,
+      postalCode: response.postalCode,
+      country: response.country,
+      demoUser: response.demoUser,
+      mlPredictionsAvailable: response.mlPredictionsAvailable
     };
     
     // Create mock tokens since backend doesn't provide them

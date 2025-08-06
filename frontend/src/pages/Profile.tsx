@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   User, Mail, Settings,
-  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone
+  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone, ShieldClose, Bot
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
@@ -443,6 +443,32 @@ const Profile: React.FC = () => {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Account Information */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+              Account Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Account Type</p>
+                <div className="flex items-center gap-2 mt-1">
+                  {user?.demoUser ? (
+                    <>
+                      <Bot size={16} className="text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">Demo User</span>
+                    </>
+                  ) : (
+                    <>
+                      <User size={16} className="text-gray-600 dark:text-gray-400" />
+                      <span className="text-gray-900 dark:text-white">Standard User</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>

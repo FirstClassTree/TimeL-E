@@ -141,6 +141,8 @@ const Products: React.FC = () => {
   }, [priceRangeData, filters.priceRange]);
 
   const products = data?.products || [];
+  const totalProducts = data?.total || 0;
+  const numberOfPages =  Math.ceil(totalProducts / (data?.perPage ?? itemsPerPage));
 
   // Calculate active filter count
   const activeFilterCount =
@@ -364,7 +366,7 @@ const Products: React.FC = () => {
                       <div className="mt-12 flex justify-center">
                         <Pagination
                           currentPage={currentPage}
-                          totalPages={5}
+                          totalPages={numberOfPages}
                           onPageChange={handlePageChange}
                         />
                       </div>
