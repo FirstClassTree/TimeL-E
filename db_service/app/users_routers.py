@@ -170,6 +170,13 @@ class NotificationSettingsData(BaseModel):
     last_notification_sent_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
+    
+    @classmethod
+    def from_user(cls, user: User):
+        """Convert User ORM object to NotificationSettingsData with external UUID4 conversion"""
+        data = cls.model_validate(user)
+        data.user_id = str(user.external_user_id)
+        return data
 
 class CreateUserRequest(BaseModel):
     first_name: str
@@ -229,9 +236,8 @@ def create_user(user_request: CreateUserRequest, session: Session = Depends(get_
         session.commit()
         session.refresh(user)
         
-        # Explicitly convert external_user_id to string
-        user_data = UserData.model_validate(user)
-        user_data.user_id = str(user.external_user_id)
+        # Use the from_user method for consistent conversion
+        user_data = UserData.from_user(user)
         
         return ServiceResponse[UserData](
             success=True,
@@ -412,7 +418,7 @@ def get_user(user_id: str, session: Session = Depends(get_db)) -> ServiceRespons
                 data=[]
             )
         
-        user_data = UserData.model_validate(user)
+        user_data = UserData.from_user(user)
         
         return ServiceResponse[UserData](
             success=True,
@@ -491,7 +497,7 @@ def update_user(user_id: str, payload: UpdateUserRequest, session: Session = Dep
             session.commit()
             session.refresh(user)
             
-            user_data = UserData.model_validate(user)
+            user_data = UserData.from_user(user)
             
             return ServiceResponse[UserData](
                 success=True,
@@ -594,7 +600,7 @@ def get_notification_settings(user_id: str, session: Session = Depends(get_db)) 
                 data=[]
             )
 
-        notification_data = NotificationSettingsData.model_validate(user)
+        notification_data = NotificationSettingsData.from_user(user)
         
         return ServiceResponse[NotificationSettingsData](
             success=True,
@@ -642,7 +648,7 @@ def update_notification_settings(user_id: str, payload: UpdateNotificationSettin
             session.commit()
             session.refresh(user)  # Ensure getting fresh DB values
             
-            notification_data = NotificationSettingsData.model_validate(user)
+            notification_data = NotificationSettingsData.from_user(user)
             
             return ServiceResponse[NotificationSettingsData](
                 success=True,
@@ -698,7 +704,7 @@ def login_user(payload: LoginRequest, session: Session = Depends(get_db)) -> Ser
         session.commit()
         session.refresh(user)
 
-        user_data = UserData.model_validate(user)
+        user_data = UserData.from_user(user)
         user_data.has_active_cart = active_cart is not None
         
         return ServiceResponse[UserData](
@@ -780,4 +786,3 @@ def get_order_status_notifications(
         )
         for change in status_changes]
     )
-

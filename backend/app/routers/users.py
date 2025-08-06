@@ -93,6 +93,7 @@ class UserResponse(BaseModel):
     last_notification_sent_at: Optional[datetime] = None
     last_notifications_viewed_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
+    has_active_cart: Optional[bool] = None
 
 class CreateUserRequest(BaseModel):
     """Create user request model"""
