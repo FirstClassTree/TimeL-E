@@ -36,7 +36,7 @@ async def get_user_predictions(user_id: str) -> APIResponse:
             
             return APIResponse(
                 message=f"Generated {len(predictions)} ML predictions for user {user_id}",
-                data=user_predictions.dict()
+                data=user_predictions.model_dump(by_alias=True)
             )
         
         else:
@@ -47,7 +47,7 @@ async def get_user_predictions(user_id: str) -> APIResponse:
                     user_id=user_id,
                     predictions=[],
                     total=0
-                ).dict()
+                ).model_dump(by_alias=True)
             )
             
     except Exception as e:

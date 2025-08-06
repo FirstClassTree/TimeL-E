@@ -34,7 +34,7 @@ async def get_departments() -> APIResponse:
         return APIResponse(
             message="Departments retrieved successfully",
             data={
-                "departments": [dept.dict() for dept in departments],
+                "departments": [dept.model_dump(by_alias=True) for dept in departments],
                 "total": len(departments)
             }
         )
@@ -75,8 +75,8 @@ async def get_department(department_id: int) -> APIResponse:
         return APIResponse(
             message="Department retrieved successfully",
             data={
-                "department": department.dict(),
-                "product_count": product_count
+                "department": department.model_dump(by_alias=True),
+                "productCount": product_count
             }
         )
     except HTTPException:

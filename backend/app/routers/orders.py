@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any, Optional
 from ..models.base import APIResponse
+from ..models.grocery import OrderResponse, OrderItemResponse
 from ..services.database_service import db_service
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -56,19 +57,57 @@ async def get_user_orders(
         if not orders_data:
             return APIResponse(
                 message=f"No orders found for user {user_id}",
-                data={"orders": [], "total": 0, "has_next": False}
+                data={"orders": [], "total": 0, "hasNext": False}
             )
         
-        # The db_service now returns properly structured data, no grouping needed
+        # Convert raw database data to camelCase using Pydantic models
+        try:
+            orders = []
+            for i, order_data in enumerate(orders_data):
+                print(f"Processing order {i}: {list(order_data.keys())}")  # Debug: show fields
+                
+                # Convert items to OrderItemResponse if they exist
+                items = []
+                if "items" in order_data and order_data["items"]:
+                    for item in order_data["items"]:
+                        try:
+                            items.append(OrderItemResponse(**item))
+                        except Exception as item_e:
+                            print(f"Error converting item: {item_e}, item data: {item}")
+                            # Skip problematic items but continue
+                            continue
+                
+                # Create OrderResponse with converted items
+                order_dict = {**order_data, "items": items}
+                try:
+                    order = OrderResponse(**order_dict)
+                    orders.append(order)
+                except Exception as order_e:
+                    print(f"Error converting order {i}: {order_e}")
+                    print(f"Order data keys: {list(order_data.keys())}")
+                    raise  # Re-raise to trigger fallback
+                    
+            print(f"Successfully converted {len(orders)} orders to Pydantic models")
+        except Exception as e:
+            # If model conversion fails, fall back to raw data but log the error
+            print(f"Error converting orders to models: {e}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            orders_response = orders_data
+        else:
+            # Convert to camelCase using model_dump
+            orders_response = [order.model_dump(by_alias=True) for order in orders]
+            print(f"Successfully dumped {len(orders_response)} orders to camelCase")
+        
         return APIResponse(
             message=f"Found {len(orders_data)} orders for user {user_id}",
             data={
-                "orders": orders_data,
+                "orders": orders_response,
                 "total": len(orders_data),
                 "page": (offset // limit) + 1,
-                "per_page": limit,
-                "has_next": len(orders_data) == limit,
-                "has_prev": offset > 0
+                "perPage": limit,
+                "hasNext": len(orders_data) == limit,
+                "hasPrev": offset > 0
             }
         )
     except HTTPException:
@@ -98,11 +137,27 @@ async def get_order_details(order_id: str) -> APIResponse:
             raise HTTPException(status_code=404, detail=f"Order {order_id} not found")
         
         # The db_service returns a list, get the first item
-        order = order_data[0]
+        raw_order = order_data[0]
+        
+        # Convert raw database data to camelCase using Pydantic models
+        try:
+            # Convert items to OrderItemResponse if they exist
+            items = []
+            if "items" in raw_order and raw_order["items"]:
+                items = [OrderItemResponse(**item) for item in raw_order["items"]]
+            
+            # Create OrderResponse with converted items
+            order_dict = {**raw_order, "items": items}
+            order = OrderResponse(**order_dict)
+            order_response = order.model_dump(by_alias=True)
+        except Exception as e:
+            # If model conversion fails, fall back to raw data but log the error
+            print(f"Error converting order {order_id} to model: {e}")
+            order_response = raw_order
         
         return APIResponse(
             message=f"Order {order_id} details retrieved successfully",
-            data=order
+            data=order_response
         )
         
     except HTTPException:
@@ -143,9 +198,25 @@ async def create_order(order_request: CreateOrderRequest) -> APIResponse:
         
         order_data = create_result.get("data", {})
         
+        # Convert created order data to camelCase using Pydantic models
+        try:
+            # Convert items to OrderItemResponse if they exist
+            items = []
+            if "items" in order_data and order_data["items"]:
+                items = [OrderItemResponse(**item) for item in order_data["items"]]
+            
+            # Create OrderResponse with converted items
+            order_dict = {**order_data, "items": items}
+            order = OrderResponse(**order_dict)
+            order_response = order.model_dump(by_alias=True)
+        except Exception as e:
+            # If model conversion fails, fall back to raw data but log the error
+            print(f"Error converting created order to model: {e}")
+            order_response = order_data
+        
         return APIResponse(
             message="Order created successfully",
-            data=order_data
+            data=order_response
         )
     except HTTPException:
         raise

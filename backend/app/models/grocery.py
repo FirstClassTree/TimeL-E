@@ -22,6 +22,8 @@ class Product(BaseModel):
 
 class Department(BaseModel):
     """Department model matching frontend TypeScript interface"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
     id: str
     name: str
     description: Optional[str] = None
@@ -116,3 +118,42 @@ class UserPredictions(BaseModel):
     user_id: str  # Changed to str to match UUID
     predictions: List[PredictionItem]
     total: int
+
+class OrderItemResponse(BaseModel):
+    """Order item response model for API responses"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    order_id: Optional[str] = None  # Not always provided in item data
+    product_id: int
+    add_to_cart_order: int
+    reordered: int
+    quantity: int
+    product_name: Optional[str] = None
+    aisle_name: Optional[str] = None
+    department_name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
+
+class OrderResponse(BaseModel):
+    """Order response model for API responses - matches actual database structure"""
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
+    
+    order_id: str
+    user_id: str
+    order_number: int
+    total_items: int
+    total_price: Optional[float] = None
+    status: str
+    delivery_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    street_address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    country: Optional[str] = None
+    tracking_number: Optional[str] = None
+    shipping_carrier: Optional[str] = None
+    tracking_url: Optional[str] = None
+    created_at: Optional[str] = None  # Keep as string to match database format
+    updated_at: Optional[str] = None  # Keep as string to match database format
+    items: List[OrderItemResponse] = []

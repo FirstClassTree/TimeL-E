@@ -33,7 +33,7 @@ async def add_cart_item(user_id: str, item: CartItem) -> APIResponse:
             cart.items.append(item)
         
         # Save updated cart
-        result = await db_service.update_entity("carts", user_id, cart.dict())
+        result = await db_service.update_entity("carts", user_id, cart.model_dump(by_alias=True))
         
         return APIResponse(
             message="Item added to cart successfully",
@@ -59,7 +59,7 @@ async def update_user_cart(user_id: str, cart: Cart) -> APIResponse:
     """Update user's entire cart"""
     try:
         cart.user_id = user_id  # Ensure user_id matches
-        result = await db_service.update_entity("carts", user_id, cart.dict())
+        result = await db_service.update_entity("carts", user_id, cart.model_dump(by_alias=True))
         
         return APIResponse(
             message="Cart updated successfully",
@@ -80,7 +80,7 @@ async def remove_cart_item(user_id: str, item_id: str) -> APIResponse:
         cart.items = [item for item in cart.items if item.item_id != item_id]
         
         # Save updated cart
-        result = await db_service.update_entity("carts", user_id, cart.dict())
+        result = await db_service.update_entity("carts", user_id, cart.model_dump(by_alias=True))
         
         return APIResponse(
             message="Item removed from cart successfully",
@@ -104,7 +104,7 @@ async def create_order(order: Order) -> APIResponse:
             order.items = cart.items
         
         # Create order in database
-        result = await db_service.create_entity("orders", order.dict())
+        result = await db_service.create_entity("orders", order.model_dump(by_alias=True))
         
         return APIResponse(
             message="Order created successfully",
@@ -164,7 +164,7 @@ async def get_smart_cart_suggestions(user_id: str, current_cart: Cart) -> APIRes
         # Get ML predictions for this user and cart context
         prediction_data = {
             "user_id": user_id,
-            "current_cart": current_cart.dict(),
+            "current_cart": current_cart.model_dump(by_alias=True),
             "action": "suggest_additions"
         }
         
