@@ -74,13 +74,14 @@ All API responses follow a consistent format:
     "postalCode": "12345",                     // Optional
     "country": "US",                           // Optional
     "daysBetweenOrderNotifications": 7,        // Optional
-    "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",  // Optional
-    "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",  // Optional
-    "pendingOrderNotification": false,         // Optional
+    "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",  // Optional (only if set)
+    "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",  // Optional (only if start time above is set)
+    "pendingOrderNotification": true,          // Optional (only sent when true)
     "orderNotificationsViaEmail": true,        // Optional
     "lastNotificationSentAt": "2025-07-29T10:00:00Z",  // Optional
     "lastNotificationsViewedAt": "2025-08-01T09:15:00Z",  // Optional
-    "lastLogin": "2025-08-01T08:30:00Z"        // Optional
+    "lastLogin": "2025-08-01T08:30:00Z",       // Optional
+    "hasActiveCart": true                      // Optional (only sent after login, if true)
   }
 }
 ```
@@ -159,9 +160,9 @@ All API responses follow a consistent format:
     "postalCode": "12345",                     // Optional
     "country": "US",                           // Optional
     "daysBetweenOrderNotifications": 7,        // Optional
-    "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",  // Optional
-    "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",  // Optional
-    "pendingOrderNotification": false,         // Optional
+    "orderNotificationsStartDateTime": "2025-07-30T10:00:00Z",  // Optional (only if set)
+    "orderNotificationsNextScheduledTime": "2025-08-06T10:00:00Z",  // Optional (only if start time above is set)
+    "pendingOrderNotification": true,          // Optional (only sent when true)
     "orderNotificationsViaEmail": true,        // Optional
     "lastNotificationSentAt": "2025-07-29T10:00:00Z",  // Optional
     "lastNotificationsViewedAt": "2025-08-01T09:15:00Z",  // Optional

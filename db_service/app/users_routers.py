@@ -146,6 +146,11 @@ class UserData(BaseModel):
         """Convert User ORM object to UserData with external UUID4 conversion"""
         data = cls.model_validate(user)
         data.user_id = str(user.external_user_id)
+        
+        # Only include pending_order_notification if it's True
+        if not user.pending_order_notification:
+            data.pending_order_notification = None
+            
         return data
 
 class PasswordUpdateResponse(BaseModel):
@@ -208,11 +213,18 @@ def create_user(user_request: CreateUserRequest, session: Session = Depends(get_
         hashed_pw = hash_password(user_request.password)
         # Let database auto-generate internal ID and external UUID4
 
-        start_time = to_utc(user_request.order_notifications_start_date_time)
+        start_time = None
+        if user_request.order_notifications_start_date_time is not None:
+            start_time = to_utc(user_request.order_notifications_start_date_time)
+        
         interval_days = user_request.days_between_order_notifications or 7
         
-        # Ensure start_time is not None before adding timedelta
-        next_scheduled_time = start_time + timedelta(days=interval_days) if start_time is not None else None
+        # Only calculate next_scheduled_time if start_time is provided
+        next_scheduled_time = None
+        if start_time is not None:
+            next_scheduled_time = start_time + timedelta(days=interval_days)
+        
+        creation_time = datetime.now(UTC)
         
         user = User(
             first_name=user_request.first_name,
@@ -225,12 +237,13 @@ def create_user(user_request: CreateUserRequest, session: Session = Depends(get_
             postal_code=user_request.postal_code,
             country=user_request.country,
             days_between_order_notifications=interval_days,
-            order_notifications_start_date_time=start_time,
-            order_notifications_next_scheduled_time=next_scheduled_time,
+            order_notifications_start_date_time=start_time,  # None if not provided
+            order_notifications_next_scheduled_time=next_scheduled_time,  # None if start_time is None
             order_notifications_via_email=user_request.order_notifications_via_email,
-            pending_order_notification=False,
+            pending_order_notification=False,  # Always False for new users
             last_notification_sent_at=None,
-            last_login=datetime.now(UTC),  # Set initial login time at registration
+            last_notifications_viewed_at=creation_time,  # Set to creation time
+            last_login=creation_time,  # Set initial login time at registration
         )
         session.add(user)
         session.commit()
