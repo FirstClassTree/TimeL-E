@@ -33,13 +33,10 @@ export interface ProductsResponse {
 export interface ProductFilters {
   offset?: number;
   limit?: number;
-  sort?: string;
   search?: string;
   categories?: string[];
   minPrice?: number;
   maxPrice?: number;
-  inStock?: boolean;
-  onSale?: boolean;
 }
 
 class ProductService {
@@ -54,15 +51,12 @@ class ProductService {
     
     if (filters.offset) params.append('offset', filters.offset.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
-    if (filters.sort) params.append('sort', filters.sort);
     if (filters.search) params.append('search', filters.search);
     if (filters.categories?.length) {
       filters.categories.forEach(cat => params.append('categories', cat));
     }
     if (filters.minPrice !== undefined) params.append('minPrice', filters.minPrice.toString());
     if (filters.maxPrice !== undefined) params.append('maxPrice', filters.maxPrice.toString());
-    if (filters.inStock) params.append('inStock', 'true');
-    if (filters.onSale) params.append('onSale', 'true');
 
     return api.get<ProductsResponse>(`/products?${params.toString()}`);
   }
@@ -90,11 +84,6 @@ class ProductService {
   // Search products
   async searchProducts(query: string, filters: ProductFilters = {}): Promise<ProductsResponse> {
     return this.getProducts({ ...filters, search: query });
-  }
-
-  // Get product recommendations
-  async getRecommendations(productId: number, limit: number = 4): Promise<Product[]> {
-    return api.get<Product[]>(`/products/${productId}/recommendations?limit=${limit}`);
   }
 
   // ============================================================================
