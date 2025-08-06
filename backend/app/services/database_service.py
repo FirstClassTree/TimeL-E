@@ -406,6 +406,17 @@ class DatabaseService:
         }
         return await self.query(query)
 
+    async def get_internal_user_id_by_external_uuid(self, external_user_id: str) -> Dict[str, Any]:
+        """Get internal user ID by external UUID for ML service"""
+        query = {
+            "sql": """
+                SELECT id, external_user_id, first_name, last_name
+                FROM users.users WHERE external_user_id = $1
+            """,
+            "params": [external_user_id]
+        }
+        return await self.query(query)
+
     async def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create new user"""
         query = {

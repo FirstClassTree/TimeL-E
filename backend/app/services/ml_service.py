@@ -9,7 +9,7 @@ class MLService:
     def __init__(self):
         self.base_url = settings.ML_SERVICE_URL
     
-    async def predict_for_user(self, user_id: str) -> Dict[str, Any]:
+    async def predict_for_user(self, user_id: int) -> Dict[str, Any]:
         """Get ML predictions for a user - calls clean ML endpoint"""
         async with ServiceClient() as client:
             return await client.request(
