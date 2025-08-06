@@ -90,7 +90,9 @@ class DatabaseService:
         categories: Optional[List[str]] = None,
         department_id: Optional[int] = None,
         aisle_id: Optional[int] = None,
-        search_query: Optional[str] = None
+        search_query: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None
     ) -> Dict[str, Any]:
         """Get products with filtering and pagination"""
         query = {
@@ -129,6 +131,16 @@ class DatabaseService:
         if search_query:
             query["sql"] += f" AND LOWER(p.product_name) LIKE LOWER(${param_count})"
             query["params"].append(f"%{search_query}%")
+            param_count += 1
+            
+        if min_price is not None:
+            query["sql"] += f" AND pe.price >= ${param_count}"
+            query["params"].append(min_price)
+            param_count += 1
+            
+        if max_price is not None:
+            query["sql"] += f" AND pe.price <= ${param_count}"
+            query["params"].append(max_price)
             param_count += 1
         
         query["sql"] += f" ORDER BY p.product_id LIMIT ${param_count} OFFSET ${param_count + 1}"

@@ -11,7 +11,9 @@ router = APIRouter(prefix="/products", tags=["Products"])
 async def get_products(
     limit: int = Query(50, description="Number of products to return", ge=1, le=100),
     offset: int = Query(0, description="Number of products to skip", ge=0),
-    categories: Optional[List[str]] = Query(None, description="Filter by department categories")
+    categories: Optional[List[str]] = Query(None, description="Filter by department categories"),
+    minPrice: Optional[float] = Query(None, description="Minimum price filter", ge=0),
+    maxPrice: Optional[float] = Query(None, description="Maximum price filter", ge=0)
 ) -> APIResponse:
     """Get paginated list of products with optional filtering"""
     try:
@@ -19,7 +21,9 @@ async def get_products(
         db_result = await db_service.get_products_with_filters(
             limit=limit, 
             offset=offset, 
-            categories=categories
+            categories=categories,
+            min_price=minPrice,
+            max_price=maxPrice
         )
         
         if not db_result.get("success", True):
