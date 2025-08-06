@@ -62,7 +62,6 @@ const Products: React.FC = () => {
     () => productService.getProducts({
       offset: itemsPerPage * (currentPage - 1),
       limit: itemsPerPage,
-      sort: sortOption,
       search: searchQuery || undefined, // Don't send empty string
       categories: filters.categories.length > 0 ? filters.categories : undefined,
       minPrice: filters.priceRange[0],

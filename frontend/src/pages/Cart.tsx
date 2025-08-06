@@ -130,8 +130,8 @@ const Cart: React.FC = () => {
                       <div className="flex items-start gap-4">
                         <div className="w-20 h-20 flex-shrink-0">
                           <ProductImage
-                            src={item.product.image_url}
-                            alt={item.product.product_name}
+                            src={item.product.imageUrl}
+                            alt={item.product.productName}
                             className="w-full h-full object-cover rounded-lg"
                           />
                         </div>
@@ -140,10 +140,10 @@ const Cart: React.FC = () => {
                           <div className="flex items-start justify-between">
                             <div>
                               <h3 className="text-base font-medium text-gray-900 dark:text-white truncate">
-                                {item.product.product_name}
+                                {item.product.productName}
                               </h3>
                               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                                {item.product.department_name}
+                                {item.product.departmentName}
                               </p>
                               
                               {item.product.price != null && (
