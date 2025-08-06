@@ -42,31 +42,38 @@ services:
       - timele-network
     restart: unless-stopped
 
-#  ml-service:
-#    build:
-#      context: ./ml-service
-#      dockerfile: Dockerfile
-#    environment:
-#      - DATABASE_URL=${DATABASE_URL}
-#      - PYTHONPATH=/app
-#      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
-#      - MODEL_PATH_BASE=/app/models
-#      - PROCESSED_DATA_PATH=/app/training-data/processed
-#      - RAW_DATA_PATH=/app/training-data
-#    ports:
-#      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
-#    depends_on:
-#      db-service:
-#        condition: service_healthy
-#      postgres:
-#        condition: service_healthy
-#    volumes:
-#      - ./data:/app/training-data
-##      - ../db_service/app/db_core:/app/src/data:ro
-#      - ml_models:/app/models
-#    networks:
-#      - timele-network
-#    restart: unless-stopped
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - PYTHONPATH=/app
+      - ML_SERVICE_PORT=${ML_SERVICE_PORT}
+      - MODEL_PATH_BASE=/app/models
+      - PROCESSED_DATA_PATH=/app/training-data/processed
+      - RAW_DATA_PATH=/app/training-data
+      - DEBUG_MODE=true
+      - NODE_ENV=${NODE_ENV}
+    ports:
+      - "${ML_SERVICE_PORT}:${ML_SERVICE_PORT}"
+    depends_on:
+      db-service:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/training-data
+      - ml_models:/app/models
+    networks:
+      - timele-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${ML_SERVICE_PORT}/health || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 60s
 
   db-service:
     build:
@@ -119,4 +126,3 @@ volumes:
 networks:
   timele-network:
     driver: bridge
-
