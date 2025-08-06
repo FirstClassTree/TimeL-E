@@ -43,16 +43,20 @@ export const useCartStore = create<CartState>()(
       },
 
       addToCart: async (userId: string, productId: number, quantity = 1) => {
+        console.log('CartStore: addToCart called', { userId, productId, quantity });
         set({ isUpdating: true });
         try {
           const cart = await cartService.addToCart(userId, { productId, quantity });
+          console.log('CartStore: addToCart response', cart);
           set({ cart, isUpdating: false });
 
           const addedItem = cart.items.find(item => item.productId === productId);
           if (addedItem) {
+            console.log('CartStore: Item added successfully', addedItem);
             toast.success(`${addedItem.product.productName} added to cart`);
           }
         } catch (error: any) {
+          console.error('CartStore: addToCart failed', error);
           set({ isUpdating: false });
           if (error.response?.status !== 401) {
             toast.error('Failed to add item to cart');
