@@ -1,4 +1,4 @@
-import { dbApi } from '@/services/db.client';
+import { api } from '@/services/api.client';
 import { Product } from '@/services/product.service';
 
 export interface CartItem {
@@ -43,59 +43,46 @@ class CartService {
 
   // Get current cart
   async getCart(userId: string): Promise<Cart> {
-    const response = await dbApi.get(`/cart/${userId}`);
-    // DB Service returns direct response or wrapped response
-    const cartData = response.data || response;
-    return this.transformBackendCart(cartData);
+    const response = await api.get(`/cart/${userId}`);
+    return this.transformBackendCart(response.data);
   }
 
   // Add item to cart
   async addToCart(userId: string, data: AddToCartData): Promise<Cart> {
-    console.log('CartService: addToCart called', { userId, data });
     const requestData = {
       productId: data.productId,
       quantity: data.quantity
     };
-    console.log('CartService: Request data', requestData);
-    const response = await dbApi.post(`/cart/${userId}/items`, requestData);
-    console.log('CartService: API response', response);
-    // DB Service returns direct response or wrapped response
-    const cartData = response.data || response;
-    console.log('CartService: Extracted cart data', cartData);
-    const transformedCart = this.transformBackendCart(cartData);
-    console.log('CartService: Transformed cart', transformedCart);
-    return transformedCart;
+    const response = await api.post(`/cart/${userId}/items`, requestData);
+    // After adding item, fetch updated cart
+    return this.getCart(userId);
   }
 
   // Update cart item
   async updateCartItem(userId: string, itemId: number, data: UpdateCartItemData): Promise<Cart> {
-    const response = await dbApi.put(`/cart/${userId}/items/${itemId}`, data);
-    // DB Service returns direct response or wrapped response
-    const cartData = response.data || response;
-    return this.transformBackendCart(cartData);
+    const response = await api.put(`/cart/${userId}/items/${itemId}`, data);
+    // After updating, fetch updated cart
+    return this.getCart(userId);
   }
 
   // Remove item from cart
   async removeFromCart(userId: string, itemId: number): Promise<Cart> {
-    const response = await dbApi.delete(`/cart/${userId}/items/${itemId}`);
-    // DB Service returns direct response or wrapped response
-    const cartData = response.data || response;
-    return this.transformBackendCart(cartData);
+    const response = await api.delete(`/cart/${userId}/items/${itemId}`);
+    // After removing, fetch updated cart
+    return this.getCart(userId);
   }
 
   // Clear entire cart
   async clearCart(userId: string): Promise<Cart> {
-    const response = await dbApi.delete(`/cart/${userId}/clear`);
-    // DB Service returns direct response or wrapped response
-    const cartData = response.data || response;
-    return this.transformBackendCart(cartData);
+    const response = await api.delete(`/cart/${userId}`);
+    return this.transformBackendCart(response.data);
   }
 
   // Transform backend cart response to frontend format
   private transformBackendCart(backendCart: any): Cart {
     if (!backendCart || !backendCart.items) {
       return {
-        id: backendCart?.cartId || `cart_${Date.now()}`,
+        id: `cart_${Date.now()}`,
         userId: backendCart?.userId || '',
         items: [],
         itemCount: 0,
@@ -110,7 +97,7 @@ class CartService {
 
     const transformedItems: CartItem[] = backendCart.items.map((item: any, index: number) => ({
       id: index + 1,
-      cartId: backendCart.cartId,
+      cartId: `cart_${backendCart.userId}`,
       productId: item.productId,
       product: {
         productId: item.productId,
@@ -119,13 +106,13 @@ class CartService {
         departmentId: 0,
         aisleName: item.aisleName || '',
         departmentName: item.departmentName || '',
-        description: item.description || null,
-        price: item.price || 0,
-        imageUrl: item.imageUrl || null
+        description: null,
+        price: 0,
+        imageUrl: null
       },
       quantity: item.quantity,
-      price: item.price || 0,
-      total: (item.price || 0) * item.quantity,
+      price: 0, // Backend doesn't provide price, would need to fetch
+      total: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }));
@@ -134,7 +121,7 @@ class CartService {
     const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
 
     return {
-      id: backendCart.cartId,
+      id: `cart_${backendCart.userId}`,
       userId: backendCart.userId,
       items: transformedItems,
       itemCount: itemCount,
@@ -153,7 +140,7 @@ class CartService {
 
   // Sync cart with predicted basket
   async syncWithPredictedBasket(userId : string, basketId: string): Promise<Cart> {
-    return dbApi.post<Cart>(`/cart/${userId}/sync-predicted/${basketId}`);
+    return api.post<Cart>(`/cart/${userId}/sync-predicted/${basketId}`);
   }
 
   // Check if product is in cart
@@ -179,7 +166,7 @@ class CartService {
 
   // Supported in ml service? Get recommendations based on cart
   async getCartRecommendations(userId :string, limit: number = 4): Promise<Product[]> {
-    return dbApi.get<Product[]>(`/cart/${userId}/recommendations?limit=${limit}`);
+    return api.get<Product[]>(`/cart/${userId}/recommendations?limit=${limit}`);
   }
 }
 

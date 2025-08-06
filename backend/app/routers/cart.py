@@ -241,13 +241,13 @@ async def delete_user_cart(user_id: str) -> APIResponse:
         print(f"Delete cart failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to delete cart due to server error")
 
-@router.post("/{user_id}/items", response_model=APIResponse)
-async def add_cart_item(user_id: str, item_request: AddCartItemRequest) -> APIResponse:
+@router.post("/{external_user_id}/items", response_model=APIResponse)
+async def add_cart_item(external_user_id: str, item_request: AddCartItemRequest) -> APIResponse:
     """Add an item to user's cart"""
     try:
         # Add item to cart using db_service
-        add_result = await db_service.create_entity(f"carts/{user_id}/items", item_request.model_dump(exclude_unset=True))
-        _handle_db_service_error(add_result, user_id, "add cart item", "Failed to add item to cart")
+        add_result = await db_service.create_entity(f"carts/{external_user_id}/items", item_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(add_result, external_user_id, "add cart item", "Failed to add item to cart")
         
         cart_data = add_result.get("data", [])
         
@@ -259,8 +259,8 @@ async def add_cart_item(user_id: str, item_request: AddCartItemRequest) -> APIRe
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            cart_id=cart["cart_id"],
-            user_id=cart["user_id"],
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -276,13 +276,13 @@ async def add_cart_item(user_id: str, item_request: AddCartItemRequest) -> APIRe
         print(f"Add cart item failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to add item to cart due to server error")
 
-@router.put("/{user_id}/items/{product_id}", response_model=APIResponse)
-async def update_cart_item(user_id: str, product_id: int, update_request: UpdateCartItemRequest) -> APIResponse:
+@router.put("/{external_user_id}/items/{product_id}", response_model=APIResponse)
+async def update_cart_item(external_user_id: str, product_id: int, update_request: UpdateCartItemRequest) -> APIResponse:
     """Update quantity of a specific item in cart"""
     try:
         # Update cart item using db_service
-        update_result = await db_service.update_entity(f"carts/{user_id}/items", str(product_id), update_request.model_dump(exclude_unset=True))
-        _handle_db_service_error(update_result, user_id, "update cart item", "Failed to update cart item")
+        update_result = await db_service.update_entity(f"carts/{external_user_id}/items", str(product_id), update_request.model_dump(exclude_unset=True))
+        _handle_db_service_error(update_result, external_user_id, "update cart item", "Failed to update cart item")
         
         cart_data = update_result.get("data", [])
         
@@ -294,8 +294,8 @@ async def update_cart_item(user_id: str, product_id: int, update_request: Update
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            cart_id=cart["cart_id"],
-            user_id=cart["user_id"],
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -311,13 +311,13 @@ async def update_cart_item(user_id: str, product_id: int, update_request: Update
         print(f"Update cart item failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to update cart item due to server error")
 
-@router.delete("/{user_id}/items/{product_id}", response_model=APIResponse)
-async def remove_cart_item(user_id: str, product_id: int) -> APIResponse:
+@router.delete("/{external_user_id}/items/{product_id}", response_model=APIResponse)
+async def remove_cart_item(external_user_id: str, product_id: int) -> APIResponse:
     """Remove a specific item from cart"""
     try:
         # Remove cart item using db_service
-        delete_result = await db_service.delete_entity(f"carts/{user_id}/items", str(product_id))
-        _handle_db_service_error(delete_result, user_id, "remove cart item", "Failed to remove cart item")
+        delete_result = await db_service.delete_entity(f"carts/{external_user_id}/items", str(product_id))
+        _handle_db_service_error(delete_result, external_user_id, "remove cart item", "Failed to remove cart item")
         
         cart_data = delete_result.get("data", [])
         
@@ -329,8 +329,8 @@ async def remove_cart_item(user_id: str, product_id: int) -> APIResponse:
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            cart_id=cart["cart_id"],
-            user_id=cart["user_id"],
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -346,13 +346,13 @@ async def remove_cart_item(user_id: str, product_id: int) -> APIResponse:
         print(f"Remove cart item failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to remove cart item due to server error")
 
-@router.delete("/{user_id}/clear", response_model=APIResponse)
-async def clear_user_cart(user_id: str) -> APIResponse:
+@router.delete("/{external_user_id}/clear", response_model=APIResponse)
+async def clear_user_cart(external_user_id: str) -> APIResponse:
     """Clear entire cart for a user"""
     try:
         # Clear cart using db_service
-        clear_result = await db_service.delete_entity(f"carts/{user_id}", "clear")
-        _handle_db_service_error(clear_result, user_id, "clear cart", "Failed to clear cart")
+        clear_result = await db_service.delete_entity(f"carts/{external_user_id}", "clear")
+        _handle_db_service_error(clear_result, external_user_id, "clear cart", "Failed to clear cart")
         
         cart_data = clear_result.get("data", [])
         
@@ -363,14 +363,14 @@ async def clear_user_cart(user_id: str) -> APIResponse:
         cart = cart_data[0]
         
         cart_response = CartResponse(
-            cart_id=cart["cart_id"],
-            user_id=cart["user_id"],
+            external_cart_id=cart["external_cart_id"],
+            external_user_id=cart["external_user_id"],
             items=[],
             total_items=0
         )
         
         return APIResponse(
-            message=f"Cart cleared successfully for user {user_id}",
+            message=f"Cart cleared successfully for user {external_user_id}",
             data=cart_response
         )
         
@@ -380,13 +380,13 @@ async def clear_user_cart(user_id: str) -> APIResponse:
         print(f"Clear cart failed with error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to clear cart due to server error")
 
-@router.post("/{user_id}/checkout", response_model=APIResponse)
-async def checkout_cart(user_id: str) -> APIResponse:
+@router.post("/{external_user_id}/checkout", response_model=APIResponse)
+async def checkout_cart(external_user_id: str) -> APIResponse:
     """Convert cart to order (checkout process)"""
     try:
         # Checkout cart using db_service
-        checkout_result = await db_service.create_entity(f"carts/{user_id}/checkout", {})
-        _handle_db_service_error(checkout_result, user_id, "checkout cart", "Failed to checkout cart")
+        checkout_result = await db_service.create_entity(f"carts/{external_user_id}/checkout", {})
+        _handle_db_service_error(checkout_result, external_user_id, "checkout cart", "Failed to checkout cart")
         
         checkout_data = checkout_result.get("data", [])
         
@@ -394,7 +394,7 @@ async def checkout_cart(user_id: str) -> APIResponse:
             raise HTTPException(status_code=500, detail="Checkout returned no data", headers={"X-Handled-Error": "true"})
         
         return APIResponse(
-            message=f"Checkout completed successfully for user {user_id}",
+            message=f"Checkout completed successfully for user {external_user_id}",
             data=checkout_data[0]
         )
         

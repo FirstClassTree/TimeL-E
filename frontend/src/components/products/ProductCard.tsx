@@ -25,15 +25,13 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('ProductCard: handleAddToCart clicked', { userId, productId: product.productId });
-    
     if (!isAuthenticated) {
       toast.error('Please login to add items to cart');
       return;
     }
 
     try {
-      await addToCart(userId, product.productId);
+      await addToCart(user?.userId ?? userId ,product.productId);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     }

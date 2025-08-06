@@ -75,15 +75,9 @@ class UpdateCartRequest(BaseModel):
     """Update entire cart request"""
     items: List[AddCartItemRequest] = []
 
-def verify_user_exists(session: Session, user_id: str) -> User:
+def verify_user_exists(session: Session, external_user_id: str) -> User:
     """Verify user exists and return User object"""
-    try:
-        # Convert string to integer
-        user_id_int = int(user_id)
-    except (ValueError, TypeError):
-        raise HTTPException(status_code=400, detail=f"Invalid user ID format: {user_id}")
-    
-    user = session.query(User).filter(User.id == user_id_int).first()
+    user = session.query(User).filter(User.external_user_id == external_user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail=f"User not found")
     return user
@@ -138,7 +132,7 @@ def build_cart_response(session: Session, cart: Cart) -> CartData:
     
     return CartData(
         cart_id=str(cart.id),
-        user_id=str(cart.user.id),
+        user_id=str(cart.user.external_user_id),
         items=cart_items,
         total_items=len(cart_items),
         created_at=cart.created_at,
