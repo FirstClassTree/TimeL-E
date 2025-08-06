@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
+import { useUser } from '@/components/auth/UserProvider';
 import CartDropdown from '@/components/cart/CartDropdown';
 import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 import MobileMenu from '@/components/navigation/MobileMenu';
@@ -17,7 +18,8 @@ const MainLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
-  const { getItemCount } = useCartStore();
+  const { getItemCount, fetchCart } = useCartStore();
+  const { userId } = useUser();
   
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -28,6 +30,16 @@ const MainLayout: React.FC = () => {
   const [isClient, setIsClient] = useState(false);
 
   const cartItemCount = getItemCount();
+
+  // Initialize cart on component mount
+  useEffect(() => {
+    console.log('MainLayout: Initializing cart for userId:', userId);
+    if (userId) {
+      fetchCart(userId).catch(error => {
+        console.error('Failed to initialize cart:', error);
+      });
+    }
+  }, [userId, fetchCart]);
 
   // Client-side mounting check
   useEffect(() => {

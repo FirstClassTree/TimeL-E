@@ -12,7 +12,7 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
-  const [userId, setUserId] = useState<string>('e8f65487-32a9-5c3d-a0b6-716676e25a53'); // Default value
+  const [userId, setUserId] = useState<string>('1'); // Default to integer user ID
 
   return (
     <UserContext.Provider value={{ userId, setUserId }}>
