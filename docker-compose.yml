@@ -64,7 +64,7 @@ services:
         condition: service_healthy
     volumes:
       - ./data:/app/training-data
-      - ml_models:/app/models
+      - ./ml-service/models:/app/models
     networks:
       - timele-network
     restart: unless-stopped
@@ -121,7 +121,6 @@ services:
 
 volumes:
   postgres_data:
-  ml_models:
 
 networks:
   timele-network:

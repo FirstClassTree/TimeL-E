@@ -206,18 +206,36 @@ async def predict_next_cart(user_id: int):
                 "success": False
             }
         
-        # Generate prediction using our trained models
-        predicted_product_ids = app.state.model.predict(features_df, user_id)
-        
-        # Get product details
-        predicted_products = []
-        for product_id in predicted_product_ids:
-            product_info = app.state.products_df[app.state.products_df['product_id'] == product_id]
-            if not product_info.empty:
-                predicted_products.append({
-                    "product_id": int(product_id),
-                    "product_name": product_info.iloc[0]['product_name']
-                })
+        # Generate prediction with scores using our trained models
+        if hasattr(app.state.model, 'predict_with_scores'):
+            predictions_with_scores = app.state.model.predict_with_scores(features_df, user_id)
+            
+            # Get product details with real scores
+            predicted_products = []
+            for pred in predictions_with_scores:
+                product_id = pred["product_id"]
+                score = pred["score"]
+                product_info = app.state.products_df[app.state.products_df['product_id'] == product_id]
+                if not product_info.empty:
+                    predicted_products.append({
+                        "product_id": int(product_id),
+                        "product_name": product_info.iloc[0]['product_name'],
+                        "score": round(float(score), 3)  # Real ML prediction score
+                    })
+        else:
+            # Fallback to old method without scores
+            predicted_product_ids = app.state.model.predict(features_df, user_id)
+            
+            # Get product details with default scores
+            predicted_products = []
+            for i, product_id in enumerate(predicted_product_ids):
+                product_info = app.state.products_df[app.state.products_df['product_id'] == product_id]
+                if not product_info.empty:
+                    predicted_products.append({
+                        "product_id": int(product_id),
+                        "product_name": product_info.iloc[0]['product_name'],
+                        "score": 0.9 - (i * 0.05)  # Mock decreasing scores
+                    })
         
         return {
             "user_id": user_id,

@@ -68,7 +68,7 @@ class SimpleStackedBasketModel:
     
     def predict(self, features_df: pd.DataFrame, user_id: Optional[int] = None, top_k: int = 10) -> List[int]:
         """
-        Generate basket predictions for a user with robust fallbacks.
+        Generate basket predictions for a user using trained models.
         
         Args:
             features_df: DataFrame with user features
@@ -78,61 +78,79 @@ class SimpleStackedBasketModel:
         Returns:
             List of predicted product IDs
         """
-        # If models are loaded, try to use them
-        if self.model_loaded:
+        # If models are loaded, use them for real ML predictions
+        if self.model_loaded and self.stage1_model is not None:
             try:
-                # Stage 1: Candidate generation (get potential products)
-                if hasattr(self.stage1_model, 'predict_proba'):
-                    stage1_probs = self.stage1_model.predict_proba(features_df)
-                    # Get top candidates from stage 1
-                    if stage1_probs.shape[1] > 1:
-                        candidate_scores = stage1_probs[:, 1]  # Probability of class 1
-                    else:
-                        candidate_scores = stage1_probs[:, 0]
-                else:
-                    candidate_scores = self.stage1_model.predict(features_df)
+                logger.info(f"Using trained ML models for user {user_id}")
                 
-                # Stage 2: Refine predictions using stage 2 model
-                if hasattr(self.stage2_model, 'predict_proba'):
-                    stage2_probs = self.stage2_model.predict_proba(features_df)
-                    if stage2_probs.shape[1] > 1:
-                        final_scores = stage2_probs[:, 1]
-                    else:
-                        final_scores = stage2_probs[:, 0]
-                else:
-                    final_scores = self.stage2_model.predict(features_df)
+                # Prepare features for prediction (exclude non-feature columns)
+                feature_cols = [col for col in features_df.columns 
+                               if col not in ['user_id', 'product_id']]
+                X_features = features_df[feature_cols]
                 
-                # Combine scores (simple average)
-                if len(candidate_scores) == len(final_scores):
-                    combined_scores = (candidate_scores + final_scores) / 2
+                # Stage 1: Candidate generation with LightGBM
+                stage1_probs = self.stage1_model.predict_proba(X_features)
+                if stage1_probs.shape[1] > 1:
+                    candidate_scores = stage1_probs[:, 1]  # Probability of positive class
                 else:
-                    combined_scores = final_scores
+                    candidate_scores = stage1_probs[:, 0]
                 
-                # Convert to product IDs and get top K
-                if len(combined_scores) > 0:
-                    # Get indices of top scores and map to actual product IDs
-                    top_indices = np.argsort(combined_scores)[-top_k:][::-1]
-                    predicted_products = [features_df.iloc[idx]['product_id'] for idx in top_indices if idx < len(features_df)]
-                    logger.info(f"Generated {len(predicted_products)} ML predictions for user {user_id}")
-                    return predicted_products[:top_k]
+                # Add scores to features dataframe
+                features_with_scores = features_df.copy()
+                features_with_scores['stage1_score'] = candidate_scores
+                
+                # Sort by stage1 scores and get top candidates (more than top_k for stage 2)
+                top_candidates = features_with_scores.nlargest(min(50, len(features_df)), 'stage1_score')
+                
+                # Stage 2: Use Gradient Boosting for final selection (if we have stage2 model)
+                if self.stage2_model is not None and len(top_candidates) > 0:
+                    # Create meta-features for stage 2
+                    stage2_features = top_candidates[feature_cols]
                     
+                    if hasattr(self.stage2_model, 'predict_proba'):
+                        stage2_probs = self.stage2_model.predict_proba(stage2_features)
+                        if stage2_probs.shape[1] > 1:
+                            stage2_scores = stage2_probs[:, 1]
+                        else:
+                            stage2_scores = stage2_probs[:, 0]
+                    else:
+                        stage2_scores = self.stage2_model.predict(stage2_features)
+                    
+                    # Combine stage1 and stage2 scores
+                    top_candidates['final_score'] = (top_candidates['stage1_score'] + stage2_scores) / 2
+                    final_predictions = top_candidates.nlargest(top_k, 'final_score')
+                else:
+                    # Use only stage 1 if stage 2 not available
+                    final_predictions = top_candidates.head(top_k)
+                    final_predictions['final_score'] = final_predictions['stage1_score']
+                
+                # Extract product IDs
+                predicted_product_ids = final_predictions['product_id'].tolist()
+                logger.info(f"Generated {len(predicted_product_ids)} real ML predictions for user {user_id}")
+                return predicted_product_ids
+                
             except Exception as e:
-                logger.warning(f"ML model prediction failed for user {user_id}: {e}, falling back to feature-based prediction")
+                logger.error(f"ML model prediction failed for user {user_id}: {e}", exc_info=True)
+                # Fall through to feature-based prediction
         
         # Fallback: Feature-based prediction when models fail or aren't loaded
         if not features_df.empty and 'product_id' in features_df.columns:
             try:
-                # Use user-product features to make smart recommendations
+                logger.info(f"Using feature-based prediction for user {user_id}")
                 feature_scores = features_df.copy()
                 
-                # Calculate a simple recommendation score based on available features
+                # Calculate a recommendation score based on available features
                 if 'up_reorder_ratio' in feature_scores.columns:
                     feature_scores['score'] = feature_scores['up_reorder_ratio']
-                elif 'up_orders' in feature_scores.columns:
-                    feature_scores['score'] = feature_scores['up_orders'] / feature_scores['user_total_orders']
+                elif 'up_orders' in feature_scores.columns and 'user_total_orders' in feature_scores.columns:
+                    feature_scores['score'] = feature_scores['up_orders'] / (feature_scores['user_total_orders'] + 1)
                 else:
-                    # Random scoring as last resort
-                    feature_scores['score'] = np.random.random(len(feature_scores))
+                    # Use product order count if available
+                    if 'prod_order_count' in feature_scores.columns:
+                        feature_scores['score'] = feature_scores['prod_order_count'] / feature_scores['prod_order_count'].max()
+                    else:
+                        # Random scoring as last resort
+                        feature_scores['score'] = np.random.random(len(feature_scores))
                 
                 # Get top products by score
                 top_products = feature_scores.nlargest(top_k, 'score')['product_id'].tolist()
@@ -143,10 +161,123 @@ class SimpleStackedBasketModel:
                 logger.warning(f"Feature-based prediction failed for user {user_id}: {e}")
         
         # Final fallback: Popular products for demo purposes
-        popular_products = [24852, 13176, 21137, 21903, 47209, 27845, 22935, 47766, 17122, 26604]  # Real product IDs from dataset
+        popular_products = [24852, 13176, 21137, 21903, 47209, 27845, 22935, 47766, 17122, 26604]
         logger.info(f"Using popular products fallback for user {user_id}")
         return popular_products[:top_k]
     
+    def predict_with_scores(self, features_df: pd.DataFrame, user_id: Optional[int] = None, top_k: int = 10) -> List[Dict[str, Any]]:
+        """
+        Generate predictions with actual probability scores.
+        
+        Args:
+            features_df: DataFrame with user features
+            user_id: User ID (for logging purposes)
+            top_k: Number of products to recommend
+            
+        Returns:
+            List of dicts with product_id and score
+        """
+        # If models are loaded, use them for real ML predictions with scores
+        if self.model_loaded and self.stage1_model is not None:
+            try:
+                logger.info(f"Generating scored predictions for user {user_id}")
+                
+                # Prepare features for prediction
+                feature_cols = [col for col in features_df.columns 
+                               if col not in ['user_id', 'product_id']]
+                X_features = features_df[feature_cols]
+                
+                # Stage 1: Get probabilities
+                stage1_probs = self.stage1_model.predict_proba(X_features)
+                if stage1_probs.shape[1] > 1:
+                    candidate_scores = stage1_probs[:, 1]
+                else:
+                    candidate_scores = stage1_probs[:, 0]
+                
+                # Add scores to dataframe
+                features_with_scores = features_df.copy()
+                features_with_scores['stage1_score'] = candidate_scores
+                
+                # Get top candidates
+                top_candidates = features_with_scores.nlargest(min(50, len(features_df)), 'stage1_score')
+                
+                # Stage 2: Refine scores if available
+                if self.stage2_model is not None and len(top_candidates) > 0:
+                    stage2_features = top_candidates[feature_cols]
+                    
+                    if hasattr(self.stage2_model, 'predict_proba'):
+                        stage2_probs = self.stage2_model.predict_proba(stage2_features)
+                        if stage2_probs.shape[1] > 1:
+                            stage2_scores = stage2_probs[:, 1]
+                        else:
+                            stage2_scores = stage2_probs[:, 0]
+                    else:
+                        stage2_scores = self.stage2_model.predict(stage2_features)
+                    
+                    # Combine scores
+                    top_candidates['final_score'] = (top_candidates['stage1_score'] + stage2_scores) / 2
+                    final_predictions = top_candidates.nlargest(top_k, 'final_score')
+                else:
+                    final_predictions = top_candidates.head(top_k)
+                    final_predictions['final_score'] = final_predictions['stage1_score']
+                
+                # Format results with real scores
+                results = []
+                for _, row in final_predictions.iterrows():
+                    results.append({
+                        "product_id": int(row['product_id']),
+                        "score": float(row['final_score'])
+                    })
+                
+                logger.info(f"Generated {len(results)} ML predictions with scores for user {user_id}")
+                return results
+                
+            except Exception as e:
+                logger.error(f"Scored prediction failed for user {user_id}: {e}", exc_info=True)
+        
+        # Fallback: Use feature-based scoring
+        if not features_df.empty and 'product_id' in features_df.columns:
+            try:
+                feature_scores = features_df.copy()
+                
+                if 'up_reorder_ratio' in feature_scores.columns:
+                    feature_scores['score'] = feature_scores['up_reorder_ratio']
+                elif 'up_orders' in feature_scores.columns and 'user_total_orders' in feature_scores.columns:
+                    feature_scores['score'] = feature_scores['up_orders'] / (feature_scores['user_total_orders'] + 1)
+                else:
+                    if 'prod_order_count' in feature_scores.columns:
+                        max_count = feature_scores['prod_order_count'].max()
+                        feature_scores['score'] = feature_scores['prod_order_count'] / max(max_count, 1)
+                    else:
+                        feature_scores['score'] = np.random.uniform(0.3, 0.9, len(feature_scores))
+                
+                # Get top products with scores
+                top_products = feature_scores.nlargest(top_k, 'score')
+                results = []
+                for _, row in top_products.iterrows():
+                    results.append({
+                        "product_id": int(row['product_id']),
+                        "score": float(row['score'])
+                    })
+                
+                logger.info(f"Generated {len(results)} feature-based predictions with scores for user {user_id}")
+                return results
+                
+            except Exception as e:
+                logger.warning(f"Feature-based scoring failed for user {user_id}: {e}")
+        
+        # Final fallback with mock scores
+        popular_products = [24852, 13176, 21137, 21903, 47209, 27845, 22935, 47766, 17122, 26604]
+        results = []
+        for i, product_id in enumerate(popular_products[:top_k]):
+            results.append({
+                "product_id": product_id,
+                "score": 0.9 - (i * 0.05)  # Decreasing scores from 0.9 to 0.45
+            })
+        
+        logger.info(f"Using fallback predictions with mock scores for user {user_id}")
+        return results
+
     def predict_simple(self, user_features: Dict[str, Any], top_k: int = 10) -> List[Dict[str, Any]]:
         """
         Simple prediction interface that takes user features as a dictionary.
@@ -162,17 +293,12 @@ class SimpleStackedBasketModel:
             # Convert dict to DataFrame
             features_df = pd.DataFrame([user_features])
             
-            # Get predictions
-            product_ids = self.predict(features_df, top_k=top_k)
+            # Get predictions with real scores
+            predictions = self.predict_with_scores(features_df, top_k=top_k)
             
-            # Format as list of dicts
-            predictions = []
-            for i, product_id in enumerate(product_ids):
-                predictions.append({
-                    "product_id": product_id,
-                    "rank": i + 1,
-                    "score": 1.0 - (i * 0.1)  # Mock decreasing scores
-                })
+            # Add rank information
+            for i, pred in enumerate(predictions):
+                pred["rank"] = i + 1
             
             return predictions
             

@@ -38,12 +38,12 @@ async def get_user_predictions(user_id: UUID) -> APIResponse:
         if ml_result.get("success") and "predicted_cart" in ml_result:
             predicted_cart = ml_result["predicted_cart"]
             
-            # Convert to our response format
+            # Convert to our response format with real scores from ML service
             predictions: List[PredictionItem] = [
                 PredictionItem(
                     product_id=item["product_id"],
                     product_name=item["product_name"],
-                    score=0.8  # Default confidence score
+                    score=item.get("score", 0.5)  # Use real ML score or fallback to 0.5
                 )
                 for item in predicted_cart
             ]
