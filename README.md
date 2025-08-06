@@ -14,7 +14,7 @@ docker-compose down
 
 ## 👥 Team Members
 
-- **Tal Weiss** – Backend Engineer  
+- **Tal Weiss** – Backend Engineer & ML Engineer
 - **Inbar Reshilovsky** – Frontend Engineer  
 - **Anna Petrenko** – Data Systems Engineer  
 
