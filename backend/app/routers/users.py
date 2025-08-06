@@ -100,9 +100,9 @@ class CreateUserRequest(BaseModel):
     
     first_name: str
     last_name: str
-    email_address: EmailStr = Field(..., alias="email")  # Accept both "email" and "email_address"
+    email_address: EmailStr  # Accept only "email_address"
     password: str
-    phone_number: Optional[str] = Field(None, alias="phone")
+    phone_number: Optional[str]
     street_address: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
@@ -119,8 +119,8 @@ class UpdateUserRequest(BaseModel):
     
     first_name: Optional[str] = None
     last_name: Optional[str] = None
-    email_address: Optional[EmailStr] = Field(None, alias="email")
-    phone_number: Optional[str] = Field(None, alias="phone")
+    email_address: Optional[EmailStr]
+    phone_number: Optional[str]
     street_address: Optional[str] = None
     city: Optional[str] = None
     postal_code: Optional[str] = None
@@ -157,7 +157,7 @@ class LoginRequest(BaseModel):
     """Login request model"""
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
     
-    email_address: EmailStr = Field(..., alias="email")  # Accept both "email" and "email_address"
+    email_address: EmailStr  # Accept only "email_address"
     password: str
 
 class DeleteUserRequest(BaseModel):
