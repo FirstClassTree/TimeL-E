@@ -11,7 +11,6 @@ import AuthLayout from '@/layouts/AuthLayout';
 
 // Auth components
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { UserProvider } from '@/components/auth/UserProvider';
 
 // Loading component
 import LoadingSpinner from '@/components/common/LoadingSpinner';
@@ -48,7 +47,6 @@ const queryClient = new QueryClient({
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <UserProvider>
         <Router>
           <div className="App">
           <AnimatePresence mode="wait">
@@ -159,7 +157,6 @@ const App: React.FC = () => {
           )}
         </div>
         </Router>
-      </UserProvider>
     </QueryClientProvider>
   );
 };

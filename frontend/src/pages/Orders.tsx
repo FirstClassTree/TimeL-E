@@ -9,7 +9,7 @@ import {
 import {orderService} from '@/services/order.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
-import { useUser } from '@/components/auth/UserProvider'
+import { useAuthStore } from '@/stores/auth.store';
 
 interface Order {
   orderId: number;
@@ -29,14 +29,14 @@ interface Order {
 }
 
 const Orders: React.FC = () => {
+    const { user } = useAuthStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'>('all');
-  const { userId } = useUser();
   const { data: orders, isLoading, error, refetch } = useQuery<Order[]>(
-    ['orders', userId],
-      async () => (await orderService.getOrders(userId)).orders,
+    ['orders', user?.id],
+      async () => (await orderService.getOrders(user?.id)).orders,
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      enabled: !!userId, // Only run query when userId is available
+      enabled: !!user.id, // Only run query when userId is available
     }
   );
 

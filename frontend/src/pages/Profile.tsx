@@ -4,13 +4,12 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   User, Mail, Settings,
-  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone, ShieldClose, Bot
+  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone, Bot
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 
 interface ProfileFormData {
   userId: string;
@@ -28,7 +27,6 @@ interface PasswordFormData {
 
 const Profile: React.FC = () => {
   const { user, updateUser } = useAuthStore();
-  const { userId } = useUser();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -37,7 +35,7 @@ const Profile: React.FC = () => {
 
   // Create a mock user if none exists
   const currentUser = user || {
-    userId: userId,
+    userId: '688',
     firstName: 'Demo',
     lastName: 'User',
     emailAddress: 'demo@example.com',
@@ -101,7 +99,7 @@ const Profile: React.FC = () => {
   });
 
   const onSubmitProfile = (data: ProfileFormData) => {
-    let id = user?.userId || userId;
+    let id = user?.userId;
     updateProfileMutation.mutate({id, data});
   };
 
@@ -110,7 +108,7 @@ const Profile: React.FC = () => {
       toast.error('New passwords do not match');
       return;
     }
-    let id = user?.userId || userId;
+    let id = user?.userId;
     changePasswordMutation.mutate({
       id : id,
       passwordData:  {

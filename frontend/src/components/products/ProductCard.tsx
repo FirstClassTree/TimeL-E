@@ -7,7 +7,6 @@ import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
 import ProductImage from '@/components/products/ProductImage';
 import toast from 'react-hot-toast';
-import {useUser} from "@/components/auth/UserProvider.tsx";
 
 interface ProductCardProps {
   product: Product;
@@ -18,7 +17,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
   const [isHovered, setIsHovered] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
   const { addToCart, isProductInCart, isUpdating } = useCartStore();
-  const {userId } = useUser();
   const isInCart = isProductInCart(product.productId);
 
   const handleAddToCart = async (e: React.MouseEvent) => {
@@ -31,7 +29,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
     }
 
     try {
-      await addToCart(user?.userId ?? userId ,product.productId);
+      await addToCart(user?.userId, product.productId);
     } catch (error) {
       console.error('Failed to add to cart:', error);
     }

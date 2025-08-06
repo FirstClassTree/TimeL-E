@@ -11,13 +11,13 @@ import { useCartStore } from '@/stores/cart.store';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import ProductImage from '@/components/products/ProductImage';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider'
+import { useAuthStore } from '@/stores/auth.store';
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addToCart } = useCartStore();
-  const {userId} = useUser();
+  const { user } = useAuthStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
@@ -32,7 +32,7 @@ const ProductDetail: React.FC = () => {
   const handleAddToCart = () => {
     if (!product) return;
     
-    addToCart(userId,
+    addToCart(user?.id,
         product.productId,
       quantity
     );

@@ -8,9 +8,9 @@ interface LoginCredentials {
 interface RegisterData {
   firstName: string;
   lastName: string;
-  emailAddress: string;
+  email: string;
   password: string;
-  phoneNumber?: string;
+  phone?: string;
   streetAddress?: string;
   city?: string;
   postalCode?: string;
@@ -48,7 +48,7 @@ class AuthService {
   // Login - Adapted for demo backend
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     // Call the demo login endpoint (GET request, ignores credentials)
-    const response = await api.get('/users/login');
+    const response = await api.post('/users/login', credentials);
     
     // Transform backend format to frontend expected format
     const user = {
@@ -61,8 +61,9 @@ class AuthService {
       city: response.city,
       postalCode: response.postalCode,
       country: response.country,
-      demoUser: response.demoUser,
-      mlPredictionsAvailable: response.mlPredictionsAvailable
+      daysBetweenOrderNotifications: response.daysBetweenOrderNotifications,
+      orderNotificationsViaEmail: response.mlPredictionsAvailable,
+      orderNotificationsStartDateTime: response.orderNotificationsStartDateTime
     };
     
     // Create mock tokens since backend doesn't provide them

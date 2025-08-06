@@ -11,7 +11,6 @@ import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 
 const Cart: React.FC = () => {
   const navigate = useNavigate();
@@ -26,18 +25,17 @@ const Cart: React.FC = () => {
     clearCart,
     getSubtotal
   } = useCartStore();
-  const { userId } = useUser();
 
   useEffect(() => {
-    fetchCart(user?.userId ?? userId);
+    fetchCart(user?.userId);
   }, []);
 
   const handleQuantityChange = async (itemId: number, currentQuantity: number, delta: number) => {
     const newQuantity = currentQuantity + delta;
     if (newQuantity < 1) {
-      await removeItem(user?.userId ?? userId, itemId);
+      await removeItem(user?.userId, itemId);
     } else {
-      await updateQuantity(user?.userId ?? userId, itemId, newQuantity);
+      await updateQuantity(user?.userId, itemId, newQuantity);
     }
   };
 
@@ -52,7 +50,7 @@ const Cart: React.FC = () => {
   const handleClearCart = async () => {
     if (window.confirm('Are you sure you want to clear your cart?')) {
       try {
-        await clearCart(user?.userId ?? userId);
+        await clearCart(user?.userId);
       } catch (error) {
         console.error('Failed to clear cart:', error);
       }
@@ -159,7 +157,7 @@ const Cart: React.FC = () => {
                             </div>
                             
                             <button
-                              onClick={() => removeItem(user?.userId ?? userId, item.id)}
+                              onClick={() => removeItem(user?.userId, item.id)}
                               disabled={isUpdating}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 disabled:opacity-50"
                             >

@@ -12,22 +12,22 @@ import ConfidenceIndicator from '@/components/predictions/ConfidenceIndicator';
 import PredictionExplanation from '@/components/predictions/PredictionExplanation';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import {useUser} from "@/components/auth/UserProvider.tsx";
+import { useAuthStore } from '@/stores/auth.store';
 
 const PredictedBasket: React.FC = () => {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showExplanations, setShowExplanations] = useState(false);
-  const { userId } = useUser();
 
   // Fetch current predicted basket
   const { data: basket, isLoading, error, refetch } = useQuery(
-    ['predicted-basket', userId],
-    () => predictionService.getCurrentPredictedBasket(userId),
+    ['predicted-basket', user?.id],
+    () => predictionService.getCurrentPredictedBasket(user.id),
     {
       staleTime: 5 * 60 * 1000,
       retry: 1,
-      enabled: !!userId
+      enabled: !!user.id
     }
   );
 
@@ -42,10 +42,10 @@ const PredictedBasket: React.FC = () => {
 
   // Generate new prediction mutation
   const generateMutation = useMutation(
-    () => predictionService.getCurrentPredictedBasket(userId),
+    () => predictionService.getCurrentPredictedBasket(user.id),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['predicted-basket', userId]);
+        queryClient.invalidateQueries(['predicted-basket', user.id]);
         toast.success('New predictions generated!');
       },
       onError: () => {

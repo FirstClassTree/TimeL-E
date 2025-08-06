@@ -6,7 +6,6 @@ import { useCartStore } from '@/stores/cart.store';
 import { useAuthStore } from '@/stores/auth.store';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 import ProductImage from '@/components/products/ProductImage';
 
 interface ProductListItemProps {
@@ -16,10 +15,9 @@ interface ProductListItemProps {
 const ProductListItem: React.FC<ProductListItemProps> = ({ product }) => {
   const { addToCart } = useCartStore();
   const { user, isAuthenticated } = useAuthStore();
-  const { userId } = useUser();
 
   const addToCartMutation = useMutation(
-    () => addToCart(user?.userId ?? userId, product.productId),
+    () => addToCart(user?.userId, product.productId),
     {
       onSuccess: () => {
         toast.success('Added to cart');

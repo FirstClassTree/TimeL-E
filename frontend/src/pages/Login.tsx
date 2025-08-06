@@ -6,7 +6,6 @@ import {Mail, Lock, Eye, EyeOff, ShoppingCart, Loader2, User} from 'lucide-react
 import { useAuthStore } from '@/stores/auth.store';
 import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 
 interface LoginFormData {
   email: string;
@@ -18,6 +17,8 @@ interface QuickLoginUser {
   userId: string;
   name: string;
   email: string;
+  phone: string;
+  password: string,
   avatar: string;
 }
 
@@ -26,18 +27,24 @@ const quickLoginUsers: QuickLoginUser[] = [
       userId: "2d8c1a3a-06d5-5f98-84ad-365c7b015ac1",
       name: "John",
       email: "user39993@timele-demo.com",
+      password: "password",
+      phone: "+1-555-39993",
       avatar: "👨‍💼"
     },
     {
       userId: "8450d218-5822-55af-8818-961027c51a6e",
       name: "Sarah",
       email: "user688@timele-demo.com",
+      password: "password",
+      phone: "+1-555-688",
       avatar: "👩‍💻"
     },
     {
       userId: "e8f65487-32a9-5c3d-a0b6-716676e25a53",
       name: "Mike",
       email: "user82420@timele-demo.com",
+      password: "password",
+      phone: "+1-555-82420",
       avatar: "👨‍🎨"
     }
   ];
@@ -48,7 +55,6 @@ const Login: React.FC = () => {
   const { user, login, isLoading } = useAuthStore();
   const { fetchCart } = useCartStore();
   const [showPassword, setShowPassword] = useState(false)
-  const { userId, setUserId } = useUser();
 
   const from = (location.state as any)?.from?.pathname || '/';
 
@@ -88,9 +94,8 @@ const Login: React.FC = () => {
 
   const handleQuickLogin = async (quickUser: QuickLoginUser) => {
     try {
-      setUserId(quickUser.userId);
       // Use the demo login which will return a random user
-      await login('demo@timele.com', 'password');
+      await login(quickUser.email, quickUser.password);
       
       // Fetch cart after successful login
       const loggedInUser = useAuthStore.getState().user;

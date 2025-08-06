@@ -11,7 +11,6 @@ import { orderService } from '@/services/order.service';
 import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { useUser } from '@/components/auth/UserProvider';
 import { userService } from '@/services/user.service.ts'
 
 interface CheckoutFormData {
@@ -33,7 +32,6 @@ interface CheckoutFormData {
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { userId, setUserId} = useUser();
   const { cart, getSubtotal, clearCart } = useCartStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -52,11 +50,17 @@ const Checkout: React.FC = () => {
         if (user) {
       setValue('name', user.name || '');
       setValue('email', user.email || '');
-      setUserId(user.id);
       } else {
-      const currentUser = await userService.getProfile(userId);
-      setValue('name', currentUser.name);
-      setValue('email', currentUser.email);
+      const currentUser = await userService.getProfile(user.id);
+      setValue('firstName', currentUser.firstName);
+      setValue('lstName', currentUser.lastName);
+      setValue('emailAddress', currentUser.emailAddress);
+      setValue('phoneNumber', currentUser.phoneNumber);
+      setValue('city', currentUser.city);
+      setValue('country', currentUser.country);
+      setValue('lastLogin', currentUser.lastLogin);
+      setValue('postalCode', currentUser.postalCode);
+      setValue('streetAddress', currentUser.streetAddress);
       }
     };
   fetchUser();
@@ -101,10 +105,10 @@ const Checkout: React.FC = () => {
       const order = await orderService.createOrder(orderData);
       
       // Clear cart after successful order
-      await clearCart(userId);
+      await clearCart(user.id);
       
       toast.success('Order placed successfully! 🎉');
-      navigate(`/orders/${order.id}`);
+      navigate(`/orders/${order.orderId}`);
       
     } catch (error) {
       console.error('Checkout error:', error);
@@ -453,7 +457,7 @@ const Checkout: React.FC = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {item.product.product_name}
+                        {item.product.productName}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         Qty: {item.quantity}

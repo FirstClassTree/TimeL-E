@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ShoppingCart, Trash2, Plus, Minus, X } from 'lucide-react';
 import { useCartStore } from '@/stores/cart.store';
-import { useUser } from '@/components/auth/UserProvider';
+import { useAuthStore } from '@/stores/auth.store';
 
 interface CartDropdownProps {
   onClose: () => void;
@@ -11,13 +11,13 @@ interface CartDropdownProps {
 
 const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
   const { cart, updateQuantity, removeItem, getSubtotal, getItemCount } = useCartStore();
-  const { userId } = useUser();
+    const { user } = useAuthStore();
 
   const handleQuantityChange = (id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(userId, id);
+      removeItem(user.id, id);
     } else {
-      updateQuantity(userId, id, newQuantity);
+      updateQuantity(user.id, id, newQuantity);
     }
   };
 
@@ -118,7 +118,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
 
                   {/* Remove Button */}
                   <button
-                    onClick={() => removeItem(userId, item.id)}
+                    onClick={() => removeItem(user.id, item.id)}
                     className="p-1 text-gray-400 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={16} />
