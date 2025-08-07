@@ -14,16 +14,14 @@ export interface CartItem {
 }
 
 export interface Cart {
-  id: string;
+  cartId: string;
   userId: string;
   items: CartItem[];
-  itemCount: number;
-  subtotal: number;
-  estimatedTax: number;
-  estimatedTotal: number;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  totalItems: number;
+  subtotal?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AddToCartData {
@@ -102,8 +100,8 @@ class CartService {
       product: {
         productId: item.productId,
         productName: item.productName || 'Unknown Product',
-        aisleId: 0,
-        departmentId: 0,
+        addToCartOrder: 1,
+        reordered: 0,
         aisleName: item.aisleName || '',
         departmentName: item.departmentName || '',
         description: null,
