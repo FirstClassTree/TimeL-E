@@ -5,7 +5,7 @@ import {Clock, ShoppingCart, Sparkles} from 'lucide-react';
 
 const Hero: React.FC = () => {
   return (
-    <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-100 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-blue-50 via-white to-blue-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden">
       <div className="absolute inset-0 bg-grid-pattern opacity-5" />
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
@@ -19,20 +19,20 @@ const Hero: React.FC = () => {
           >
             <div className="flex items-center justify-center lg:justify-start mb-6">
               <Sparkles className="h-8 w-8 text-blue-600 mr-3" />
-              <span className="text-sm font-medium text-blue-600 bg-blue-100 px-3 py-1 rounded-full">
+              <span className="text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded-full">
                 AI-Powered Shopping
               </span>
             </div>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6">
               <div>Shop smarter</div>
-              <div className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">
+              <div className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600">
                 {" "}Shop faster
               </div>
               <div>With TimeL-E</div>
             </h1>
             
-            <p className="text-xl text-gray-600 mb-8 max-w-2xl">
+            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl">
               Let AI learn your shopping patterns and automatically create your weekly grocery list. 
               Save time, and never forget essentials again.
             </p>
@@ -48,7 +48,7 @@ const Hero: React.FC = () => {
               
               <Link
                 to="/predicted-basket"
-                className="inline-flex items-center px-8 py-4 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:border-gray-400 transition-colors"
+                className="inline-flex items-center px-8 py-4 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold rounded-lg hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
               >
                 View Predictions
               </Link>
@@ -72,13 +72,13 @@ const Hero: React.FC = () => {
           >
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400 blue-600 rounded-3xl transform rotate-6 opacity-10" />
-              <div className="relative bg-white rounded-3xl shadow-2xl p-8">
+              <div className="relative bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8">
                 <div className="text-center">
                   <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-blue-800 rounded-full mx-auto mb-6 flex items-center justify-center">
                     <ShoppingCart className="h-12 w-12 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-4">Smart Predictions</h3>
-                  <p className="text-gray-600">AI analyzes your shopping history to predict your next basket</p>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Smart Predictions</h3>
+                  <p className="text-gray-600 dark:text-gray-300">AI analyzes your shopping history to predict your next basket</p>
                 </div>
               </div>
             </div>
