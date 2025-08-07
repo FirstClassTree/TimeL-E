@@ -1,0 +1,22 @@
+department_id,department,description,image_url
+1,frozen,"Frozen foods including ready meals, vegetables, desserts, and more.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_FrozenFood-e56dc81ed02cdd4e0004b6d78c11ae7da8cd69ec273521802a0a82b6b3847f20.png"
+2,other,Miscellaneous grocery items that don’t fit standard categories.,https://i.postimg.cc/6QJTnPdr/other.png
+3,bakery,"Fresh breads, rolls, pastries, cakes, and baked goods.","https://www.instacart.com/image-server/300x300/filters:fill(white,true):format(webp)/www.instacart.com/assets/taxonomy/L2_BakedGoods-22d4ff89748a5942b62c31b853bdfbf9d142aafc31ba9499eb4257c895a9ced1.png"
+4,produce,"Fresh fruits, vegetables, and herbs.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_FreshProduce-7a2c1fe4731d0b5a9e17fcf7fe75ceddda0c89bb88aa0e1a6aa7f6f58a0e80e6.png"
+5,alcohol,"Beer, wine, spirits, and other alcoholic beverages.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L1_Alcohol-f530fd6e9ce22f68ae696a53e0ced18544346ebd6cc85459ad66694608a934b0.png"
+6,international,Foods and ingredients from global cuisines.,https://i.postimg.cc/0y58pq31/international.jpg
+7,beverages,"Juices, sodas, water, tea, coffee, and other drinks.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L1_Beverages-e2247178c5d866567f2c82d55537a8336482f65cae379d311235e9e92730118d.png"
+8,pets,"Food and supplies for dogs, cats, and other pets.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L1_PetCare2-8e62d9b9bc5f7b9331fcbcba014a650585ca6e8cd3e6726ca01d3fc3d8195204.png"
+9,dry goods pasta,"Shelf-stable foods like pasta, rice, beans, and grains","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_Pantry-40aa7656dd1e3f5be161e0641c9b3f1f367ff06d68015815e902b6a6fe39008b.png"
+10,bulk,"Bulk foods such as grains, nuts, seeds, and snacks sold by weight.",https://i.postimg.cc/NfwSH7n3/bulk.jpg
+11,personal care,"Health, hygiene, and beauty products.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L1_PersonalCare-1730c9360fa9c4f6b159026029b2c1d4f8d3e790f71e52d89a909d9661b84550.png"
+12,meat seafood,"Fresh and packaged meat, poultry, and seafood.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_Seafood-5fa1bb0e7e8e2e98cea37bbe750b7f8dd7bcb276539250fbc84d8725f76693b7.png"
+13,pantry,"Staples like flour, sugar, oils, spices, and condiments.",https://i.postimg.cc/260RwqBQ/pantry.jpg
+14,breakfast,"Cereals, oatmeal, granola, and breakfast foods.",https://i.postimg.cc/GtPDVCdx/breakfast.jpg
+15,canned goods,"Canned vegetables, fruits, soups, and ready meals",https://i.postimg.cc/zX13M6LV/canned-goods.jpg
+16,dairy eggs,"Milk, cheese, yogurt, butter, and eggs.",https://i.postimg.cc/qRL2qr6D/dairy-eggs.jpg
+17,household,"Cleaning products, paper goods, and household essentials","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L1_HouseholdEssentials-7c90d0d775f23a5d3ddab99b4a6715c02ea6f427ae50af0edbb33e8af4f053f1.png"
+18,babies,"Baby food, diapers, and infant care items.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_BabyFeeding-d67a665c3dd9fa554da661795cf70672d2766aaa9af0a3493b50a2630b433bb8.png"
+19,snacks,"Chips, crackers, cookies, and sweet or savory snacks.",https://i.postimg.cc/K4X9rFQ7/snacks.jpg
+20,deli,"Sliced meats, cheeses, prepared salads, and ready-to-eat items.","https://www.instacart.com/image-server/300x300/filters:fill(FCFADE,true):format(webp)/www.instacart.com/assets/taxonomy/L2_Deli-719ddbb7cce144a5aa4af176b4575ed80007b500900c2388b265058b359178a5.png"
+21,missing,Department information not available.,https://i.postimg.cc/50kVqHZh/missing.png
