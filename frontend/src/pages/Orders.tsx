@@ -29,16 +29,42 @@ interface Order {
 }
 
 const Orders: React.FC = () => {
-    const { user } = useAuthStore();
+  const { user } = useAuthStore();
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'>('all');
+  
   const { data: orders, isLoading, error, refetch } = useQuery<Order[]>(
     ['orders', user?.id],
-      async () => (await orderService.getOrders(user?.id)).orders,
+    async () => {
+      if (!user?.id) throw new Error('User not authenticated');
+      return (await orderService.getOrders(user.id)).orders;
+    },
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      enabled: !!user.id, // Only run query when userId is available
+      enabled: !!user?.id, // Only run query when userId is available
     }
   );
+
+  // Early return if user is not authenticated
+  if (!user?.id) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Authentication Required
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Please log in to view your orders.
+          </p>
+          <Link
+            to="/login"
+            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Log In
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusIcon = (status: Order['status']) => {
     switch (status) {
