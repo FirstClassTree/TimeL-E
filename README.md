@@ -74,6 +74,8 @@ TimeL-E uses a microservices architecture with 5 main components:
 - **Inbar Reshilovsky** – Frontend Engineer  
 - **Anna Petrenko** – Data Systems Engineer
 
+(We also did a lot of programming outside of our main roles)
+
 ## Documentation
 
 This README provides a high-level overview. For detailed information about each component, see the specialized documentation:
