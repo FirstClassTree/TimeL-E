@@ -67,7 +67,7 @@ def populate_orders_created_at():
                 return
 
         print(f"Updating orders.created_at from: {filename}")
-        batch_size = 200  # Reduced for memory stability
+        batch_size = 50  # Reduced for memory stability
         batch_orders = []
         updated, missing, errors = 0, 0, 0
 
@@ -188,9 +188,9 @@ def populate_order_status_history():
                         changed_at > last_status_per_order[order_id][1]):
                     last_status_per_order[order_id] = (status, changed_at)
 
-        # Step 2: Pre-process all records into dictionaries for bulk insert
-        print(f"Pre-processing {len(order_histories)} orders into status history records...")
-        all_records = []
+        # Step 2: Batch-insert by order, keeping correct old/new status per order
+        batch_size = 200
+        batch = []
         count, errors = 0, 0
 
         for order_id, events in order_histories.items():
@@ -199,72 +199,61 @@ def populate_order_status_history():
             prev_status = None
             for event_num, (changed_at, new_status) in enumerate(events, 1):
                 try:
-                    record = {
-                        'order_id': order_id,
-                        'old_status': prev_status,
-                        'new_status': new_status,
-                        'changed_at': changed_at,
-                        'changed_by': None,
-                        'note': None
-                    }
-                    all_records.append(record)
+                    history = OrderStatusHistory(
+                        order_id=order_id,
+                        old_status=prev_status,
+                        new_status=new_status,
+                        changed_at=changed_at,
+                        changed_by=None,
+                        note=None
+                    )
+                    batch.append(history)
                     count += 1
                     prev_status = new_status
+
+                    if len(batch) >= batch_size:
+                        try:
+                            db.add_all(batch)
+                            db.flush()
+                            batch = []
+                        except (IntegrityError, SQLAlchemyError) as batch_err:
+                            db.rollback()
+                            print(f"   ERROR: Batch insert failed at order {order_id} (will try individually): {batch_err}")
+                            for single_history in batch:
+                                try:
+                                    db.add(single_history)
+                                    db.flush()
+                                except (IntegrityError, SQLAlchemyError) as row_err:
+                                    errors += 1
+                                    db.rollback()
+                                    if errors < 10:
+                                        print(f"      -> Skipping bad status history (order_id {single_history.order_id}): {row_err}")
+                            batch = []
                 except Exception as e:
                     errors += 1
-                    print(f"   Order {order_id}, event {event_num}: Error creating status history record: {e}")
+                    print(f"   Order {order_id}, event {event_num}: Error creating status history: {e}")
 
-        print(f"Pre-processed {len(all_records)} status history records")
-
-        # Step 3: Bulk insert with larger, safe batch sizes
-        batch_size = 1000  # Much larger but safe batch size
-        total_batches = (len(all_records) + batch_size - 1) // batch_size
-        successful_inserts = 0
-
-        for batch_num in range(0, len(all_records), batch_size):
-            batch_records = all_records[batch_num:batch_num + batch_size]
-            current_batch_num = (batch_num // batch_size) + 1
-            is_final_batch = current_batch_num == total_batches
-            
+        if batch:
             try:
-                # Use bulk_insert_mappings for much better performance
-                db.bulk_insert_mappings(OrderStatusHistory, batch_records)
-                db.commit()  # Commit each batch safely
-                successful_inserts += len(batch_records)
-                
-                if current_batch_num % 10 == 0 or is_final_batch:
-                    if is_final_batch and len(batch_records) < batch_size:
-                        print(f"   Committed final batch of {len(batch_records)} status history records")
-                    else:
-                        print(f"   Committed batch {current_batch_num}/{total_batches} ({successful_inserts} records)")
-                    
+                db.add_all(batch)
+                db.flush()
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
-                print(f"   ERROR: Batch {current_batch_num} insert failed (will try individually): {batch_err}")
-                
-                # Fallback: try each record individually
-                individual_success = 0
-                for record in batch_records:
+                print(f"   ERROR: Final batch insert failed (will try individually): {batch_err}")
+                for single_history in batch:
                     try:
-                        db.bulk_insert_mappings(OrderStatusHistory, [record])
-                        db.commit()
-                        individual_success += 1
-                        successful_inserts += 1
+                        db.add(single_history)
+                        db.flush()
                     except (IntegrityError, SQLAlchemyError) as row_err:
                         errors += 1
                         db.rollback()
                         if errors < 10:
-                            print(f"      -> Skipping bad status history (order_id {record['order_id']}): {row_err}")
-                
-                print(f"   Batch {current_batch_num}: {individual_success}/{len(batch_records)} records saved individually")
+                            print(f"      -> Skipping bad status history (order_id {single_history.order_id}): {row_err}")
 
-        print(f"Bulk insert completed: {successful_inserts} records inserted, {errors} errors")
-        
-        # Step 4: Update order status and updated_at fields
-        print(f"Updating {len(last_status_per_order)} orders with final status...")
-        updated_orders, missing_orders, order_errors = 0, 0, 0
+        db.commit()
+        updated_orders, missing_orders, errors = 0, 0, 0
         batch_orders = []
-        batch_size = 1000
+        batch_size = 200
 
         for idx, (order_id, (last_status, last_changed_at)) in enumerate(last_status_per_order.items(), 1):
             order = db.query(Order).filter(Order.id == order_id).first()
@@ -278,7 +267,7 @@ def populate_order_status_history():
 
             if len(batch_orders) >= batch_size:
                 try:
-                    db.commit()
+                    db.flush()
                     batch_orders = []
                     if (idx // batch_size) % 10 == 0:
                         print(f"   Updated {idx} orders...")
@@ -287,29 +276,29 @@ def populate_order_status_history():
                     print(f"   ERROR: Batch order update failed at idx {idx} (will try individually): {batch_err}")
                     for single_order in batch_orders:
                         try:
-                            db.commit()
+                            db.flush()
                         except (IntegrityError, SQLAlchemyError) as row_err:
-                            order_errors += 1
+                            errors += 1
                             db.rollback()
-                            print(f"      -> Skipping bad order update (order_id {single_order.id}): {row_err}")
+                            print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
                     batch_orders = []
 
         if batch_orders:
             try:
-                db.commit()
-                print(f"   Updated final batch of {len(batch_orders)} orders")
+                db.flush()
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
                 print(f"   ERROR: Final batch order update failed (will try individually): {batch_err}")
                 for single_order in batch_orders:
                     try:
-                        db.commit()
+                        db.flush()
                     except (IntegrityError, SQLAlchemyError) as row_err:
-                        order_errors += 1
+                        errors += 1
                         db.rollback()
-                        print(f"      -> Skipping bad order update (order_id {single_order.id}): {row_err}")
+                        print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
 
-        print(f"Orders updated from CSV: {updated_orders} (missing: {missing_orders}, errors: {order_errors})")
+        db.commit()
+        print(f"Orders updated from CSV: {updated_orders} (missing: {missing_orders})")
         
         # Re-enable trigger after updates
         db.execute(text("ALTER TABLE orders.orders ENABLE TRIGGER trg_order_status_change"))

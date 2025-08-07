@@ -54,7 +54,7 @@ def load_aisles(db: Session):
 def load_products(db: Session):
     products_file = os.path.join(CSV_DIR, "products.csv")
     print(f"Loading products from: {products_file}")
-    batch_size = 200  # Reduced for memory stability
+    batch_size = 50  # Reduced for memory stability
     batch_products = []
     products_loaded = 0
     product_errors = 0
@@ -168,7 +168,7 @@ def load_orders(db: Session):
                     'country': row.get('country'),
                 }
 
-    batch_size = 200  # Reduced to prevent segfaults
+    batch_size = 200  # Tweak as needed
     batch_orders = []
     orders_loaded = 0
     order_errors = 0
@@ -254,7 +254,6 @@ def load_orders(db: Session):
             try:
                 db.add_all(batch_orders)
                 db.flush()
-                success_count += len(batch_orders)
                 print(f"   Committed final batch of {len(batch_orders)} orders")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
@@ -265,7 +264,6 @@ def load_orders(db: Session):
                         db.add(single_order)
                         db.flush()
                         success_count_final += 1
-                        success_count += 1
                     except (IntegrityError, SQLAlchemyError) as row_err:
                         order_errors += 1
                         db.rollback()
@@ -294,7 +292,7 @@ def load_order_items(db: Session):
         existing_orders.add(order.id)
     print(f"Found {len(existing_orders)} existing orders for validation")
     
-    batch_size = 200  # Reduced to prevent segfaults
+    batch_size = 20
     batch_items = []
     items_loaded = 0
     item_errors = 0
@@ -328,10 +326,10 @@ def load_order_items(db: Session):
                 if len(batch_items) >= batch_size:
                     try:
                         db.add_all(batch_items)
-                        db.flush()  # Use flush instead of commit for consistency
+                        db.flush()  # Optionally use commit for ultra-safety
                         success_count += len(batch_items)
                         if success_count % 10000 == 0:
-                            print(f"   Committed batch of {len(batch_items)} order items ({success_count} total)")
+                            print(f"   Committed batch of {len(batch_items)} order items")
                         batch_items = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
@@ -355,7 +353,6 @@ def load_order_items(db: Session):
             try:
                 db.add_all(batch_items)
                 db.flush()
-                success_count += len(batch_items)
                 print(f"   Committed final batch of {len(batch_items)} order items")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
@@ -366,7 +363,6 @@ def load_order_items(db: Session):
                         db.add(single_order_item)
                         db.flush()
                         success_count_final += 1
-                        success_count += 1
                     except (IntegrityError, SQLAlchemyError) as row_err:
                         item_errors += 1
                         db.rollback()
@@ -452,7 +448,7 @@ def load_users(db: Session):
 
         users_loaded = 0
         errors = 0
-        batch_size = 100  # Reduced for memory stability
+        batch_size = 25  # Reduced for memory stability
 
         with open(users_file, newline='', encoding='utf-8') as f:
             reader = csv.DictReader(f)

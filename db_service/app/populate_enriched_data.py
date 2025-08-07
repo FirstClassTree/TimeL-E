@@ -212,31 +212,22 @@ def update_order_prices_from_enriched_data(session):
         
         offset = 0
         while True:
-            # Get batch of order items - just get the IDs and product_ids
-            batch_items = session.query(OrderItem.order_id, OrderItem.product_id).offset(offset).limit(BATCH_SIZE).all()
+            # Get batch of order items
+            batch_items = session.query(OrderItem).offset(offset).limit(BATCH_SIZE).all()
             
             if not batch_items:
                 break
             
             try:
-                # Prepare bulk update mappings
-                update_mappings = []
-                for order_id, product_id in batch_items:
-                    if product_id in price_lookup:
-                        update_mappings.append({
-                            'order_id': order_id,
-                            'product_id': product_id,
-                            'price': price_lookup[product_id]
-                        })
-                
-                if update_mappings:
-                    # Use bulk_update_mappings for much better performance
-                    session.bulk_update_mappings(OrderItem, update_mappings)
-                    session.commit()
-                    updated_items += len(update_mappings)
-                    batch_updated = len(update_mappings)
-                else:
-                    batch_updated = 0
+                batch_updated = 0
+                for item in batch_items:
+                    if item.product_id in price_lookup:
+                        item.price = price_lookup[item.product_id]
+                        batch_updated += 1
+
+                # Commit this batch
+                session.commit()
+                updated_items += batch_updated
                 
                 # Show progress every 10k items
                 if offset % 10000 == 0 or offset + BATCH_SIZE >= total_items:
@@ -245,29 +236,8 @@ def update_order_prices_from_enriched_data(session):
             except Exception as batch_err:
                 session.rollback()
                 failed_batches += 1
-                print(f"   ERROR: Failed to update batch at offset {offset} (will try individually): {batch_err}")
-                
-                # Fallback: try each update individually
-                individual_success = 0
-                for order_id, product_id in batch_items:
-                    if product_id in price_lookup:
-                        try:
-                            # Get the specific item and update it
-                            item = session.query(OrderItem).filter(
-                                OrderItem.order_id == order_id,
-                                OrderItem.product_id == product_id
-                            ).first()
-                            if item:
-                                item.price = price_lookup[product_id]
-                                session.commit()
-                                individual_success += 1
-                                updated_items += 1
-                        except Exception as item_err:
-                            session.rollback()
-                            if failed_batches <= 3:  # Only show first few individual errors
-                                print(f"      -> Failed to update item {order_id}/{product_id}: {item_err}")
-                
-                print(f"   Batch {offset//BATCH_SIZE + 1}: {individual_success} items updated individually")
+                print(f"   ERROR: Failed to update batch at offset {offset}: {batch_err}")
+                # Continue with next batch
             
             offset += BATCH_SIZE
         
