@@ -1,16 +1,16 @@
 import { api } from '@/services/api.client';
 
 interface LoginCredentials {
-  email: string;
+  emailAddress: string;
   password: string;
 }
 
 interface RegisterData {
   firstName: string;
   lastName: string;
-  email: string;
+  emailAddress: string;
   password: string;
-  phone?: string;
+  phoneNumber?: string;
   streetAddress?: string;
   city?: string;
   postalCode?: string;
@@ -32,12 +32,19 @@ interface User {
   lastName: string;
   emailAddress: string;
   phoneNumber: string;
-  streetAddress: string;
-  city: string;
-  postalCode: string;
-  country: string;
-  demoUser: boolean;
-  mlPredictionsAvailable: boolean;
+  streetAddress?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  daysBetweenOrderNotifications?: number;
+  orderNotificationsStartDateTime?: string;
+  orderNotificationsNextScheduledTime?: string;
+  pendingOrderNotification?: boolean;
+  orderNotificationsViaEmail?: boolean;
+  lastNotificationSentAt?: string;
+  lastNotificationsViewedAt? : string;
+  lastLogin?: string;
+  hasActiveCart?: string;
 }
 
 class AuthService {

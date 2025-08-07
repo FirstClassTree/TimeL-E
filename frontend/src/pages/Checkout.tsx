@@ -16,7 +16,7 @@ import { userService } from '@/services/user.service.ts'
 interface CheckoutFormData {
   // Contact Information
   name: string;
-  email: string;
+  emailAddress: string;
   
   // Shipping Address
   street: string;
@@ -49,7 +49,7 @@ const Checkout: React.FC = () => {
       const fetchUser = async () => {
         if (user) {
       setValue('name', user.name || '');
-      setValue('email', user.email || '');
+      setValue('emailAddress', user.emailAddress || '');
       } else {
       const currentUser = await userService.getProfile(user.id);
       setValue('firstName', currentUser.firstName);
@@ -96,7 +96,7 @@ const Checkout: React.FC = () => {
           city: data.city,
           country: data.country,
           zipCode: data.zipCode,
-          email: data.email
+          emailAddress: data.email
         },
         paymentMethod: 'credit_card',
         notes: 'Demo order from TimeL-E checkout'
