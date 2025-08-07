@@ -30,7 +30,7 @@ docker-compose down
 
 ## What TimeL-E Does
 
-TimeL-E combines traditional e-commerce with an emphasis on engineering excellence functionality with machine learning capabilities:
+TimeL-E combines traditional e-commerce with an emphasis on engineering excellence with machine learning capabilities:
 
 - **Smart Shopping Experience** - Users can browse products, manage carts, and place orders
 - **Predictive Recommendations** - ML models analyze purchase history to suggest relevant products
@@ -107,6 +107,7 @@ For development work on specific components, consult the relevant documentation 
 ## License
 
 This project is developed for educational and research purposes.
+
 
 
 
