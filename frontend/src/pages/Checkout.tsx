@@ -11,12 +11,12 @@ import { orderService } from '@/services/order.service';
 import ProductImage from '@/components/products/ProductImage';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
-import { userService } from '@/services/user.service.ts'
+import { userService } from '@/services/user.service';
 
 interface CheckoutFormData {
   // Contact Information
   name: string;
-  emailAddress: string;
+  email: string;
   
   // Shipping Address
   street: string;
@@ -46,24 +46,29 @@ const Checkout: React.FC = () => {
 
   // Pre-fill user information
   useEffect(() => {
-      const fetchUser = async () => {
-        if (user) {
-      setValue('name', user.name || '');
-      setValue('emailAddress', user.emailAddress || '');
-      } else {
-      const currentUser = await userService.getProfile(user.id);
-      setValue('firstName', currentUser.firstName);
-      setValue('lstName', currentUser.lastName);
-      setValue('emailAddress', currentUser.emailAddress);
-      setValue('phoneNumber', currentUser.phoneNumber);
-      setValue('city', currentUser.city);
-      setValue('country', currentUser.country);
-      setValue('lastLogin', currentUser.lastLogin);
-      setValue('postalCode', currentUser.postalCode);
-      setValue('streetAddress', currentUser.streetAddress);
+    const fetchAndPreFillUser = async () => {
+      if (user?.id) {
+        try {
+          // Pre-fill basic info from auth store
+          setValue('name', user.name || '');
+          setValue('email', user.emailAddress || '');
+          
+          // Fetch full profile for address info
+          const fullProfile = await userService.getProfile(user.id);
+          if (fullProfile) {
+            setValue('street', fullProfile.streetAddress || '');
+            setValue('city', fullProfile.city || '');
+            setValue('country', fullProfile.country || '');
+            setValue('zipCode', fullProfile.postalCode || '');
+          }
+        } catch (error) {
+          console.log('Could not fetch user profile for pre-fill:', error);
+          // Continue with just basic info from auth store
+        }
       }
     };
-  fetchUser();
+    
+    fetchAndPreFillUser();
   }, [user, setValue]);
 
   // Redirect if cart is empty
@@ -105,7 +110,9 @@ const Checkout: React.FC = () => {
       const order = await orderService.createOrder(orderData);
       
       // Clear cart after successful order
-      await clearCart(user.id);
+      if (user?.id) {
+        await clearCart(user.id);
+      }
       
       toast.success('Order placed successfully! 🎉');
       navigate(`/orders/${order.orderId}`);
@@ -450,8 +457,8 @@ const Checkout: React.FC = () => {
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="w-12 h-12 flex-shrink-0">
                       <ProductImage
-                        src={item.product.image_url}
-                        alt={item.product.product_name}
+                        src={item.product.imageUrl}
+                        alt={item.product.productName}
                         className="w-full h-full object-cover rounded"
                       />
                     </div>
