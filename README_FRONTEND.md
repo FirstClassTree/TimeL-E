@@ -1,135 +1,145 @@
-# TimeL-E Grocery Frontend
+# TimeL-E Frontend
 
-A domain-specific backend API for the TimeL-E grocery e-commerce application, built around real CSV data structures and designed for frontend integration.
+Modern React application for the TimeL-E predictive e-commerce platform. Built with TypeScript, Tailwind CSS, and AI-powered features for intelligent grocery shopping.
 
-## Architecture
+## Try the Demo
 
-This backend serves as a **Grocery-Focused API** that:
-- ✅ Serves real grocery data based on CSV file structure
-- ✅ Provides domain-specific endpoints (products, orders, categories)
-- ✅ Includes smart product search and filtering
-- ✅ Handles order management with product validation
-- ✅ Offers category navigation (departments & aisles)
-- ✅ Returns frontend-ready responses with joined data
+Experience TimeL-E instantly without registration:
+
+**Quick Demo**
+- Click the "Demo User" button on the login page for instant access
+
+**Full Demo Login**
+- Email: `user43682@timele-demo.com`
+- Password: `password`
+
+Demo users have pre-loaded shopping history that showcases AI predictions immediately.
+
+## Key Features
+
+### AI-Powered Shopping
+- **Predicted Baskets** - ML-generated weekly shopping recommendations
+- **Confidence Scores** - Visual indicators showing prediction accuracy
+
+### Modern Shopping Experience  
+- **Advanced Search** - Real-time product search with filtering
+- **Smart Filtering** - Filter by departments, price ranges, categories
+- **Multiple Views** - Grid and list layouts with smooth animations
+- **Persistent Cart** - Shopping cart maintained across sessions
+- **Responsive Design** - Optimized for desktop, tablet, and mobile
+
+### Professional UI/UX
+- **Dark Mode** - Complete light/dark theme support
+- **Smooth Animations** - Framer Motion micro-interactions
+- **Loading States** - Professional skeleton screens and indicators
+- **Error Handling** - Graceful error boundaries and user feedback
+
+## Application Pages:
+
+### Core Shopping Experience
+- **Home** - Modern landing page with hero section and AI prediction access
+- **Products** - Advanced catalog with search, filtering, and sorting
+- **ProductDetail** - Individual product pages with detailed information
+- **PredictedBasket** - AI-powered weekly shopping recommendations
+- **Cart** - Shopping cart with quantity management and price calculations
+- **Checkout** - Secure checkout process with payment integration
+
+### User Authentication & Account
+- **Login** - User authentication with demo access options
+- **Register** - New user registration
+- **ForgotPassword** - Password recovery process
+- **ResetPassword** - Password reset functionality
+- **Profile** - User profile management and preferences
+
+### Order Management
+- **Orders** - Complete order history and tracking
+- **OrderDetail** - Detailed view of individual orders
+- **NotificationSettings** - Customizable shopping reminders and alerts
+
+## Technology Stack
+
+- **React 18** + **TypeScript** - Modern React development
+- **Vite** - Fast development and optimized builds
+- **Tailwind CSS** - Utility-first styling framework
+- **Zustand** - Lightweight state management
+- **TanStack Query** - Data fetching and caching
+- **Framer Motion** - Smooth animations
+- **React Hook Form** - Form handling and validation
+
+## Quick Start
+
+Start the application with Docker:
+```bash
+# Start all services
+docker-compose up --build
+
+# Access the frontend
+# http://localhost:3000
+```
 
 ## Project Structure
 
 ```
 frontend/
 ├── src/
-│   ├── stores/              # Main components
-│   │   ├── App.tsx
-│   │   ├── index.css        # Custom font imports and variables
-│   │   └── main.tsx         # App initialization
-│   ├── pages/               # All possible pages in main app and admin
-│   │   ├── Cart.tsx
-│   │   ├── Checkout.tsx
-│   │   ├── ForgotPassword.tsx
-│   │   ├── Home.tsx
-│   │   ├── Login.tsx
-│   │   ├── OrderDetail.tsx
-│   │   ├── Orders.tsx
-│   │   ├── PredictedBasket.tsx
-│   │   ├── ProductDetail.tsx
-│   │   ├── Products.tsx
-│   │   ├── Profile.tsx
-│   │   ├── Register.tsx
-│   │   ├── ResetPassword.tsx
-│   │   └──admin/
-│   │      ├── Dashboard.tsx
-│   │      ├── DemoPredictionPage.tsx
-│   │      ├── Metrics.tsx
-│   │      ├── Orders.tsx
-│   │      ├── Products.tsx
-│   │      ├── Settings.tsx
-│   │      ├── Users.tsx
-│   │      └── UserSeeding.tsx
-│   ├── layouts/             # All possible pages in main app and admin
-│   │   ├── AuthLayout.tsx
-│   │   └── MainLayout.tsx
-│   ├── components/          # Diffrent components used in pages
-│   │   ├── admin/
-│   │   │   ├─ DateRangePicker.tsx
-│   │   │   ├─ MetricCard.tsx
-│   │   │   └─ MetricExplanation.tsx
-│   │   ├── auth/
-│   │   │   ├─ AdminRoute.tsx
-│   │   │   └─ ProtectedRoute.tsx
-│   │   ├── cart/
-│   │   │   └─ CartDropdown.tsx
-│   │   ├── common/
-│   │   │   ├─ EmptyState.tsx
-│   │   │   ├─ ErrorBoundary.tsx
-│   │   │   ├─ LoadingSpinner.tsx
-│   │   │   └─ Pagination.tsx
-│   │   ├── home/
-│   │   │   ├─ FeatureCard.tsx
-│   │   │   └─ Hero.tsx
-│   │   ├── navigation/
-│   │   │   └─ MobileMenu.tsx
-│   │   ├── notifications/
-│   │   │   └─ NotificationDropdown.tsx
-│   │   ├── predictions/
-│   │   │   ├─ ConfidenceIndicator.tsx
-│   │   │   └─ PredictionExplanation.tsx
-│   │   ├── products/
-│   │   │   ├─ CategoryFilter.tsx
-│   │   │   ├─ PriceRangeFilter.tsx
-│   │   │   ├─ ProductCard.tsx
-│   │   │   ├─ ProductImage.tsx
-│   │   │   ├─ ProductListItem.tsx
-│   │   │   └─ SortDropdown.tsx
-│   │   └── search/
-│   │       └─ SearchModal.tsx
-│   └── services/                # APIs
-│       ├── api.client.ts
-│       ├── auth.service.ts
-│       ├── cart.service.ts
-│       ├── order.service.ts
-│       ├── prediction.service.ts
-│       ├── product.service.ts
-│       └── user.service.ts
-├── Dockerfile               # Container configuration
-├── postcss.config.js        # postcss configuration
-├── tailwind.config.js       # tailwind configuration
-├── vite.config.ts           # vite configuration
-└── requirements.txt         # Python dependencies
+│   ├── components/          # Reusable UI components
+│   │   ├── auth/           # Authentication components  
+│   │   ├── cart/           # Shopping cart components
+│   │   ├── home/           # Homepage components
+│   │   ├── predictions/    # AI prediction components
+│   │   ├── products/       # Product components
+│   │   └── common/         # Shared components
+│   ├── pages/              # Application pages
+│   │   ├── Home.tsx        # Landing page
+│   │   ├── Products.tsx    # Product catalog
+│   │   ├── PredictedBasket.tsx # AI recommendations
+│   │   ├── Cart.tsx        # Shopping cart
+│   │   └── [other pages]
+│   ├── services/           # API services
+│   │   ├── auth.service.ts
+│   │   ├── cart.service.ts
+│   │   ├── product.service.ts
+│   │   └── prediction.service.ts
+│   ├── stores/             # State management
+│   │   ├── auth.store.ts
+│   │   └── cart.store.ts
+│   └── layouts/            # Page layouts
+├── Dockerfile              # Container configuration
+├── tailwind.config.js      # Tailwind configuration
+└── vite.config.ts          # Vite configuration
 ```
 
-## 🚀 Deployment Instructions
+## Development
 
-### Prerequisites
-- Docker and Docker Compose
-- Node.js 18+ (for local development)
-- Python 3.9+ (for ML development)
-- Git
+### Local Development
+```bash
+# Install dependencies
+npm install
 
-### Quick Start with Docker
+# Start development server
+npm run dev
 
-1. **Build and Start All Services**:
-   ```bash
-   docker-compose up --build -d
-   cd frontend
-   npm install
-   npm audit fix --force
-   npm install -D tailwindcss postcss autoprefixer
-   npx tailwindcss init -p
-   npm run dev
-   ```
+# Build for production  
+npm run build
+```
 
-2**Access the Application**:
-   - Frontend: http://localhost:3000
-   - Admin Dashboard: http://localhost:3000/admin
+### Environment Variables
+```bash
+VITE_API_URL=http://localhost:8000/api
+```
 
-### Default Credentials
+## Features in Detail
 
-- **Admin Account**:
-  - Email: admin@timely.com
-  - Password: password
+### AI Integration
+The frontend seamlessly integrates with the ML service to provide intelligent shopping recommendations. Users can view prediction confidence scores, understand recommendation reasoning, and provide feedback to improve future predictions.
 
-- **Test User Account**:
-  - Email: test@timely.com
-  - Password: password
+### State Management
+Uses Zustand for global state management with separate stores for authentication, shopping cart, and UI state. TanStack Query handles server state with intelligent caching and background updates.
 
+### Responsive Design
+Built mobile-first with Tailwind CSS. Components adapt fluidly across device sizes with touch-friendly interactions and optimized layouts for different screen sizes.
 
-The TimeL-E Grocery API provides a solid foundation for your e-commerce platform with realistic data structures and comprehensive functionality for managing products, orders, and categories.
+### Performance
+Implements code splitting, lazy loading, optimistic updates, and intelligent caching for fast, responsive user experience.
+
+The frontend demonstrates modern React development practices while showcasing AI-powered e-commerce capabilities in an intuitive, professional interface.

@@ -40,7 +40,7 @@ def process_scheduled_user_notifications():
                 missed_intervals = max(1, (now - user.order_notifications_next_scheduled_time) // interval + 1)
                 user.order_notifications_next_scheduled_time += missed_intervals * interval
 
-                logger.info(f"User {user.user_id}: scheduled {missed_intervals} missed notification(s), next at {user.order_notifications_next_scheduled_time.isoformat()}")
+                logger.info(f"User {user.id}: scheduled {missed_intervals} missed notification(s), next at {user.order_notifications_next_scheduled_time.isoformat()}")
 
         db.commit()
 

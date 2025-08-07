@@ -5,7 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from .db_core.database import SessionLocal
-from .db_core.models import Cart, CartItem, Product, Department, Aisle, User
+from .db_core.models import Cart, CartItem, Product, Department, Aisle, User, Order, OrderItem, OrderStatus
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Dict, Optional, Any, Generic, TypeVar
 import datetime
@@ -673,23 +673,97 @@ def checkout_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceRe
                 data=[]
             )
         
-        # TODO: Implement actual order creation
-        # For now, simulate checkout and clear cart
+        # Get current datetime for order metadata
+        now = datetime.datetime.now(UTC)
         
-        # Clear cart items
-        session.query(CartItem).filter(CartItem.cart_id == cart.id).delete()
-        cart.total_items = 0
-        cart.updated_at = datetime.datetime.now(UTC)
+        # Calculate order metadata
+        order_dow = now.weekday()  # 0=Monday, 6=Sunday (convert to 0=Sunday, 6=Saturday)
+        order_dow = (order_dow + 1) % 7  # Convert to 0=Sunday format
+        order_hour_of_day = now.hour
+        
+        # Get user's last order to calculate order_number and days_since_prior_order
+        last_order = (
+            session.query(Order)
+            .filter(Order.user_id == user.id)
+            .order_by(Order.created_at.desc())
+            .first()
+        )
+        
+        order_number = (last_order.order_number + 1) if last_order else 1
+        days_since_prior_order = None
+        if last_order:
+            days_diff = (now - last_order.created_at).days
+            days_since_prior_order = days_diff if days_diff > 0 else None
+        
+        # Get product prices for total calculation
+        product_ids = [item.product_id for item in cart.cart_items]
+        products = (
+            session.query(Product)
+            .filter(Product.product_id.in_(product_ids))
+            .options(joinedload(Product.enriched))
+            .all()
+        )
+        products_map = {p.product_id: p for p in products}
+        
+        # Calculate total price
+        total_price = 0.0
+        for cart_item in cart.cart_items:
+            product = products_map.get(cart_item.product_id)
+            if product and product.enriched and product.enriched.price:
+                total_price += product.enriched.price * cart_item.quantity
+        
+        # Create new order
+        new_order = Order(
+            user_id=user.id,
+            order_number=order_number,
+            order_dow=order_dow,
+            order_hour_of_day=order_hour_of_day,
+            days_since_prior_order=days_since_prior_order,
+            total_items=len(cart.cart_items),
+            total_price=total_price,
+            status=OrderStatus.PENDING,
+            created_at=now,
+            updated_at=now
+        )
+        session.add(new_order)
+        session.flush()  # Get the auto-generated order ID
+        
+        # Create order items from cart items
+        order_items = []
+        for cart_item in cart.cart_items:
+            product = products_map.get(cart_item.product_id)
+            item_price = 0.0
+            if product and product.enriched and product.enriched.price:
+                item_price = product.enriched.price
+            
+            order_item = OrderItem(
+                order_id=new_order.id,
+                product_id=cart_item.product_id,
+                add_to_cart_order=cart_item.add_to_cart_order,
+                reordered=cart_item.reordered,
+                quantity=cart_item.quantity,
+                price=item_price
+            )
+            order_items.append(order_item)
+        
+        session.add_all(order_items)
+        
+        # Delete cart and cart items
+        session.delete(cart)
         
         session.commit()
         
         return ServiceResponse[Dict[str, Any]](
             success=True,
-            message="Checkout completed successfully",
+            message="Order created successfully and cart deleted",
             data=[{
                 "user_id": user_id,
-                "status": "checkout_completed",
-                "note": "Cart cleared - order creation would be implemented here"
+                "order_id": str(new_order.id),
+                "order_number": order_number,
+                "total_items": len(order_items),
+                "total_price": total_price,
+                "status": OrderStatus.PENDING.value,
+                "created_at": now.isoformat()
             }]
         )
         

@@ -11,10 +11,44 @@ import sys
 import argparse
 from pathlib import Path
 from sqlalchemy import text
-from app.db_core.config import settings
-from app.db_core.models.products import ProductEnriched
-from app.db_core.models.orders import Order, OrderItem
-from app.db_core.database import SessionLocal
+from sqlalchemy.orm import Session
+from .db_core.config import settings
+from .db_core.database import SessionLocal
+from .db_core.models import Department, Order, OrderItem, ProductEnriched
+
+
+def populate_enriched_departments(session: Session):
+    """Enrich Departments Table from departments_enriched.csv"""
+
+    try:
+        departments_csv_path = Path("/data/departments_enriched.csv")
+        if departments_csv_path.exists():
+            dept_df = pd.read_csv(departments_csv_path)
+            # Normalize column names
+            dept_df.columns = [c.strip().lower() for c in dept_df.columns]
+            required_dept_cols = {"department_id", "description", "image_url"}
+            if not required_dept_cols.issubset(dept_df.columns):
+                print(f"Warning: departments_enriched.csv missing required columns. Found: {list(dept_df.columns)}")
+            else:
+                updated_count = 0
+                for _, row in dept_df.iterrows():
+                    dept_id = int(row['department_id'])
+                    # Fetch department by department_id
+                    dept = session.query(Department).filter_by(department_id=dept_id).first()
+                    if dept:
+                        dept.description = row['description'] if pd.notna(row['description']) else None
+                        dept.image_url = row['image_url'] if pd.notna(row['image_url']) else None
+                        updated_count += 1
+                    else:
+                        print(f"   Warning: No Department found with department_id {dept_id}. Skipping.")
+                session.commit()
+                print(f"Updated {updated_count} departments from departments_enriched.csv.")
+        else:
+            print(f"departments_enriched.csv not found at {departments_csv_path}, skipping department enrichment.")
+    except Exception as dept_err:
+        session.rollback()
+        print(f"Error updating departments from enriched CSV: {dept_err}")
+
 
 def populate_enriched_data(force_reset=False):
     """Populate the product_enriched table from CSV"""
@@ -24,11 +58,11 @@ def populate_enriched_data(force_reset=False):
     csv_files = sorted(enriched_dir.glob("enriched_products_dept*.csv"))
 
     if not csv_files:
-        print(f"Error: No enriched CSV files found in {enriched_dir}")
+        print(f"Error: No enriched product CSV files found in {enriched_dir}")
         print("Make sure enriched data was generated using the product_enricher.py script and that /data is mounted correctly")
         return False
     else:
-        print(f"Found enriched CSV files: {[str(f) for f in csv_files]}")
+        print(f"Found enriched product CSV files: {[str(f) for f in csv_files]}")
 
 
     # Create database session
@@ -132,6 +166,8 @@ def populate_enriched_data(force_reset=False):
         print("\nUpdating existing order item prices and order totals...")
         update_order_prices_from_enriched_data(session)
 
+        populate_enriched_departments(session)
+
         return True
 
     except Exception as e:
@@ -176,22 +212,31 @@ def update_order_prices_from_enriched_data(session):
         
         offset = 0
         while True:
-            # Get batch of order items
-            batch_items = session.query(OrderItem).offset(offset).limit(BATCH_SIZE).all()
+            # Get batch of order items - just get the IDs and product_ids
+            batch_items = session.query(OrderItem.order_id, OrderItem.product_id).offset(offset).limit(BATCH_SIZE).all()
             
             if not batch_items:
                 break
             
             try:
-                batch_updated = 0
-                for item in batch_items:
-                    if item.product_id in price_lookup:
-                        item.price = price_lookup[item.product_id]
-                        batch_updated += 1
+                # Prepare bulk update mappings
+                update_mappings = []
+                for order_id, product_id in batch_items:
+                    if product_id in price_lookup:
+                        update_mappings.append({
+                            'order_id': order_id,
+                            'product_id': product_id,
+                            'price': price_lookup[product_id]
+                        })
                 
-                # Commit this batch
-                session.commit()
-                updated_items += batch_updated
+                if update_mappings:
+                    # Use bulk_update_mappings for much better performance
+                    session.bulk_update_mappings(OrderItem, update_mappings)
+                    session.commit()
+                    updated_items += len(update_mappings)
+                    batch_updated = len(update_mappings)
+                else:
+                    batch_updated = 0
                 
                 # Show progress every 10k items
                 if offset % 10000 == 0 or offset + BATCH_SIZE >= total_items:
@@ -200,8 +245,29 @@ def update_order_prices_from_enriched_data(session):
             except Exception as batch_err:
                 session.rollback()
                 failed_batches += 1
-                print(f"   ERROR: Failed to update batch at offset {offset}: {batch_err}")
-                # Continue with next batch
+                print(f"   ERROR: Failed to update batch at offset {offset} (will try individually): {batch_err}")
+                
+                # Fallback: try each update individually
+                individual_success = 0
+                for order_id, product_id in batch_items:
+                    if product_id in price_lookup:
+                        try:
+                            # Get the specific item and update it
+                            item = session.query(OrderItem).filter(
+                                OrderItem.order_id == order_id,
+                                OrderItem.product_id == product_id
+                            ).first()
+                            if item:
+                                item.price = price_lookup[product_id]
+                                session.commit()
+                                individual_success += 1
+                                updated_items += 1
+                        except Exception as item_err:
+                            session.rollback()
+                            if failed_batches <= 3:  # Only show first few individual errors
+                                print(f"      -> Failed to update item {order_id}/{product_id}: {item_err}")
+                
+                print(f"   Batch {offset//BATCH_SIZE + 1}: {individual_success} items updated individually")
             
             offset += BATCH_SIZE
         
