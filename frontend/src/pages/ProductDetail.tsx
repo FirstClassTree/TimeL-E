@@ -31,8 +31,9 @@ const ProductDetail: React.FC = () => {
 
   const handleAddToCart = () => {
     if (!product) return;
-    
-    addToCart(user?.id,
+    if(!user) return;
+
+    addToCart(user?.userId,
         product.productId,
       quantity
     );

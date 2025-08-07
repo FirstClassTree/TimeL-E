@@ -23,7 +23,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product}) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (!isAuthenticated) {
+    if (!user) {
       toast.error('Please login to add items to cart');
       return;
     }
