@@ -150,11 +150,8 @@ const Cart: React.FC = () => {
                               
                               {item.product.price != null && (
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-sm line-through text-gray-400">
+                                  <span className="text-sm text-black-400">
                                     ${item.product.price.toFixed(2)}
-                                  </span>
-                                  <span className="text-sm font-medium text-red-600 dark:text-red-400">
-                                    $0.00
                                   </span>
                                 </div>
                               )}
