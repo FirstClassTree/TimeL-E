@@ -13,11 +13,14 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
   const { cart, updateQuantity, removeItem, getSubtotal, getItemCount } = useCartStore();
     const { user } = useAuthStore();
 
-  const handleQuantityChange = (userId : string, id: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(userId, id);
+  const handleQuantityChange = async (productId: number, currentQuantity: number, delta: number) => {
+    if (!user?.userId) return;
+
+    const newQuantity = currentQuantity + delta;
+    if (newQuantity < 1) {
+      await removeItem(user.userId, productId);
     } else {
-      updateQuantity(userId, id, newQuantity);
+      await updateQuantity(user.userId, productId, newQuantity);
     }
   };
 
@@ -98,7 +101,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleQuantityChange(user.id, item.id, item.quantity - 1)}
+                      onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
                       className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Minus size={12} />
@@ -109,7 +112,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                     </span>
                     
                     <button
-                      onClick={() => handleQuantityChange(user.id, item.id, item.quantity + 1)}
+                      onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
                       className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Plus size={12} />
