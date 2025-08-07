@@ -37,8 +37,26 @@ export const useCartStore = create<CartState>()(
           const cart = await cartService.getCart(userId);
           set({ cart, isLoading: false });
         } catch (error) {
-          set({ isLoading: false });
           console.error('Failed to fetch cart:', error);
+          
+          // Set an empty cart on error instead of leaving cart as null
+          const emptyCart = {
+            id: `empty_cart_${userId}`,
+            userId: userId,
+            items: [],
+            itemCount: 0,
+            subtotal: 0,
+            estimatedTax: 0,
+            estimatedTotal: 0,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          set({ cart: emptyCart, isLoading: false });
+          
+          // Don't show error toast here - let the calling component handle it
+          throw error;
         }
       },
 

@@ -44,7 +44,7 @@ interface User {
   lastNotificationSentAt?: string;
   lastNotificationsViewedAt? : string;
   lastLogin?: string;
-  hasActiveCart?: string;
+  hasActiveCart?: boolean | null;
 }
 
 class AuthService {
@@ -75,7 +75,7 @@ class AuthService {
       lastNotificationSentAt: response.lastNotificationSentAt,
       lastNotificationsViewedAt: response.lastNotificationSentAt,
       lastLogin: response.lastLogin,
-      hasActiveCart: response.hasActiveCart
+      hasActiveCart: this.parseHasActiveCart(response.hasActiveCart)
     };
     
     // Create mock tokens since backend doesn't provide them
@@ -96,7 +96,7 @@ class AuthService {
     const response = await api.post('/users/register', data);
     // Transform backend format to frontend expected format
     const user = {
-      id: response.userId,
+      userId: response.userId,
       firstName: response.firstName,
       lastName: response.lastName,
       emailAddress: response.emailAddress,
@@ -112,7 +112,7 @@ class AuthService {
       lastNotificationSentAt: response.lastNotificationSentAt,
       lastNotificationsViewedAt: response.lastNotificationSentAt,
       lastLogin: response.lastLogin,
-      hasActiveCart: response.hasActiveCart
+      hasActiveCart: this.parseHasActiveCart(response.hasActiveCart)
     };
 
      const mockAuth = {
@@ -204,6 +204,21 @@ class AuthService {
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+  }
+
+  // Parse hasActiveCart from backend response (string/any) to boolean | null
+  private parseHasActiveCart(value: any): boolean | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    // For any other type, convert to boolean
+    return Boolean(value);
   }
 }
 

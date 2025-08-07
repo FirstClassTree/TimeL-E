@@ -80,58 +80,98 @@ class CartService {
 
   // Transform backend cart response to frontend format
   private transformBackendCart(backendCart: any): Cart {
-    if (!backendCart || !backendCart.items) {
-      return {
-        id: `cart_${Date.now()}`,
-        userId: backendCart?.userId || '',
-        items: [],
-        itemCount: 0,
-        subtotal: 0,
-        estimatedTax: 0,
-        estimatedTotal: 0,
+    console.log('[CartService] transformBackendCart input:', JSON.stringify(backendCart, null, 2));
+    
+    try {
+      // Handle null, undefined, or malformed cart responses
+      if (!backendCart || typeof backendCart !== 'object') {
+        console.log('[CartService] Empty/invalid cart response, returning empty cart');
+        return {
+          id: `empty_cart_${Date.now()}`,
+          userId: '',
+          items: [],
+          itemCount: 0,
+          subtotal: 0,
+          estimatedTax: 0,
+          estimatedTotal: 0,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      // Handle empty cart or cart with no items
+      if (!backendCart.items || !Array.isArray(backendCart.items) || backendCart.items.length === 0) {
+        console.log('[CartService] No items in cart, returning empty cart');
+        return {
+          id: backendCart.cartId || backendCart.cart_id || `empty_cart_${backendCart.userId || Date.now()}`,
+          userId: backendCart.userId || '',
+          items: [],
+          itemCount: 0,
+          subtotal: 0,
+          estimatedTax: 0,
+          estimatedTotal: 0,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      console.log('[CartService] Processing cart items:', backendCart.items.length);
+
+      const transformedItems: CartItem[] = backendCart.items.map((item: any, index: number) => {
+        console.log(`[CartService] Transforming item ${index}:`, JSON.stringify(item, null, 2));
+        
+        const transformedItem = {
+          id: index + 1,
+          cartId: `cart_${backendCart.userId}`,
+          productId: item.productId,
+          product: {
+            productId: item.productId,
+            productName: item.productName || 'Unknown Product',
+            aisleId: null,
+            departmentId: null,
+            aisleName: item.aisleName || '',
+            departmentName: item.departmentName || '',
+            description: item.description || null,
+            price: item.price || null,
+            imageUrl: item.imageUrl || null
+          },
+          quantity: item.quantity,
+          price: item.price || 0,
+          total: (item.price || 0) * item.quantity,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        console.log(`[CartService] Transformed item ${index}:`, JSON.stringify(transformedItem, null, 2));
+        return transformedItem;
+      });
+
+      const itemCount = transformedItems.reduce((sum, item) => sum + item.quantity, 0);
+      const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
+
+      const finalCart = {
+        id: backendCart.cartId || backendCart.cart_id || `cart_${backendCart.userId}`,
+        userId: backendCart.userId,
+        items: transformedItems,
+        itemCount: backendCart.totalItems || backendCart.total_items || itemCount,
+        subtotal: subtotal,
+        estimatedTax: subtotal * 0.08,
+        estimatedTotal: subtotal * 1.08,
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
+
+      console.log('[CartService] Final transformed cart:', JSON.stringify(finalCart, null, 2));
+      return finalCart;
+
+    } catch (error: any) {
+      console.error('[CartService] Error in transformBackendCart:', error);
+      console.error('[CartService] Stack trace:', error.stack);
+      throw error;
     }
-
-    const transformedItems: CartItem[] = backendCart.items.map((item: any, index: number) => ({
-      id: index + 1,
-      cartId: `cart_${backendCart.userId}`,
-      productId: item.productId,
-      product: {
-        productId: item.productId,
-        productName: item.productName || 'Unknown Product',
-        aisleId: null,
-        departmentId: null,
-        aisleName: item.aisleName || '',
-        departmentName: item.departmentName || '',
-        description: item.description || null,
-        price: item.price || null,
-        imageUrl: item.imageUrl || null
-      },
-      quantity: item.quantity,
-      price: item.price || 0,
-      total: (item.price || 0) * item.quantity,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }));
-
-    const itemCount = transformedItems.reduce((sum, item) => sum + item.quantity, 0);
-    const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
-
-    return {
-      id: backendCart.cartId || backendCart.cart_id || `cart_${backendCart.userId}`,
-      userId: backendCart.userId,
-      items: transformedItems,
-      itemCount: backendCart.totalItems || backendCart.total_items || itemCount,
-      subtotal: subtotal,
-      estimatedTax: subtotal * 0.08,
-      estimatedTotal: subtotal * 1.08,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
   }
 
   // ============================================================================

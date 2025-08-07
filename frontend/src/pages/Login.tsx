@@ -75,10 +75,19 @@ const Login: React.FC = () => {
     try {
       await login(data.emailAddress, data.password);
       
-      // Fetch cart after successful login
+      // Fetch cart after successful login only if user has an active cart
       const loggedInUser = useAuthStore.getState().user;
       if (loggedInUser?.userId) {
-        await fetchCart(loggedInUser.userId);
+        // Only fetch cart if user has an active cart (boolean check)
+        if (loggedInUser.hasActiveCart === true) {
+          try {
+            await fetchCart(loggedInUser.userId);
+          } catch (cartError) {
+            // Don't break login flow if cart fetch fails
+            console.warn('Failed to fetch cart after login:', cartError);
+            toast.error('Welcome! Note: Cart data temporarily unavailable.');
+          }
+        }
       }
       
       // Redirect to intended page or home
@@ -97,10 +106,19 @@ const Login: React.FC = () => {
       // Use the demo login which will return a random user
       await login(quickUser.emailAddress, quickUser.password);
       
-      // Fetch cart after successful login
+      // Fetch cart after successful login only if user has an active cart
       const loggedInUser = useAuthStore.getState().user;
       if (loggedInUser?.userId) {
-        await fetchCart(loggedInUser.userId);
+        // Only fetch cart if user has an active cart (boolean check)
+        if (loggedInUser.hasActiveCart === true) {
+          try {
+            await fetchCart(loggedInUser.userId);
+          } catch (cartError) {
+            // Don't break login flow if cart fetch fails
+            console.warn('Failed to fetch cart after quick login:', cartError);
+            // Don't show error toast for quick login - just continue
+          }
+        }
       }
       
       toast.success(`Welcome ${quickUser.name}!`);
