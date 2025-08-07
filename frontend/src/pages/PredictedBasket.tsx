@@ -370,10 +370,7 @@ const PredictedBasket: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
-            onClick={() => {
-              toast.success('Shopping scheduled for this week!');
-              // TODO: Integrate with scheduling system
-            }}
+            onClick={() => navigate('/notification-settings')}
             className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <div className="flex items-center justify-center gap-2">

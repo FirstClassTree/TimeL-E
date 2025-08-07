@@ -25,6 +25,7 @@ const Orders = lazy(() => import('@/pages/Orders'));
 const OrderDetail = lazy(() => import('@/pages/OrderDetail'));
 const Profile = lazy(() => import('@/pages/Profile'));
 const PredictedBasket = lazy(() => import('@/pages/PredictedBasket'));
+const NotificationSettings = lazy(() => import('@/pages/NotificationSettings'));
 const Login = lazy(() => import('@/pages/Login'));
 const Register = lazy(() => import('@/pages/Register'));
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
@@ -100,6 +101,11 @@ const App: React.FC = () => {
                     <Route path="predicted-basket" element={
                       <ProtectedRoute>
                         <PredictedBasket />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="notification-settings" element={
+                      <ProtectedRoute>
+                        <NotificationSettings />
                       </ProtectedRoute>
                     } />
                   </Route>

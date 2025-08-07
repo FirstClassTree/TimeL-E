@@ -53,6 +53,16 @@ export  interface UpdateNotificationSettingsRequest {
   orderNotificationsViaEmail: boolean;
 }
 
+export interface NotificationSettings {
+  userId: string;
+  daysBetweenOrderNotifications: number;
+  orderNotificationsStartDateTime: string;
+  orderNotificationsNextScheduledTime?: string;
+  pendingOrderNotification?: boolean;
+  orderNotificationsViaEmail: boolean;
+  lastNotificationSentAt?: string;
+}
+
 export  interface UpdateNotificationSettingsResponse {
   userId: string;
   daysBetweenOrderNotifications: number;
@@ -102,9 +112,14 @@ class UserService {
     return api.delete(`/users/${userId}`, data);
   }
 
+  // Get notification settings
+  async getNotificationSettings(userId: string): Promise<NotificationSettings> {
+    return api.get(`/users/${userId}/notification-settings`);
+  }
+
   //Update Notification Settings
   async updateNotificationSettings(userId : string, data: UpdateNotificationSettingsRequest) : Promise<UpdateNotificationSettingsResponse> {
-    return api.put(`/users/${userId}/notification`, data)
+    return api.put(`/users/${userId}/notification-settings`, data)
   }
 
   //Update Email
