@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   User, Mail, Settings,
-  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone, Bot
+  Edit3, Save, X, CheckCircle, Eye, EyeOff, Phone
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth.store';
 import { userService } from '@/services/user.service';
@@ -35,7 +35,7 @@ const Profile: React.FC = () => {
 
   // Create a mock user if none exists
   const currentUser = user || {
-    userId: '688',
+    userId: '8450d218-5822-55af-8818-961027c51a6e',
     firstName: 'Demo',
     lastName: 'User',
     emailAddress: 'demo@example.com',
@@ -449,20 +449,17 @@ const Profile: React.FC = () => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Account Type</p>
-                <div className="flex items-center gap-2 mt-1">
-                  {user?.demoUser ? (
-                    <>
-                      <Bot size={16} className="text-indigo-600 dark:text-indigo-400" />
-                      <span className="text-indigo-600 dark:text-indigo-400 font-medium">Demo User</span>
-                    </>
-                  ) : (
-                    <>
-                      <User size={16} className="text-gray-600 dark:text-gray-400" />
-                      <span className="text-gray-900 dark:text-white">Standard User</span>
-                    </>
-                  )}
-                </div>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Login</p>
+                <p className="text-gray-900 dark:text-white mt-1">
+                  {user.lastLogin
+                      ? new Date(user.lastLogin).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })
+                      : 'This is your first time here!'
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -470,7 +467,7 @@ const Profile: React.FC = () => {
         </div>
       </div>
     </div>
-      );
+  );
 };
 
 export default Profile;

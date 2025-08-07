@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import { authService, User } from '@/services/auth.service';
+import { authService, RegisterData, User} from '@/services/auth.service';
 import toast from 'react-hot-toast';
 
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  
+
   // Actions
   login: (email: string, password: string) => Promise<void>;
   register: (data: {
@@ -31,30 +31,30 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>()(
-  devtools(
-    persist(
-      (set, get) => ({
-        user: authService.getUser(),
-        isAuthenticated: authService.isAuthenticated(),
-        isLoading: false,
+    devtools(
+        persist(
+            (set, get) => ({
+              user: authService.getUser(),
+              isAuthenticated: authService.isAuthenticated(),
+              isLoading: false,
 
-        login: async (email, password) => {
-          set({ isLoading: true });
-          try {
-            const response = await authService.login({ email, password });
-            set({
-              user: response.user,
-              isAuthenticated: true,
-              isLoading: false
-            });
-            toast.success(`Welcome back, ${response.user.firstName} ${response.user.lastName}!`);
-          } catch (error: any) {
-            set({ isLoading: false });
-            throw error;
-          }
-        },
+              login: async (emailAddress, password) => {
+                set({isLoading: true});
+                try {
+                  const response = await authService.login({emailAddress, password});
+                  set({
+                    user: response.user,
+                    isAuthenticated: true,
+                    isLoading: false
+                  });
+                  toast.success(`Welcome back, ${response.user.firstName} ${response.user.lastName}!`);
+                } catch (error: any) {
+                  set({isLoading: false});
+                  throw error;
+                }
+              },
 
-        register: async (data) => {
+              register: async (data: RegisterData) => {
           set({ isLoading: true });
           try {
             const response = await authService.register(data);

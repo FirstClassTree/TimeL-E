@@ -8,7 +8,7 @@ import { useCartStore } from '@/stores/cart.store';
 import toast from 'react-hot-toast';
 
 interface LoginFormData {
-  email: string;
+  emailAddress: string;
   password: string;
   rememberMe: boolean;
 }
@@ -16,8 +16,8 @@ interface LoginFormData {
 interface QuickLoginUser {
   userId: string;
   name: string;
-  email: string;
-  phone: string;
+  emailAddress: string;
+  phoneNumber: string;
   password: string,
   avatar: string;
 }
@@ -26,25 +26,25 @@ const quickLoginUsers: QuickLoginUser[] = [
     {
       userId: "2d8c1a3a-06d5-5f98-84ad-365c7b015ac1",
       name: "John",
-      email: "user39993@timele-demo.com",
+      emailAddress: "user39993@timele-demo.com",
       password: "password",
-      phone: "+1-555-39993",
+      phoneNumber: "+1-555-39993",
       avatar: "👨‍💼"
     },
     {
       userId: "8450d218-5822-55af-8818-961027c51a6e",
       name: "Sarah",
-      email: "user688@timele-demo.com",
+      emailAddress: "user688@timele-demo.com",
       password: "password",
-      phone: "+1-555-688",
+      phoneNumber: "+1-555-688",
       avatar: "👩‍💻"
     },
     {
       userId: "e8f65487-32a9-5c3d-a0b6-716676e25a53",
       name: "Mike",
-      email: "user82420@timele-demo.com",
+      emailAddress: "user82420@timele-demo.com",
       password: "password",
-      phone: "+1-555-82420",
+      phoneNumber: "+1-555-82420",
       avatar: "👨‍🎨"
     }
   ];
@@ -65,7 +65,7 @@ const Login: React.FC = () => {
     setError
   } = useForm<LoginFormData>({
     defaultValues: {
-      email: '',
+      emailAddress: '',
       password: '',
       rememberMe: true
     }
@@ -73,7 +73,7 @@ const Login: React.FC = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(data.email, data.password);
+      await login(data.emailAddress, data.password);
       
       // Fetch cart after successful login
       const loggedInUser = useAuthStore.getState().user;
@@ -95,7 +95,7 @@ const Login: React.FC = () => {
   const handleQuickLogin = async (quickUser: QuickLoginUser) => {
     try {
       // Use the demo login which will return a random user
-      await login(quickUser.email, quickUser.password);
+      await login(quickUser.emailAddress, quickUser.password);
       
       // Fetch cart after successful login
       const loggedInUser = useAuthStore.getState().user;
@@ -144,13 +144,13 @@ const Login: React.FC = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label htmlFor="emailAddress" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
-                  {...register('email', {
+                  {...register('emailAddress', {
                     required: 'Email is required',
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -300,10 +300,10 @@ const Login: React.FC = () => {
                       {quickUser.name}
                     </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {quickUser.email}
+                      {quickUser.emailAddress}
                     </p>
                   </div>
-                  {isLoading && userId === quickUser.userId && (
+                  {isLoading && user.id === quickUser.userId && (
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                   )}
                 </motion.button>
