@@ -15,9 +15,9 @@ from .carts_routers import router as carts_router
 # from .inject_schema_docs import router as schema_doc_router
 import sys
 import datetime
-from .populate_from_csv import populate_tables
-from .populate_enriched_data import populate_enriched_data
-from .populate_order_status_history_from_csv import populate_orders_created_at, populate_order_status_history
+from .data_loaders.populate_from_csv import populate_tables
+from .data_loaders.populate_enriched_data import populate_enriched_data
+from .data_loaders.populate_order_status_history_from_csv import populate_orders_created_at, populate_order_status_history
 from .db_core.config import settings
 from .scheduler import process_scheduled_user_notifications
 from apscheduler.schedulers.background import BackgroundScheduler

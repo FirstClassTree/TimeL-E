@@ -9,8 +9,9 @@ import os
 from datetime import datetime, UTC
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from app.db_core.database import SessionLocal
-from app.db_core.models import Order, OrderStatusHistory, OrderStatus
+from ..db_core.database import SessionLocal
+from ..db_core.models import Order, OrderStatusHistory, OrderStatus
+from .validation_utils import should_reload_data
 import csv
 from collections import defaultdict
 import pandas as pd
@@ -52,6 +53,20 @@ def populate_orders_created_at():
             print(f"[orders_demo_enriched.csv] not found, skipping created_at update.")
             return
 
+        # Pre-load all existing order IDs for validation
+        print("Pre-loading existing order IDs for created_at update validation...")
+        existing_orders = set()
+        orders = db.query(Order.id).all()
+        for order in orders:
+            existing_orders.add(order.id)
+        print(f"Found {len(existing_orders)} existing orders for validation")
+        
+        if len(existing_orders) == 0:
+            print("   WARNING: No orders found in database!")
+            print("   Make sure orders are loaded before updating created_at timestamps")
+            db.close()
+            return
+
         with open(filename, newline='') as f:
             reader = csv.DictReader(f)
             first_row = next(reader, None)
@@ -60,22 +75,33 @@ def populate_orders_created_at():
                 db.close()
                 return
             first_order_id = int(first_row['order_id'])
-            order = db.query(Order).filter(Order.id == first_order_id).first()
-            if order and order.created_at is not None and not is_today(order.created_at):
-                print(f"Order.created_at already set for order_id {first_order_id} ({order.created_at}); skipping all created_at loading.")
-                db.close()
-                return
+            if first_order_id in existing_orders:
+                order = db.query(Order).filter(Order.id == first_order_id).first()
+                if order and order.created_at is not None and not is_today(order.created_at):
+                    print(f"Order.created_at already set for order_id {first_order_id} ({order.created_at}); skipping all created_at loading.")
+                    db.close()
+                    return
 
         print(f"Updating orders.created_at from: {filename}")
         batch_size = 50  # Reduced for memory stability
         batch_orders = []
-        updated, missing, errors = 0, 0, 0
+        updated, missing, errors, fk_violations = 0, 0, 0, 0
 
         with open(filename, newline='') as f:
             reader = csv.DictReader(f)
             for row_num, row in enumerate(reader, 1):
                 try:
                     order_id = int(row['order_id'])
+                    
+                    # VALIDATE FOREIGN KEY BEFORE PROCESSING
+                    if order_id not in existing_orders:
+                        fk_violations += 1
+                        if fk_violations <= 10:  # Show first 10 violations
+                            print(f"   Row {row_num}: Skipping created_at update for invalid order_id {order_id}")
+                        elif fk_violations == 11:
+                            print(f"   ... (suppressing further FK violation messages)")
+                        continue
+                    
                     created_at = parse_dt(row['created_at'])
                     order = db.query(Order).filter(Order.id == order_id).first()
                     if order:
@@ -98,7 +124,7 @@ def populate_orders_created_at():
                                 except (IntegrityError, SQLAlchemyError) as row_err:
                                     errors += 1
                                     db.rollback()
-                                    print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
+                                    print(f"      -> Skipping bad order update (order_id {single_order.id}): {row_err}")
                             batch_orders = []
                 except Exception as e:
                     errors += 1
@@ -116,10 +142,10 @@ def populate_orders_created_at():
                     except (IntegrityError, SQLAlchemyError) as row_err:
                         errors += 1
                         db.rollback()
-                        print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
+                        print(f"      -> Skipping bad order update (order_id {single_order.id}): {row_err}")
 
         db.commit()
-        print(f"orders.created_at updated for {updated} orders (missing: {missing}, errors: {errors})")
+        print(f"Orders.created_at updated from CSV: {updated} (missing: {missing}, FK violations: {fk_violations}, errors: {errors})")
     except Exception as e:
         print(f"CRITICAL ERROR during CSV loading: {e}")
         print("Full error details:")
@@ -157,10 +183,11 @@ def populate_order_status_history():
         db.execute(text("ALTER TABLE orders.orders DISABLE TRIGGER trg_order_status_change"))
         db.commit()
 
-        data_exists = db.query(OrderStatusHistory).first() is not None
-
-        if data_exists:
-            print("Order status history data already exists. Skipping population.")
+        # Use utility function for robust data validation (90% threshold)
+        filename = os.path.join(CSV_DIR, "orders_demo_status_history.csv")
+        should_reload = should_reload_data(db, OrderStatusHistory, filename, "Order Status History")
+        
+        if not should_reload:
             return True
 
         filename = os.path.join(CSV_DIR, "orders_demo_status_history.csv")
@@ -170,23 +197,45 @@ def populate_order_status_history():
 
         print(f"Loading order status history from: {filename}")
 
-        # Step 1: Group status rows in-memory per order
+        # Check order count without pre-loading large sets into memory
+        order_count = db.query(Order).count()
+        print(f"Found {order_count} existing orders for validation")
+        
+        if order_count == 0:
+            print("   WARNING: No orders found in database!")
+            print("   Make sure orders are loaded before order status history")
+            return
+        
+        print("Using database FK constraints for validation (no pre-loading)")
+
+        # Step 1: Group status rows in-memory per order, let database handle FK validation
         order_histories = defaultdict(list)
         last_status_per_order = {}  # {order_id: (new_status, changed_at)}
+        
         with open(filename, newline='') as f:
             reader = csv.DictReader(f)
-            for row in reader:
-                order_id = int(row['order_id'])
-                status_str = normalize_status(row.get('status', 'pending'))
-                if status_str is None:
+            for row_num, row in enumerate(reader, 1):
+                try:
+                    order_id = int(row['order_id'])
+                    
+                    status_str = normalize_status(row.get('status', 'pending'))
+                    if status_str is None:
+                        continue
+                    status = OrderStatus(status_str)
+                    changed_at = parse_dt(row['changed_at'])
+                    order_histories[order_id].append((changed_at, status))
+                    # Track the latest status and timestamp
+                    if order_id not in last_status_per_order:
+                        last_status_per_order[order_id] = (status, changed_at)
+                    else:
+                        current_status, current_time = last_status_per_order[order_id]
+                        if changed_at > current_time:
+                            last_status_per_order[order_id] = (status, changed_at)
+                except Exception as e:
+                    print(f"   Row {row_num}: Error processing status history row: {e}")
                     continue
-                status = OrderStatus(status_str)
-                changed_at = parse_dt(row['changed_at'])
-                order_histories[order_id].append((changed_at, status))
-                # Track the latest status and timestamp
-                if (order_id not in last_status_per_order or
-                        changed_at > last_status_per_order[order_id][1]):
-                    last_status_per_order[order_id] = (status, changed_at)
+        
+        print(f"Processing status history for {len(order_histories)} orders")
 
         # Step 2: Batch-insert by order, keeping correct old/new status per order
         batch_size = 200
@@ -296,6 +345,7 @@ def populate_order_status_history():
                         print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
 
         db.commit()
+        print(f"Status history records loaded: {count} (errors: {errors})")
         print(f"Orders updated from CSV: {updated_orders} (missing: {missing_orders})")
         
         # Re-enable trigger after updates

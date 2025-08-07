@@ -673,7 +673,7 @@ def checkout_cart(user_id: str, session: Session = Depends(get_db)) -> ServiceRe
                 data=[]
             )
         
-        # TODO: Implement actual order creation
+        # Implement actual order creation for production
         # For now, simulate checkout and clear cart
         
         # Clear cart items

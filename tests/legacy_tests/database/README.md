@@ -82,16 +82,17 @@ Database tests use shared utilities from `tests/utils/`:
 ## Example Usage
 
 ```python
-from tests.utils.fk_helpers import fk_test_context
+from tests import fk_test_context
+
 
 def test_product_fk_constraint(db_connection):
     with fk_test_context(db_connection) as fk_manager:
         # Create parent records first
         product_id = fk_manager.create_test_product()
-        
+
         # Create child record with valid FK
         enriched_id = fk_manager.create_test_product_enriched(product_id)
-        
+
         # Test operations...
     # Automatic cleanup in correct order
 ```

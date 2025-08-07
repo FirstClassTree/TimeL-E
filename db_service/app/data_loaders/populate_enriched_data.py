@@ -11,10 +11,11 @@ import sys
 import argparse
 from pathlib import Path
 from sqlalchemy import text
-from app.db_core.config import settings
-from app.db_core.models.products import ProductEnriched
-from app.db_core.models.orders import Order, OrderItem
-from app.db_core.database import SessionLocal
+from ..db_core.config import settings
+from ..db_core.models.products import ProductEnriched
+from ..db_core.models.orders import Order, OrderItem
+from ..db_core.database import SessionLocal
+from .validation_utils import should_reload_data_multiple_csvs
 
 def populate_enriched_data(force_reset=False):
     """Populate the product_enriched table from CSV"""
@@ -35,16 +36,18 @@ def populate_enriched_data(force_reset=False):
     session = SessionLocal()
 
     try:
-        data_exists = session.query(ProductEnriched).first() is not None
-
-        if not force_reset and data_exists:
-            print("Enriched product data already exists. Skipping population.")
-            return True
-
-        if force_reset and data_exists:
-            print("Force reset: clearing existing enriched data...")
-            session.execute(text("DELETE FROM products.product_enriched"))
-            session.commit()
+        # Use utility function for robust data validation (90% threshold)
+        if not force_reset:
+            should_reload = should_reload_data_multiple_csvs(session, ProductEnriched, csv_files, "Enriched Products")
+            if not should_reload:
+                return True
+        else:
+            # Force reset requested
+            data_exists = session.query(ProductEnriched).first() is not None
+            if data_exists:
+                print("Force reset: clearing existing enriched data...")
+                session.execute(text("DELETE FROM products.product_enriched"))
+                session.commit()
 
         try:
             # Combine all department CSVs
@@ -91,31 +94,33 @@ def populate_enriched_data(force_reset=False):
                     print(f"   Warning: Failed to build product {row.get('product_id', 'unknown')}: {e}")
                     continue
 
-            try:
-                session.add_all(objects)
-                session.flush()  # Use commit if need to persist each batch immediately
-                success_count += len(objects)
-                if success_count % 10000 == 0:
-                    print(f"   Processed {success_count} products...")
-            except Exception as batch_err:
-                session.rollback()
-                print(f"   ERROR: Batch insert failed: {batch_err} (will try individual rows)")
-                # Fallback: try each row individually
-                for obj in objects:
-                    try:
-                        new_obj = ProductEnriched(
-                            product_id=obj.product_id,
-                            description=obj.description,
-                            price=obj.price,
-                            image_url=obj.image_url
-                        )
-                        session.add(new_obj)
-                        session.flush()
-                        success_count += 1
-                    except Exception as row_err:
-                        error_count += 1
-                        session.rollback()
-                        print(f"      -> Skipping product {getattr(obj, 'product_id', '?')}: {row_err}")
+            if objects:  # Only process if we have valid objects
+                try:
+                    session.add_all(objects)
+                    session.flush()  # Use commit if need to persist each batch immediately
+                    success_count += len(objects)
+                    if success_count % 10000 == 0:
+                        print(f"   Processed {success_count} products...")
+                except Exception as batch_err:
+                    session.rollback()
+                    print(f"   ERROR: Batch insert failed: {batch_err} (will try individual rows)")
+                    # Fallback: try each row individually
+                    for obj in objects:
+                        try:
+                            # Ensure we're creating a new object, not reusing
+                            new_obj = ProductEnriched(
+                                product_id=int(obj.product_id),
+                                description=obj.description,
+                                price=float(obj.price) if obj.price is not None else None,
+                                image_url=obj.image_url
+                            )
+                            session.add(new_obj)
+                            session.flush()
+                            success_count += 1
+                        except Exception as row_err:
+                            error_count += 1
+                            session.rollback()
+                            print(f"      -> Skipping product {getattr(obj, 'product_id', '?')}: {row_err}")
 
         session.commit()
 
@@ -165,14 +170,14 @@ def update_order_prices_from_enriched_data(session):
         price_lookup = {product_id: price for product_id, price in enriched_prices}
         print(f"   Found {len(price_lookup)} products with enriched prices")
         
-        # Process order items in batches
-        BATCH_SIZE = 1000
+        BATCH_SIZE = 50  # Smaller batches to reduce memory pressure
         updated_items = 0
         failed_batches = 0
         
         # Get total count for progress tracking
         total_items = session.query(OrderItem).count()
         print(f"   Processing {total_items} order items in batches of {BATCH_SIZE}")
+        print("   Using memory-efficient approach (small batches, no pre-loading)")
         
         offset = 0
         while True:
@@ -189,12 +194,13 @@ def update_order_prices_from_enriched_data(session):
                         item.price = price_lookup[item.product_id]
                         batch_updated += 1
 
-                # Commit this batch
+                # Commit this batch and clear session to prevent memory buildup
                 session.commit()
+                session.expunge_all()  # Remove all objects from session to free memory
                 updated_items += batch_updated
                 
-                # Show progress every 10k items
-                if offset % 10000 == 0 or offset + BATCH_SIZE >= total_items:
+                # Show progress every 5k items (more frequent for smaller batches)
+                if offset % 5000 == 0 or offset + BATCH_SIZE >= total_items:
                     print(f"   Processed {min(offset + BATCH_SIZE, total_items)}/{total_items} items, updated {batch_updated} in this batch")
                     
             except Exception as batch_err:
@@ -209,19 +215,22 @@ def update_order_prices_from_enriched_data(session):
         if failed_batches > 0:
             print(f"   Failed batches: {failed_batches}")
         
-        # Update order total prices in batches
+        # Update order total prices in batches (using same small batch size)
         print("   Recalculating order total prices...")
         
         total_orders = session.query(Order).count()
-        print(f"   Processing {total_orders} orders in batches of {BATCH_SIZE}")
+        ORDER_BATCH_SIZE = 25  # Even smaller batches for orders with relationships
+        print(f"   Processing {total_orders} orders in batches of {ORDER_BATCH_SIZE}")
+        print("   Using memory-efficient approach (very small batches)")
         
         updated_orders = 0
         failed_order_batches = 0
         offset = 0
         
         while True:
-            # Get batch of orders
-            batch_orders = session.query(Order).offset(offset).limit(BATCH_SIZE).all()
+            # Get batch of orders with their items eagerly loaded (prevents N+1 queries)
+            from sqlalchemy.orm import joinedload
+            batch_orders = session.query(Order).options(joinedload(Order.order_items)).offset(offset).limit(ORDER_BATCH_SIZE).all()
             
             if not batch_orders:
                 break
@@ -229,7 +238,7 @@ def update_order_prices_from_enriched_data(session):
             try:
                 batch_updated = 0
                 for order in batch_orders:
-                    # Calculate total price from order items
+                    # Calculate total price from order items (now loaded in memory, no additional queries)
                     total_price = sum(item.price * item.quantity for item in order.order_items if item.price)
                     order.total_price = total_price
                     batch_updated += 1
@@ -238,9 +247,9 @@ def update_order_prices_from_enriched_data(session):
                 session.commit()
                 updated_orders += batch_updated
                 
-                # Show progress every 10k orders
-                if offset % 10000 == 0 or offset + BATCH_SIZE >= total_orders:
-                    print(f"   Processed {min(offset + BATCH_SIZE, total_orders)}/{total_orders} orders")
+                # Show progress every 1k orders (more frequent for smaller batches)
+                if offset % 1000 == 0 or offset + ORDER_BATCH_SIZE >= total_orders:
+                    print(f"   Processed {min(offset + ORDER_BATCH_SIZE, total_orders)}/{total_orders} orders")
                     
             except Exception as batch_err:
                 session.rollback()
@@ -248,7 +257,7 @@ def update_order_prices_from_enriched_data(session):
                 print(f"   ERROR: Failed to update order batch at offset {offset}: {batch_err}")
                 # Continue with next batch
             
-            offset += BATCH_SIZE
+            offset += ORDER_BATCH_SIZE
         
         print(f"   Updated {updated_orders} orders with recalculated total prices")
         if failed_order_batches > 0:

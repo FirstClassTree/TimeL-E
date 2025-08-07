@@ -9,9 +9,10 @@ from datetime import datetime, timedelta, UTC
 from sqlalchemy import Uuid
 import uuid
 import pandas as pd
-from .db_core.database import SessionLocal
-from .db_core.models import Product, Department, Aisle, User, Order, OrderItem
-from .db_core.config import settings
+from ..db_core.database import SessionLocal
+from ..db_core.models import Product, Department, Aisle, User, Order, OrderItem
+from ..db_core.config import settings
+from .validation_utils import should_reload_data
 
 CSV_DIR = "/data"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"  # match CSV, ISO 8601 format
@@ -227,8 +228,8 @@ def load_orders(db: Session):
                         db.add_all(batch_orders)
                         db.flush()  # Optionally use commit for ultra-safety
                         success_count += len(batch_orders)
-                        if success_count % 10000 == 0:
-                            print(f"   Committed batch of {len(batch_orders)} orders")
+                        if success_count % 1000 == 0:
+                            print(f"   Committed {success_count} orders so far...")
                         batch_orders = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
@@ -254,6 +255,7 @@ def load_orders(db: Session):
             try:
                 db.add_all(batch_orders)
                 db.flush()
+                success_count += len(batch_orders)  # Add final batch count to success_count
                 print(f"   Committed final batch of {len(batch_orders)} orders")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
@@ -268,6 +270,7 @@ def load_orders(db: Session):
                         order_errors += 1
                         db.rollback()
                         print(f"      -> Skipping bad order: {row_err}")
+                success_count += success_count_final  # Add individual successes to success_count
                 print(f"   Committed final batch of {success_count_final} orders")
 
         print(f"Orders processing summary:")
@@ -283,7 +286,7 @@ def load_orders(db: Session):
 def load_order_items(db: Session):
     order_items_file = os.path.join(CSV_DIR, "order_items_demo.csv")
     print(f"Loading order items from: {order_items_file}")
-    
+
     # Pre-load all existing order_ids for validation
     print("Pre-loading existing order_ids for foreign key validation...")
     existing_orders = set()
@@ -291,21 +294,21 @@ def load_order_items(db: Session):
     for order in orders:
         existing_orders.add(order.id)
     print(f"Found {len(existing_orders)} existing orders for validation")
-    
-    batch_size = 10
+
+    batch_size = 10  # Use small working batch size
     batch_items = []
     items_loaded = 0
     item_errors = 0
     fk_violations = 0
     success_count = 0
-    
+
     with open(order_items_file, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row_num, row in enumerate(reader, 1):
             try:
                 order_id = int(row["order_id"])
-                
-                # VALIDATE FOREIGN KEY BEFORE CREATING OBJECT
+
+                # VALIDATE FOREIGN KEY BEFORE CREATING OBJECT (original approach)
                 if order_id not in existing_orders:
                     fk_violations += 1
                     if fk_violations <= 10:  # Show first 10 violations
@@ -313,7 +316,7 @@ def load_order_items(db: Session):
                     elif fk_violations == 11:
                         print(f"   ... (suppressing further FK violation messages)")
                     continue
-                
+
                 item = OrderItem(
                     order_id=order_id,
                     product_id=int(row["product_id"]),
@@ -326,15 +329,14 @@ def load_order_items(db: Session):
                 if len(batch_items) >= batch_size:
                     try:
                         db.add_all(batch_items)
-                        db.flush()  # Optionally use commit for ultra-safety
+                        db.flush()  # Approach without expunge_all
                         success_count += len(batch_items)
-                        if success_count % 100000 == 0:
-                            print(f"   Committed batch of {len(batch_items)} order items")
+                        if success_count % 10000 == 0:  # Progress reporting
+                            print(f"   Committed {success_count} order items so far...")
                         batch_items = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
-                        print(
-                            f"   ERROR[load order items]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        print(f"   ERROR[load order items]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_item in batch_items:
                             try:
@@ -349,11 +351,12 @@ def load_order_items(db: Session):
             except Exception as row_error:
                 item_errors += 1
                 print(f"   Row {row_num}: Error creating order item: {row_error}")
-        
+
         if batch_items:
             try:
                 db.add_all(batch_items)
                 db.flush()
+                success_count += len(batch_items)  # Fix: Add final batch to success count
                 print(f"   Committed final batch of {len(batch_items)} order items")
             except (IntegrityError, SQLAlchemyError) as batch_err:
                 db.rollback()
@@ -368,29 +371,30 @@ def load_order_items(db: Session):
                         item_errors += 1
                         db.rollback()
                         print(f"      -> Skipping bad order item: {row_err}")
+                success_count += success_count_final  # Fix: Add individual successes
                 print(f"   Committed final batch of {success_count_final} order items")
 
     print(f"Order Items processing summary:")
     print(f"   Successfully loaded: {items_loaded} order items")
+    print(f"   Successfully committed: {success_count} order items")  # Show committed count
     print(f"   Skipped FK violations: {fk_violations}")
     print(f"   Other errors: {item_errors}")
-    print(f"   Total committed: {success_count}")
 
     db.commit()
 
 def _dev_overwrite_user_from_csv(existing_user, csv_row, db, row_num):
     """
     Helper: Overwrites an existing user object with values from csv_row.
-    Prints full dicts of old and new user details for transparency.
+    Prints key user details for transparency.
     Dynamically updates all fields present in the CSV (except 'user_id').
     """
-    old_dict = dict(existing_user.__dict__)
-    old_dict.pop('_sa_instance_state', None)
     print(
         f"Row {row_num}: DEV MODE: User with ID {csv_row['user_id']} already exists "
         f"and is being OVERWRITTEN by Demo user from CSV.\n"
-        f"Old user details: {old_dict}\n"
-        f"New (Demo) user details: {csv_row}"
+        f"Old user: ID={existing_user.id}, External={existing_user.external_user_id}, "
+        f"Name='{existing_user.first_name} {existing_user.last_name}', Email='{existing_user.email_address}'\n"
+        f"New user: ID={csv_row['user_id']}, Name='{csv_row.get('first_name', '')} {csv_row.get('last_name', '')}', "
+        f"Email='{csv_row.get('email_address', '')}'"
     )
 
     # Datetime fields to parse
@@ -442,10 +446,12 @@ def load_users(db: Session):
         file_size = os.path.getsize(users_file)
         print(f"File size: {file_size} bytes")
 
-        # Set sequence starting point for new users (400000+)
+        # Set sequence starting point for new users created through the website (400000+)
+        # CSV users keep their original low IDs (1-201520), new website users get high IDs (400000+)
         from sqlalchemy import text
         db.execute(text("SELECT setval('users.users_id_seq', 400000, false)"))
-        print("Set users.id sequence to start at 400000 for new users")
+        print("Set users.id sequence to start at 400000 for new users created through website")
+        print("CSV users will keep their original low ID numbers (1-201520 range)")
 
         users_loaded = 0
         errors = 0
@@ -554,42 +560,33 @@ def populate_tables():
 
     print("Populating tables from CSV...")
     
-    # Check what's already loaded
-    products_exist = db.query(Product).first() is not None
-    users_exist = db.query(User).first() is not None
-    orders_exist = db.query(Order).first() is not None
-    order_items_exist = db.query(OrderItem).first() is not None
-    
-    if products_exist:
-        print("Products already populated.")
-    if users_exist:
-        print("Users already populated.")
-    if orders_exist:
-        print("Orders already populated.")
-    if order_items_exist:
-        print("Order items already populated.")
+    # Use utility function for robust validation (90% threshold)
+    products_need_reload = should_reload_data(db, Product, os.path.join(CSV_DIR, "products.csv"), "Products")
+    users_need_reload = should_reload_data(db, User, os.path.join(CSV_DIR, "users_demo.csv"), "Users") 
+    orders_need_reload = should_reload_data(db, Order, os.path.join(CSV_DIR, "orders_demo_enriched.csv"), "Orders")
+    order_items_need_reload = should_reload_data(db, OrderItem, os.path.join(CSV_DIR, "order_items_demo.csv"), "Order Items")
         
-    # Skip if everything is already loaded
-    if products_exist and users_exist and orders_exist:
-        print("All data already populated.")
+    # Skip if everything is already adequately loaded
+    if not (products_need_reload or users_need_reload or orders_need_reload or order_items_need_reload):
+        print("All data already adequately populated.")
         db.close()
         return
 
     try:
-        # Load departments, aisles, products only if products don't exist
-        if not products_exist:
+        # Load departments, aisles, products only if needed
+        if products_need_reload:
             load_departments(db)
             load_aisles(db)
             load_products(db)
 
-        # Load users only if they don't exist
-        if not users_exist:
+        # Load users only if needed
+        if users_need_reload:
             load_users(db)
 
-        if not orders_exist:
+        if orders_need_reload:
             load_orders(db)
 
-        if not order_items_exist:
+        if order_items_need_reload:
             load_order_items(db)
 
         # compute total_items per order after loading items
