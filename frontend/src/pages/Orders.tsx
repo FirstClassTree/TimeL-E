@@ -12,16 +12,16 @@ import EmptyState from '@/components/common/EmptyState';
 import { useAuthStore } from '@/stores/auth.store';
 
 interface Order {
-  orderId: number;
+  orderId: string;
   orderNumber: number;
   status: 'PENDING' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned';
-  total: number;
+  totalPrice: number;
   items: Array<{
-    id: string;
-    name: string;
+    productId: number;
+    productName: string;
     price: number;
     quantity: number;
-    image: string;
+    imageUrl: string;
   }>;
   createdAt: string;
   deliveryDate?: string;
@@ -33,19 +33,21 @@ const Orders: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled' | 'returned'>('all');
   
   const { data: orders, isLoading, error, refetch } = useQuery<Order[]>(
-    ['orders', user?.id],
+    ['orders', user?.userId],
     async () => {
-      if (!user?.id) throw new Error('User not authenticated');
-      return (await orderService.getOrders(user.id)).orders;
+      if (!user?.userId) throw new Error('User not authenticated');
+      const response = await orderService.getOrders(user.userId);
+      // Backend returns { data: { orders: [...] } } structure
+      return response.orders || [];
     },
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      enabled: !!user?.id, // Only run query when userId is available
+      enabled: !!user?.userId, // Only run query when userId is available
     }
   );
 
   // Early return if user is not authenticated
-  if (!user?.id) {
+  if (!user?.userId) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="text-center">
@@ -236,7 +238,7 @@ const Orders: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <DollarSign size={16} />
-                  <span>Total: ${order.total.toFixed(2)}</span>
+                  <span>Total: ${order.totalPrice.toFixed(2)}</span>
                 </div>
                 {order.trackingNumber && (
                   <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
@@ -251,21 +253,21 @@ const Orders: React.FC = () => {
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {order.items.slice(0, 3).map((item) => (
-                  <div key={item.id} className="flex items-center gap-3">
+                  <div key={item.productId} className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                       <img
-                        src={item.image}
-                        alt={item.name}
+                        src={item.imageUrl}
+                        alt={item.productName}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white truncate">
-                        {item.name}
+                        {item.productName}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Qty: {item.quantity} × ${item.price.toFixed(2)}
+                        Qty: {item.quantity} × ${item.price?.toFixed(2) || '0.00'}
                       </p>
                     </div>
                   </div>
