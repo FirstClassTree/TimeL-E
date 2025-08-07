@@ -121,9 +121,9 @@ All endpoints continue to use their existing URL patterns.
 {
   "firstName": "John",
   "lastName": "Doe",
-  "email": "john@example.com",
+  "emailAddress": "john@example.com",
   "password": "securepassword",
-  "phone": "+1-555-0123",
+  "phoneNumber": "+1-555-0123",
   "streetAddress": "123 Main St",
   "city": "Demo City",
   "postalCode": "12345",
@@ -139,7 +139,7 @@ All endpoints continue to use their existing URL patterns.
 {
   "firstName": "John",
   "lastName": "Doe",
-  "email": "john@example.com",
+  "emailAddress": "john@example.com",
   "password": "securepassword"
 }
 ```
@@ -177,8 +177,8 @@ All endpoints continue to use their existing URL patterns.
 {
   "firstName": "John",
   "lastName": "Smith", 
-  "email": "johnsmith@example.com",
-  "phone": "+1-555-0456"
+  "emailAddress": "johnsmith@example.com",
+  "phoneNumber": "+1-555-0456"
 }
 ```
 

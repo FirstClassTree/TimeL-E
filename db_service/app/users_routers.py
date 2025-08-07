@@ -1,14 +1,13 @@
 # app/users_routers.py
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload, Session, aliased
 from sqlalchemy import func, and_
 from .db_core.database import SessionLocal
 from .db_core.models import User, Order, OrderStatusHistory, Cart
 from pydantic import BaseModel, EmailStr, Field, conint, ConfigDict
-from typing import Optional, Generic, TypeVar, List, Callable, Any, Union, Literal, Annotated
-from typing_extensions import Doc
+from typing import Optional, Generic, TypeVar, List
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from datetime import datetime, timedelta, UTC
@@ -137,21 +136,41 @@ class UserData(BaseModel):
     last_notification_sent_at: Optional[datetime] = None
     last_notifications_viewed_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
-    has_active_cart: bool = Field(False)
+    has_active_cart: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
     
     @classmethod
     def from_user(cls, user: User):
         """Convert User ORM object to UserData with external UUID4 conversion"""
-        data = cls.model_validate(user)
-        data.user_id = str(user.external_user_id)
+        # Create dict with proper field mapping
+        user_dict = {
+            'user_id': str(user.external_user_id),  # Map external_user_id -> user_id
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email_address': user.email_address,
+            'phone_number': user.phone_number,
+            'street_address': user.street_address,
+            'city': user.city,
+            'postal_code': user.postal_code,
+            'country': user.country,
+            'days_between_order_notifications': user.days_between_order_notifications,
+            'order_notifications_start_date_time': user.order_notifications_start_date_time,
+            'order_notifications_next_scheduled_time': user.order_notifications_next_scheduled_time,
+            'order_notifications_via_email': user.order_notifications_via_email,
+            'last_notification_sent_at': user.last_notification_sent_at,
+            'last_notifications_viewed_at': user.last_notifications_viewed_at,
+            'last_login': user.last_login,
+            'has_active_cart': None  # Will be set to True only when explicitly checked and is True (during login)
+        }
         
         # Only include pending_order_notification if it's True
-        if not user.pending_order_notification:
-            data.pending_order_notification = None
+        if user.pending_order_notification:
+            user_dict['pending_order_notification'] = True
+        else:
+            user_dict['pending_order_notification'] = None
             
-        return data
+        return cls(**user_dict)
 
 class PasswordUpdateResponse(BaseModel):
     user_id: str
@@ -179,9 +198,15 @@ class NotificationSettingsData(BaseModel):
     @classmethod
     def from_user(cls, user: User):
         """Convert User ORM object to NotificationSettingsData with external UUID4 conversion"""
-        data = cls.model_validate(user)
-        data.user_id = str(user.external_user_id)
-        return data
+        return cls(
+            user_id=str(user.external_user_id),
+            days_between_order_notifications=user.days_between_order_notifications,
+            order_notifications_start_date_time=user.order_notifications_start_date_time,
+            order_notifications_next_scheduled_time=user.order_notifications_next_scheduled_time,
+            order_notifications_via_email=user.order_notifications_via_email,
+            pending_order_notification=user.pending_order_notification,
+            last_notification_sent_at=user.last_notification_sent_at
+        )
 
 class CreateUserRequest(BaseModel):
     first_name: str
@@ -718,7 +743,10 @@ def login_user(payload: LoginRequest, session: Session = Depends(get_db)) -> Ser
         session.refresh(user)
 
         user_data = UserData.from_user(user)
-        user_data.has_active_cart = active_cart is not None
+
+        # Only set has_active_cart if user has an active cart
+        if active_cart is not None:
+            user_data.has_active_cart = True
         
         return ServiceResponse[UserData](
             success=True,
