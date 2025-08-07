@@ -11,44 +11,10 @@ import sys
 import argparse
 from pathlib import Path
 from sqlalchemy import text
-from sqlalchemy.orm import Session
-from .db_core.config import settings
-from .db_core.database import SessionLocal
-from .db_core.models import Department, Order, OrderItem, ProductEnriched
-
-
-def populate_enriched_departments(session: Session):
-    """Enrich Departments Table from departments_enriched.csv"""
-
-    try:
-        departments_csv_path = Path("/data/departments_enriched.csv")
-        if departments_csv_path.exists():
-            dept_df = pd.read_csv(departments_csv_path)
-            # Normalize column names
-            dept_df.columns = [c.strip().lower() for c in dept_df.columns]
-            required_dept_cols = {"department_id", "description", "image_url"}
-            if not required_dept_cols.issubset(dept_df.columns):
-                print(f"Warning: departments_enriched.csv missing required columns. Found: {list(dept_df.columns)}")
-            else:
-                updated_count = 0
-                for _, row in dept_df.iterrows():
-                    dept_id = int(row['department_id'])
-                    # Fetch department by department_id
-                    dept = session.query(Department).filter_by(department_id=dept_id).first()
-                    if dept:
-                        dept.description = row['description'] if pd.notna(row['description']) else None
-                        dept.image_url = row['image_url'] if pd.notna(row['image_url']) else None
-                        updated_count += 1
-                    else:
-                        print(f"   Warning: No Department found with department_id {dept_id}. Skipping.")
-                session.commit()
-                print(f"Updated {updated_count} departments from departments_enriched.csv.")
-        else:
-            print(f"departments_enriched.csv not found at {departments_csv_path}, skipping department enrichment.")
-    except Exception as dept_err:
-        session.rollback()
-        print(f"Error updating departments from enriched CSV: {dept_err}")
-
+from app.db_core.config import settings
+from app.db_core.models.products import ProductEnriched
+from app.db_core.models.orders import Order, OrderItem
+from app.db_core.database import SessionLocal
 
 def populate_enriched_data(force_reset=False):
     """Populate the product_enriched table from CSV"""
@@ -58,11 +24,11 @@ def populate_enriched_data(force_reset=False):
     csv_files = sorted(enriched_dir.glob("enriched_products_dept*.csv"))
 
     if not csv_files:
-        print(f"Error: No enriched product CSV files found in {enriched_dir}")
+        print(f"Error: No enriched CSV files found in {enriched_dir}")
         print("Make sure enriched data was generated using the product_enricher.py script and that /data is mounted correctly")
         return False
     else:
-        print(f"Found enriched product CSV files: {[str(f) for f in csv_files]}")
+        print(f"Found enriched CSV files: {[str(f) for f in csv_files]}")
 
 
     # Create database session
@@ -165,8 +131,6 @@ def populate_enriched_data(force_reset=False):
         # After loading enriched products, update existing order item prices and order totals
         print("\nUpdating existing order item prices and order totals...")
         update_order_prices_from_enriched_data(session)
-
-        populate_enriched_departments(session)
 
         return True
 

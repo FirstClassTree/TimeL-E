@@ -9,8 +9,8 @@ import os
 from datetime import datetime, UTC
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from .db_core.database import SessionLocal
-from .db_core.models import Order, OrderStatusHistory, OrderStatus
+from app.db_core.database import SessionLocal
+from app.db_core.models import Order, OrderStatusHistory, OrderStatus
 import csv
 from collections import defaultdict
 import pandas as pd
@@ -116,7 +116,7 @@ def populate_orders_created_at():
                     except (IntegrityError, SQLAlchemyError) as row_err:
                         errors += 1
                         db.rollback()
-                        print(f"      -> Skipping bad order update (order_id {single_order.id}): {row_err}")
+                        print(f"      -> Skipping bad order update (order_id {single_order.order_id}): {row_err}")
 
         db.commit()
         print(f"orders.created_at updated for {updated} orders (missing: {missing}, errors: {errors})")
@@ -269,8 +269,6 @@ def populate_order_status_history():
                 try:
                     db.flush()
                     batch_orders = []
-                    if (idx // batch_size) % 10 == 0:
-                        print(f"   Updated {idx} orders...")
                 except (IntegrityError, SQLAlchemyError) as batch_err:
                     db.rollback()
                     print(f"   ERROR: Batch order update failed at idx {idx} (will try individually): {batch_err}")
