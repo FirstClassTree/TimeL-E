@@ -1,5 +1,5 @@
 # TimeL-E: Predictive E-Commerce Platform
-<img width="124" height="124" alt="20250807_1721_Gradient Background Enhancement_remix_01k22ec3qtf589snrd7pgbp4wq" src="https://github.com/user-attachments/assets/50627919-beea-484a-8e26-f654ca6056dd" />
+<img width="512" height="512" alt="20250807_1721_Gradient Background Enhancement_remix_01k22ec3qtf589snrd7pgbp4wq" src="https://github.com/user-attachments/assets/50627919-beea-484a-8e26-f654ca6056dd" />
 
 TimeL-E is an AI-powered e-commerce platform that uses machine learning to predict customer purchase behavior and provide personalized product recommendations. Built with a modern microservices architecture, it demonstrates the complete pipeline from data ingestion to intelligent user experiences. It is feature-rich, production minded, and designed for scalability and professionality. 
 
@@ -106,5 +106,6 @@ For development work on specific components, consult the relevant documentation 
 ## License
 
 This project is developed for educational and research purposes.
+
 
 
