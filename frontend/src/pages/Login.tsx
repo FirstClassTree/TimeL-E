@@ -159,14 +159,14 @@ const Login: React.FC = () => {
                   })}
                   type="email"
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-colors ${
-                    errors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    errors.emailAddress ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                   }`}
                   placeholder="you@example.com"
                 />
               </div>
-              {errors.email && (
+              {errors.emailAddress && (
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {errors.email.message}
+                  {errors.emailAddress.message}
                 </p>
               )}
             </div>
@@ -303,7 +303,7 @@ const Login: React.FC = () => {
                       {quickUser.emailAddress}
                     </p>
                   </div>
-                  {isLoading && user.id === quickUser.userId && (
+                  {isLoading && user.userId === quickUser.userId && (
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                   )}
                 </motion.button>

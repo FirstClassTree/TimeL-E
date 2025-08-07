@@ -56,10 +56,10 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     // Call the demo login endpoint (GET request, ignores credentials)
     const response = await api.post('/users/login', credentials);
-    
+
     // Transform backend format to frontend expected format
     const user = {
-      id: response.userId,
+      userId: response.userId,
       firstName: response.firstName,
       lastName: response.lastName,
       emailAddress: response.emailAddress,
@@ -69,8 +69,13 @@ class AuthService {
       postalCode: response.postalCode,
       country: response.country,
       daysBetweenOrderNotifications: response.daysBetweenOrderNotifications,
-      orderNotificationsViaEmail: response.mlPredictionsAvailable,
-      orderNotificationsStartDateTime: response.orderNotificationsStartDateTime
+      orderNotificationsViaEmail: response.orderNotificationsViaEmail,
+      orderNotificationsStartDateTime: response.orderNotificationsStartDateTime,
+      pendingOrderNotification: response.pendingOrderNotification,
+      lastNotificationSentAt: response.lastNotificationSentAt,
+      lastNotificationsViewedAt: response.lastNotificationSentAt,
+      lastLogin: response.lastLogin,
+      hasActiveCart: response.hasActiveCart
     };
     
     // Create mock tokens since backend doesn't provide them
@@ -88,10 +93,38 @@ class AuthService {
 
   // Register
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await api.post<AuthResponse>('/users/register', data);
-    this.setTokens(response.accessToken, response.refreshToken);
-    this.setUser(response.user);
-    return response;
+    const response = await api.post('/users/register', data);
+    // Transform backend format to frontend expected format
+    const user = {
+      id: response.userId,
+      firstName: response.firstName,
+      lastName: response.lastName,
+      emailAddress: response.emailAddress,
+      phoneNumber: response.phoneNumber,
+      streetAddress: response.streetAddress,
+      city: response.city,
+      postalCode: response.postalCode,
+      country: response.country,
+      daysBetweenOrderNotifications: response.daysBetweenOrderNotifications,
+      orderNotificationsViaEmail: response.mlPredictionsAvailable,
+      orderNotificationsStartDateTime: response.orderNotificationsStartDateTime,
+      pendingOrderNotification: response.pendingOrderNotification,
+      lastNotificationSentAt: response.lastNotificationSentAt,
+      lastNotificationsViewedAt: response.lastNotificationSentAt,
+      lastLogin: response.lastLogin,
+      hasActiveCart: response.hasActiveCart
+    };
+
+     const mockAuth = {
+      user,
+      accessToken: `demo_token_${response.userId}`,
+      refreshToken: `demo_refresh_${response.userId}`
+    };
+
+    this.setTokens(mockAuth.accessToken, mockAuth.refreshToken);
+    this.setUser(mockAuth.user);
+
+    return mockAuth;
   }
 
   // Logout
