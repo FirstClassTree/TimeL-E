@@ -292,7 +292,7 @@ def load_order_items(db: Session):
         existing_orders.add(order.id)
     print(f"Found {len(existing_orders)} existing orders for validation")
     
-    batch_size = 20
+    batch_size = 10
     batch_items = []
     items_loaded = 0
     item_errors = 0
@@ -328,12 +328,13 @@ def load_order_items(db: Session):
                         db.add_all(batch_items)
                         db.flush()  # Optionally use commit for ultra-safety
                         success_count += len(batch_items)
-                        if success_count % 10000 == 0:
+                        if success_count % 100000 == 0:
                             print(f"   Committed batch of {len(batch_items)} order items")
                         batch_items = []
                     except (IntegrityError, SQLAlchemyError) as batch_err:
                         db.rollback()
-                        print(f"   ERROR[load order items]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
+                        print(
+                            f"   ERROR[load order items]: Batch insert failed at row {row_num} (will try individually): {batch_err}")
                         # Now try each row one by one to isolate the bad ones
                         for single_item in batch_items:
                             try:
