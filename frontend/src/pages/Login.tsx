@@ -321,7 +321,7 @@ const Login: React.FC = () => {
                       {quickUser.emailAddress}
                     </p>
                   </div>
-                  {isLoading && user.userId === quickUser.userId && (
+                  {isLoading && user?.userId === quickUser.userId && (
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
                   )}
                 </motion.button>

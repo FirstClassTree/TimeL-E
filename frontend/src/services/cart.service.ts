@@ -44,7 +44,7 @@ class CartService {
   // Get current cart
   async getCart(userId: string): Promise<Cart> {
     const response = await api.get(`/cart/${userId}`);
-    return this.transformBackendCart(response.data);
+    return this.transformBackendCart(response);
   }
 
   // Add item to cart
@@ -75,7 +75,7 @@ class CartService {
   // Clear entire cart
   async clearCart(userId: string): Promise<Cart> {
     const response = await api.delete(`/cart/${userId}`);
-    return this.transformBackendCart(response.data);
+    return this.transformBackendCart(response);
   }
 
   // Transform backend cart response to frontend format

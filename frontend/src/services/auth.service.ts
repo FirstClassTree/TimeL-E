@@ -73,7 +73,7 @@ class AuthService {
       orderNotificationsStartDateTime: response.orderNotificationsStartDateTime,
       pendingOrderNotification: response.pendingOrderNotification,
       lastNotificationSentAt: response.lastNotificationSentAt,
-      lastNotificationsViewedAt: response.lastNotificationSentAt,
+      lastNotificationsViewedAt: response.lastNotificationsViewedAt,
       lastLogin: response.lastLogin,
       hasActiveCart: this.parseHasActiveCart(response.hasActiveCart)
     };
@@ -106,11 +106,11 @@ class AuthService {
       postalCode: response.postalCode,
       country: response.country,
       daysBetweenOrderNotifications: response.daysBetweenOrderNotifications,
-      orderNotificationsViaEmail: response.mlPredictionsAvailable,
+      orderNotificationsViaEmail: response.orderNotificationsViaEmail,
       orderNotificationsStartDateTime: response.orderNotificationsStartDateTime,
       pendingOrderNotification: response.pendingOrderNotification,
       lastNotificationSentAt: response.lastNotificationSentAt,
-      lastNotificationsViewedAt: response.lastNotificationSentAt,
+      lastNotificationsViewedAt: response.lastNotificationsViewedAt,
       lastLogin: response.lastLogin,
       hasActiveCart: this.parseHasActiveCart(response.hasActiveCart)
     };
