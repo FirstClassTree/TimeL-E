@@ -259,8 +259,8 @@ async def add_cart_item(external_user_id: str, item_request: AddCartItemRequest)
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -294,8 +294,8 @@ async def update_cart_item(external_user_id: str, product_id: int, update_reques
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -329,8 +329,8 @@ async def remove_cart_item(external_user_id: str, product_id: int) -> APIRespons
         cart_items = [CartItem(**item) for item in cart.get("items", [])]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=cart_items,
             total_items=cart["total_items"]
         )
@@ -363,8 +363,8 @@ async def clear_user_cart(external_user_id: str) -> APIResponse:
         cart = cart_data[0]
         
         cart_response = CartResponse(
-            external_cart_id=cart["external_cart_id"],
-            external_user_id=cart["external_user_id"],
+            cart_id=cart["cart_id"],
+            user_id=cart["user_id"],
             items=[],
             total_items=0
         )

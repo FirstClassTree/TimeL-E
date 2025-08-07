@@ -3,8 +3,8 @@ import { api } from '@/services/api.client';
 export interface Product {
   productId: number;
   productName: string;
-  aisleId: number;
-  departmentId: number;
+  aisleId: number | null;
+  departmentId: number | null;
   aisleName: string;
   departmentName: string;
   description: string | null;

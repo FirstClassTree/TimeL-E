@@ -14,14 +14,16 @@ export interface CartItem {
 }
 
 export interface Cart {
-  cartId: string;
+  id: string;
   userId: string;
   items: CartItem[];
-  totalItems: number;
-  subtotal?: number;
-  isActive?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
+  itemCount: number;
+  subtotal: number;
+  estimatedTax: number;
+  estimatedTotal: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AddToCartData {
@@ -100,17 +102,17 @@ class CartService {
       product: {
         productId: item.productId,
         productName: item.productName || 'Unknown Product',
-        addToCartOrder: 1,
-        reordered: 0,
+        aisleId: null,
+        departmentId: null,
         aisleName: item.aisleName || '',
         departmentName: item.departmentName || '',
-        description: null,
-        price: 0,
-        imageUrl: null
+        description: item.description || null,
+        price: item.price || null,
+        imageUrl: item.imageUrl || null
       },
       quantity: item.quantity,
-      price: 0, // Backend doesn't provide price, would need to fetch
-      total: 0,
+      price: item.price || 0,
+      total: (item.price || 0) * item.quantity,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }));
@@ -119,10 +121,10 @@ class CartService {
     const subtotal = transformedItems.reduce((sum, item) => sum + item.total, 0);
 
     return {
-      id: `cart_${backendCart.userId}`,
+      id: backendCart.cartId || backendCart.cart_id || `cart_${backendCart.userId}`,
       userId: backendCart.userId,
       items: transformedItems,
-      itemCount: itemCount,
+      itemCount: backendCart.totalItems || backendCart.total_items || itemCount,
       subtotal: subtotal,
       estimatedTax: subtotal * 0.08,
       estimatedTotal: subtotal * 1.08,
