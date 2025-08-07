@@ -98,7 +98,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                   {/* Quantity Controls */}
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      onClick={() => {}}
                       className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Minus size={12} />
@@ -109,7 +109,7 @@ const CartDropdown: React.FC<CartDropdownProps> = ({ onClose }) => {
                     </span>
                     
                     <button
-                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      onClick={() => {}}
                       className="w-6 h-6 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Plus size={12} />
