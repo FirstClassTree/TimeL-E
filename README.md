@@ -1,133 +1,105 @@
-# 🛒 TimeL - E: Predictive Shopping Cart System
+# TimeL-E: Predictive E-Commerce Platform
 
-**TimeL - E** is a prototype e-commerce analytics platform that leverages historical shopping cart data to predict future cart contents using machine learning. Built for rapid iteration and educational purposes, it showcases a full-stack pipeline including data ingestion, model training, API deployment, and frontend interaction.
----
-**Quick Start Starting All Project**
+TimeL-E is an AI-powered e-commerce platform that uses machine learning to predict customer purchase behavior and provide personalized product recommendations. Built with a modern microservices architecture, it demonstrates the complete pipeline from data ingestion to intelligent user experiences. It is feature-rich, production minded, and designed for scalability and professionality. 
+
+## Quick Start
+
+Download dataset from Kaggle and put in data/: (File size too big for github)
+
+https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis
+
+Then Get the entire platform running with one command:
+
 ```bash
 docker-compose up --build
 ```
-could take a bit for the first time
-**Stop All Project**
+
+**Access the Platform:**
+- **Frontend Application**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+- **API Documentation Reccommended**: http://localhost:8000/docs
+- **ML Service**: http://localhost:8001
+- **Database Service**: http://localhost:7000
+
+**Stop Everything:**
 ```bash
 docker-compose down
 ```
 
-## 👥 Team Members
+## What TimeL-E Does
+
+TimeL-E combines traditional e-commerce with an emphasis on engineering excellence functionality with machine learning capabilities:
+
+- **Smart Shopping Experience** - Users can browse products, manage carts, and place orders
+- **Predictive Recommendations** - ML models analyze purchase history to suggest relevant products
+- **Real-time Analytics** - Track user behavior and shopping patterns
+- **Scalable Architecture** - Microservices design supports growth and customization
+
+The platform is ideal for learning modern web development, exploring ML in production, or prototyping intelligent e-commerce features.
+
+## Architecture
+
+TimeL-E uses a microservices architecture with 5 main components:
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Frontend  │───▶│   Backend   │───▶│ DB Service  │
+│ React + TS  │    │   FastAPI   │    │   FastAPI   │
+│    :3000    │    │    :8000    │    │    :7000    │
+└─────────────┘    └─────────────┘    └─────────────┘
+                           │                   │
+                           ▼                   ▼
+                   ┌─────────────┐    ┌─────────────┐
+                   │ ML Service  │    │ PostgreSQL  │
+                   │   Python    │    │  Database   │
+                   │    :8001    │    │    :5432    │
+                   └─────────────┘    └─────────────┘
+```
+
+### Service Overview
+
+| Service | Purpose | Technology |
+|---------|---------|------------|
+| **Frontend** | User interface and shopping experience | React, TypeScript, Tailwind CSS |
+| **Backend** | API gateway and business logic | FastAPI, Python |
+| **DB Service** | Database operations and user management | FastAPI, SQLAlchemy, PostgreSQL |
+| **ML Service** | Product recommendations and predictions | Python, Scikit-learn, LightGBM |
+| **Database** | Data storage and persistence | PostgreSQL |
+
+## Team
+
+**TimeL-E** is developed by:
 
 - **Tal Weiss** – Backend Engineer & ML Engineer
 - **Inbar Reshilovsky** – Frontend Engineer  
-- **Anna Petrenko** – Data Systems Engineer  
+- **Anna Petrenko** – Data Systems Engineer
 
----
-## 📂 Pr
-Multi-service architecture defined in:
-* docker-compose.yml (core services)
-* docker-compose.override.yml (local dev overrides)
+## Documentation
 
-## Services Overview
+This README provides a high-level overview. For detailed information about each component, see the specialized documentation:
 
-| Service    | Description                                  | URL (Dev)             | Port (Prod)                        |
-|------------|----------------------------------------------|-----------------------|------------------------------------|
-| frontend   | UI                                           | http://localhost:3000 | Exposed via reverse proxy (80/443) |
-| backend    | FastAPI app (w/ ervice client to db-service) | http://localhost:8000 | Exposed via reverse proxy (80/443) |
-| db-service | FastAPI-based internal DB gateway            | http://localhost:7000 | Not exposed                        |
-| postgres   | PostgreSQL database server                   | internal only         | Not exposed                        |
-| pgadmin    | Otional admin web UI for PostgreSQL          | http://localhost:5050 | Not exposed                        |
+### Development Guides
+- **[Backend API Documentation](README_BACKEND.md)** - Complete API reference, endpoints, and development setup
+- **[Frontend Development Guide](README_FRONTEND.md)** - React application, components, and UI development
+- **[ML Training & Models](README_ML_TRAINING.md)** - Machine learning pipeline, model training, and predictions
 
-## ⚙️ Setup and Run
+### Infrastructure & Operations
+- **[Docker Setup & Deployment](README_DOCKER.md)** - Complete containerization guide, from development to production
+- **[Database Service](README_DB-SERVICE.md)** - Database operations, schema management, and data access
 
-Follow these steps to get the full TimeL - E stack running locally.
+### Additional Resources
+- **[Frontend API Documentation](FRONTEND_API_DOCUMENTATION.md)** - Frontend service integration details
+- **[PgAdmin Guide](README_PGADMIN.md)** - Database administration interface
 
-## Download dataset from Kaggle and put in data/
-https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis
+## Getting Started
 
+1. **Clone the repository**
+2. **Ensure Docker is installed** and running
+3. **Run `docker-compose up --build`** to start all services
+4. **Open http://localhost:3000** to access the application
 
+For development work on specific components, consult the relevant documentation above for detailed setup instructions.
 
-### 🔧 Backend (Python FastAPI)
+## License
 
-```bash
-docker-compose up --build
-
-**Option 2: Local Development**
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Install packages:
-   ```bash
-   pip install -r ../requirements.txt
-   ```
-
-3. Start the server:
-   ```bash
-   python -m app.main
-   # or
-   uvicorn app.main:app --reload
-   ```
-
-4. Access the API:
-   - API: http://localhost:8000
-   - Documentation: http://localhost:8000/docs (Explanation of API endpoints)
-   - Health Check: http://localhost:8000/health
-
-**Backend Features:**
-- 📦 Product search and filtering based on CSV data
-- 🛒 Order management with product validation
-- 📋 Category navigation (departments & aisles)
-- 🔍 Smart product search functionality
-- 🔗 Coordinates frontend, database, and ML services
-- 📖 Auto-generated API documentation
-
-> See [README_BACKEND.md](README_BACKEND.md) for detailed backend documentation.
-
-
-### 🔧 DB Service (Python FastAPI)
-Access the API:
-   - API: http://localhost:7000
-   - Documentation: http://localhost:7000/docs (Explanation of API endpoints)
-   - Health Check: http://localhost:7000/health
-
-> See [README_DB-SERVICE.md](README_DB-SERVICE.md) for detailed DB service documentation.  
-
-## ⚙️ Production Setup and Run
-
-```bash
-docker-compose -f docker-compose.yml up --build
-```
-
-This excludes pgadmin service and development-only port mappings,  
-such as exposing postgres on 127.0.0.1:5432 and db-service on ${DB_SERVICE_PORT}.
-
-
-## Authentication & Password Security Architecture
-
-This architecture secures user password handling across services.  
-Passwords are sent from the client to the backend over HTTP (or HTTPS in production deployments).  
-The backend forwards the plaintext password over an internal Docker network to the db_service,  
-where all password hashing and verification is handled using the Argon2id algorithm.  
-Only the hashed password is stored in PostgreSQL. This centralizes authentication logic,  
-making upgrades and audits easier, and reduces the risk of accidental password exposure.  
-Note: For maximum security, enable HTTPS in all production environments.
-
-```text
-┌───────────────────────────┐                                ┌─────────────────────────────┐  
-│        User (client)      │  ───────────────────────────▶  │          Backend            │  
-│    (browser)              │         (HTTPS)                │     (REST API, FastAPI)     │  
-└───────────────────────────┘                                └───────────▲─────────────────┘  
-                                                                         │ Internal Docker Network  
-                                                                         ▼  
-                                                           ┌─────────────────────────────┐  
-                                                           │        DB Service           │  
-                                                           │   (FastAPI, Argon2id)       │  
-                                                           │ - Receives plaintext pw     │  
-                                                           │ - Hashes pw w/ Argon2id     │  
-                                                           │ - Stores/Verifies           │  
-                                                           │   hashed pw in DB           │  
-                                                           └─────────────▲───────────────┘  
-                                                                         │ Internal Network  
-                                                                         ▼  
-                                                           ┌─────────────────────────────┐  
-                                                           │       PostgreSQL DB         │  
-                                                           └─────────────────────────────┘  
-```
+This project is developed for educational and research purposes.

@@ -1,154 +1,167 @@
-# ML Training & Inference System - Time-LE
+# ML Training & Recommendations
 
-This document explains how to train and use the ML models in the Time-LE e-commerce system.
+Machine learning system for TimeL-E that provides personalized product recommendations using a two-stage approach with LightGBM and Gradient Boosting models.
 
-## 🎯 Overview
+## Overview
 
-The ML system provides personalized product recommendations using a two-stage approach:
-- **Stage 1**: LightGBM candidate generator (broader product selection)
-- **Stage 2**: Gradient Boosting basket selector (refined recommendations)
+The ML system analyzes user purchase history to predict what products they're likely to buy next. It uses a stacked model approach:
 
-## 📊 Current Status
+- **Stage 1**: LightGBM generates candidate products from the entire catalog
+- **Stage 2**: Gradient Boosting ranks and selects the final recommendations
 
-✅ **Model Loading**: Pre-trained models load successfully  
-✅ **Real Predictions**: Using actual ML inference (not mock data)  
-✅ **Weighted Scores**: Real probability scores (0.1-0.9)  
-✅ **Persistent Models**: Models saved as shareable `.pkl` files  
-✅ **Docker Integration**: Full containerized training and inference  
+Models are trained on CSV data from the `/data` directory and saved as `.pkl` files that persist across container restarts.
 
-## 🚀 How to Train Models
+## Training Models
 
-### Method 1: Simple Training Command (Recommended)
+### Quick Start
+Train new models with the optimized script (Still takes around 5 hours):
 ```bash
-# Train new models (saves to persistent files)
 docker-compose exec ml-service python train_models_optimized.py
 ```
 
-### Method 2: Direct Training Script
+### Alternative Training (Quick)
+Use the basic training script:
 ```bash
-# Alternative training approach
-docker-compose exec ml-service python training/training.py
+docker-compose exec ml-service python train_models_debug.py
 ```
 
-## 📁 Model Files
+### Training Process
+The training pipeline:
+1. Loads CSV data from `/app/training-data` (mounted from `./data`)
+2. Generates features for users and products
+3. Trains Stage 1 LightGBM model for candidate generation
+4. Trains Stage 2 Gradient Boosting model for final ranking
+5. Saves models to `/app/models` (mounted from `./ml-service/models`)
 
-After training, models are saved as persistent files:
+## Model Files
+
+After training, you'll find these files:
 ```
 ml-service/models/
 ├── stage1_lgbm.pkl      # LightGBM candidate generator
 ├── stage2_gbc.pkl       # Gradient Boosting selector
-└── (models persist across container restarts)
+└── stage1_lgbm-1.pkl    # Backup/versioned models
 ```
 
-## 🔗 Git Integration
+These files are part of your local filesystem and can be committed to Git for sharing.
 
-✅ **Shareable Models**: Trained models can be committed to Git  
-✅ **No Retraining Needed**: Others can clone and use pre-trained models  
-✅ **Version Control**: Track model changes over time  
-
-```bash
-# After training, commit models to Git
-git add ml-service/models/stage1_lgbm.pkl
-git add ml-service/models/stage2_gbc.pkl
-git commit -m "Update trained ML models"
-git push
-
-# Someone else clones and gets working models
-git clone <your-repo>
-docker-compose up
-# ✅ Inference works immediately!
-```
-
-## 🎯 How to Test Inference
+## Using the Models
 
 ### Check Model Status
 ```bash
-curl http://localhost:8001/health | jq '.'
+curl http://localhost:8001/health
 ```
 
-### Test Predictions
+### Get Recommendations
 ```bash
-# Get ML predictions for a user (returns real weighted scores)
-curl "http://localhost:8000/api/predictions/user/e18ddc09-37ba-5c3e-bff3-a2e8046c8249" | jq '.data.predictions[0:3]'
+# Get predictions for a specific user
+curl "http://localhost:8000/api/predictions/user/e18ddc09-37ba-5c3e-bff3-a2e8046c8249"
 ```
 
-**Expected Output** (with real scores):
+Example response:
 ```json
-[
-  {
-    "productId": 34126,
-    "productName": "Organic Italian Parsley Bunch",
-    "score": 0.85
-  },
-  {
-    "productId": 22935,
-    "productName": "Organic Yellow Onion",
-    "score": 0.8
-  },
-  {
-    "productId": 39984,
-    "productName": "Organic Dill",
-    "score": 0.7
+{
+  "success": true,
+  "data": {
+    "predictions": [
+      {
+        "productId": 34126,
+        "productName": "Organic Italian Parsley Bunch",
+        "score": 0.85
+      },
+      {
+        "productId": 22935, 
+        "productName": "Organic Yellow Onion",
+        "score": 0.78
+      }
+    ]
   }
-]
+}
 ```
 
-## 🔧 Technical Implementation
+## Architecture
 
-### Training Data Flow
+### Data Flow
 ```
-CSV Files (./data/) → Docker Container → Feature Engineering → 
-Train Models → Save .pkl files → Volume Persistence → 
-Load for Inference → Real Weighted Predictions
+CSV Files → Feature Engineering → Train Models → Save .pkl → Load for Inference → API Predictions
 ```
 
-### Docker Volume Configuration
-- **Data Volume**: `./data:/app/training-data` (CSV data accessible)
-- **Model Volume**: `./ml-service/models:/app/models` (persistent model storage)
+### Feature Engineering
+The system generates these features:
+- **Product features**: Category, popularity, pricing patterns
+- **User features**: Purchase frequency, category preferences, seasonality  
+- **User-product features**: Past interactions, time since last purchase
 
-### Key Improvements Made
+### Memory Optimization
+The optimized trainer uses chunked processing to handle large datasets without running out of memory.
 
-1. **Fixed Model Loading**: Models now load actual trained weights
-2. **Real Predictions**: Using trained model inference vs fallbacks
-3. **Weighted Scores**: Probability-based scores vs fixed 0.8
-4. **Persistent Files**: Models saved to local filesystem (Git-shareable)
-5. **Simple Training**: One command to retrain models
-6. **Docker Integration**: Full containerized workflow
+## Development
 
-## 🎉 Benefits
+### Model Development Cycle
+1. Modify features or model parameters in the training scripts
+2. Run training to generate new models
+3. Test predictions via the API
+4. Commit working models to version control
 
-- ✅ **Real ML**: Actual trained model predictions
-- ✅ **Weighted Scores**: Probability-based recommendation confidence
-- ✅ **Easy Training**: Simple command to retrain models
-- ✅ **Git Shareable**: Models can be version controlled and shared
-- ✅ **No Database Dependency**: CSV-based training (simple)
-- ✅ **Docker Ready**: Works in containerized environment
+### Training Data Requirements
+The system expects these CSV files in the `/data` directory:
+- `orders_demo.csv` - Order history
+- `order_items_demo.csv` - Order line items  
+- `products.csv` - Product catalog
+- `users_demo_v2.csv` - User information
 
-## 🛠 Troubleshooting
+### Adding New Features
+Feature engineering happens in:
+- `ChunkedFeatureEngineer` class in `train_models_optimized.py`
+- `src/features/engineering.py` for more complex features
 
-### Models Not Loading
+### Model Configuration
+Key parameters can be adjusted in the training scripts:
+- `chunk_size` - Memory usage vs speed tradeoff
+- LightGBM parameters - Learning rate, depth, regularization
+- Gradient Boosting parameters - Estimators, learning rate
+
+## Troubleshooting
+
+### Models not loading
+Check if model files exist:
 ```bash
-# Check if models exist
 docker-compose exec ml-service ls -la /app/models/
-
-# Retrain if missing
-docker-compose exec ml-service python train_models.py
 ```
 
-### Training Fails
+If missing, retrain:
 ```bash
-# Check logs
-docker-compose logs ml-service
-
-# Verify data exists
-docker-compose exec ml-service ls -la /app/training-data/
+docker-compose exec ml-service python train_models_optimized.py
 ```
 
-### Predictions Return Fixed Scores
-- Models may not be loaded properly
-- Check ML service health endpoint
-- Retrain models if necessary
+### Training fails with memory errors
+The optimized trainer should handle large datasets, but you can:
+- Reduce `chunk_size` in the training script
+- Use a subset of data for initial development
+- Monitor memory usage with `docker stats`
 
----
+### Predictions return low-quality results
+- Ensure you have enough training data (at least a few months of orders)
+- Check that user has purchase history in the training data
+- Verify feature engineering is working correctly
 
-**Ready to use!** The ML system now provides real personalized recommendations with proper weighted scores and persistent model files that can be shared via Git.
+### Performance Issues
+- Check if models are properly loaded (not falling back to random recommendations)
+- Monitor ML service logs for warnings
+- Consider retraining if data distribution has changed significantly
+
+## File Structure
+
+```
+ml-service/
+├── simple_model_wrapper.py    # Model inference wrapper
+├── train_models.py            # Basic training script  
+├── train_models_optimized.py  # Memory-optimized training
+├── models/                    # Saved model files (.pkl)
+├── src/
+│   ├── api/main.py           # FastAPI service
+│   └── features/             # Feature engineering
+└── training/                 # Training utilities
+```
+
+The ML service runs on port 8001 and provides a `/predict` endpoint that the backend calls for recommendations.
