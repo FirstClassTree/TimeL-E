@@ -161,15 +161,9 @@ class UserData(BaseModel):
             'last_notification_sent_at': user.last_notification_sent_at,
             'last_notifications_viewed_at': user.last_notifications_viewed_at,
             'last_login': user.last_login,
-            'has_active_cart': None  # Will be set to True only when explicitly checked and is True (during login)
+            'has_active_cart': None,  # Will be set to True/False only when explicitly checked (during login)
+            'pending_order_notification': user.pending_order_notification or False
         }
-        
-        # Only include pending_order_notification if it's True
-        if user.pending_order_notification:
-            user_dict['pending_order_notification'] = True
-        else:
-            user_dict['pending_order_notification'] = None
-            
         return cls(**user_dict)
 
 class PasswordUpdateResponse(BaseModel):
@@ -744,9 +738,8 @@ def login_user(payload: LoginRequest, session: Session = Depends(get_db)) -> Ser
 
         user_data = UserData.from_user(user)
 
-        # Only set has_active_cart if user has an active cart
-        if active_cart is not None:
-            user_data.has_active_cart = True
+        # Set has_active_cart to True or False based on cart existence
+        user_data.has_active_cart = active_cart is not None
         
         return ServiceResponse[UserData](
             success=True,
