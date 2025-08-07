@@ -1,5 +1,5 @@
 import { api } from '@/services/api.client'; // REMOVED: mlApi import - use backend gateway only
-import { Product } from '@/services/product.service';
+import { Product, productService } from '@/services/product.service';
 
 export interface PredictedBasketItem {
   id: string;
@@ -62,56 +62,94 @@ class PredictionService {
   async getCurrentPredictedBasket(userId?: string): Promise<PredictedBasket | null> {
     try {
       if (!userId) {
-        // Try to get user ID from auth store
-        const authStore = (await import('@/stores/auth.store')).useAuthStore;
-        const user = authStore.getState().user;
-        if (!user?.userId) {
-          return null;
-        }
-        userId = user.userId;
+        console.warn('No userId provided to getCurrentPredictedBasket');
+        return null;
       }
 
+      console.log(`Fetching predictions for user: ${userId}`);
+      
       // Call the actual backend endpoint
       const response = await api.get(`/predictions/user/${userId}`);
       
+      console.log('Prediction service response:', response);
+      
+      // Handle both direct response and nested data structure
+      const predictions = response.predictions || response.data?.predictions || [];
+      
       // Transform the backend response to frontend format
-      if (response.predictions && response.predictions.length > 0) {
+      if (predictions && predictions.length > 0) {
+        // Fetch full product details for each prediction
+        const enrichedItems = await Promise.all(
+          predictions.map(async (pred: any, index: number) => {
+            const productId = pred.productId || pred.product_id;
+            
+            try {
+              // Try to fetch full product details
+              const productDetails = await productService.getProduct(productId);
+              
+              return {
+                id: `item_${productId}_${index}`,
+                basketId: `basket_${userId}_${Date.now()}`,
+                productId: productId,
+                product: productDetails,
+                quantity: 1,
+                confidenceScore: pred.score || 0.5,
+                isAccepted: true,
+                createdAt: new Date().toISOString()
+              };
+            } catch (error) {
+              // Fallback to prediction data if product fetch fails
+              console.warn(`Failed to fetch product details for ${productId}, using prediction data`);
+              
+              return {
+                id: `item_${productId}_${index}`,
+                basketId: `basket_${userId}_${Date.now()}`,
+                productId: productId,
+                product: {
+                  productId: productId,
+                  productName: pred.productName || pred.product_name || `Product ${productId}`,
+                  aisleId: 1,
+                  departmentId: 1,
+                  aisleName: 'Unknown Aisle',
+                  departmentName: 'Unknown Department', 
+                  description: null,
+                  price: Math.random() * 10 + 2, // Mock price
+                  imageUrl: '/storage/image_not_available.png'
+                },
+                quantity: 1,
+                confidenceScore: pred.score || 0.5,
+                isAccepted: true,
+                createdAt: new Date().toISOString()
+              };
+            }
+          })
+        );
+
+        const totalValue = enrichedItems.reduce((sum, item) => 
+          sum + (item.product.price || 0) * item.quantity, 0
+        );
+
         const mockBasket: PredictedBasket = {
           id: `basket_${userId}_${Date.now()}`,
-          userId: response.userId,
+          userId: response.data?.userId || userId,
           weekOf: new Date().toISOString(),
           status: 'generated',
           confidenceScore: 0.8,
-          items: response.predictions.map((pred: any, index: number) => ({
-            id: `item_${pred.productId}_${index}`,
-            basketId: `basket_${userId}_${Date.now()}`,
-            productId: pred.productId,
-            product: {
-              productId: pred.productId,
-              productName: pred.productName,
-              aisleId: 1,
-              departmentId: 1,
-              aisleName: 'Unknown Aisle',
-              departmentName: 'Unknown Department',
-              price: Math.random() * 10 + 2, // Mock price
-              imageUrl: '/storage/image_not_available.png'
-            },
-            quantity: 1,
-            confidenceScore: pred.score,
-            isAccepted: true,
-            createdAt: new Date().toISOString()
-          })),
-          totalItems: response.predictions.length,
-          totalValue: response.predictions.length * 5, // Mock total
+          items: enrichedItems,
+          totalItems: enrichedItems.length,
+          totalValue: totalValue,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
         
+        console.log('Transformed basket:', mockBasket);
         return mockBasket;
       }
       
+      console.log('No predictions found in response');
       return null;
     } catch (error: any) {
+      console.error('Error fetching predicted basket:', error);
       if (error.response?.status === 404) {
         return null;
       }

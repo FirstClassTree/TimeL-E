@@ -27,15 +27,19 @@ const Cart: React.FC = () => {
   } = useCartStore();
 
   useEffect(() => {
-    fetchCart(user?.userId);
-  }, []);
+    if (user?.userId) {
+      fetchCart(user.userId);
+    }
+  }, [user?.userId, fetchCart]);
 
-  const handleQuantityChange = async (itemId: number, currentQuantity: number, delta: number) => {
+  const handleQuantityChange = async (productId: number, currentQuantity: number, delta: number) => {
+    if (!user?.userId) return;
+    
     const newQuantity = currentQuantity + delta;
     if (newQuantity < 1) {
-      await removeItem(user?.userId, itemId);
+      await removeItem(user.userId, productId);
     } else {
-      await updateQuantity(user?.userId, itemId, newQuantity);
+      await updateQuantity(user.userId, productId, newQuantity);
     }
   };
 
@@ -157,7 +161,11 @@ const Cart: React.FC = () => {
                             </div>
                             
                             <button
-                              onClick={() => removeItem(user?.userId, item.id)}
+                              onClick={() => {
+                                if (user?.userId) {
+                                  removeItem(user.userId, item.productId);
+                                }
+                              }}
                               disabled={isUpdating}
                               className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 disabled:opacity-50"
                             >
@@ -168,7 +176,7 @@ const Cart: React.FC = () => {
                           <div className="flex items-center justify-between mt-4">
                             <div className="flex items-center gap-3">
                               <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity, -1)}
+                                onClick={() => handleQuantityChange(item.productId, item.quantity, -1)}
                                 disabled={isUpdating}
                                 className="p-1 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                               >
@@ -180,7 +188,7 @@ const Cart: React.FC = () => {
                               </span>
                               
                               <button
-                                onClick={() => handleQuantityChange(item.id, item.quantity, 1)}
+                                onClick={() => handleQuantityChange(item.productId, item.quantity, 1)}
                                 disabled={isUpdating}
                                 className="p-1 rounded-md border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
                               >

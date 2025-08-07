@@ -22,12 +22,12 @@ const PredictedBasket: React.FC = () => {
 
   // Fetch current predicted basket
   const { data: basket, isLoading, error, refetch } = useQuery(
-    ['predicted-basket', user?.id],
-    () => predictionService.getCurrentPredictedBasket(user.id),
+    ['predicted-basket', user?.userId],
+    () => predictionService.getCurrentPredictedBasket(user?.userId),
     {
       staleTime: 5 * 60 * 1000,
       retry: 1,
-      enabled: !!user.id
+      enabled: !!user?.userId
     }
   );
 
@@ -42,10 +42,10 @@ const PredictedBasket: React.FC = () => {
 
   // Generate new prediction mutation
   const generateMutation = useMutation(
-    () => predictionService.getCurrentPredictedBasket(user.id),
+    () => predictionService.getCurrentPredictedBasket(user?.userId),
     {
       onSuccess: () => {
-        queryClient.invalidateQueries(['predicted-basket', user.id]);
+        queryClient.invalidateQueries(['predicted-basket', user?.userId]);
         toast.success('New predictions generated!');
       },
       onError: () => {
@@ -279,9 +279,9 @@ const PredictedBasket: React.FC = () => {
                     {/* Product Image */}
                     <div className="relative">
                       <ProductImage
-                        src={item.product.image_url}
-                        alt={item.product.product_name}
-                        department={item.product.department_name}
+                        src={item.product.imageUrl}
+                        alt={item.product.productName}
+                        department={item.product.departmentName}
                         className="w-24 h-24 rounded-lg"
                       />
                     </div>
@@ -291,10 +291,10 @@ const PredictedBasket: React.FC = () => {
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {item.product.product_name}
+                            {item.product.productName}
                           </h3>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.product.department_name} • {item.product.aisle_name}
+                            {item.product.departmentName} • {item.product.aisleName}
                           </p>
                         </div>
                         <button
