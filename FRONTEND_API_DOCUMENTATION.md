@@ -187,9 +187,9 @@ All API responses follow a consistent format:
 {
   "firstName": "John",                         // Required
   "lastName": "Doe",                           // Required
-  "email": "john@example.com",                 // Required (can use "email" or "emailAddress")
+  "emailAddress": "john@example.com",                 // Required
   "password": "securepassword",                // Required
-  "phone": "+1-555-0123",                      // Optional (can use "phone" or "phoneNumber")
+  "phoneNumber": "+1-555-0123",                // Optional
   "streetAddress": "123 Main St",              // Optional
   "city": "Demo City",                         // Optional
   "postalCode": "12345",                       // Optional
@@ -233,8 +233,8 @@ All API responses follow a consistent format:
 {
   "firstName": "John",                         // Optional
   "lastName": "Smith",                         // Optional
-  "email": "johnsmith@example.com",            // Optional (can use "email" or "emailAddress")
-  "phone": "+1-555-0456",                      // Optional (can use "phone" or "phoneNumber")
+  "emailAddress": "johnsmith@example.com",     // Optional
+  "phoneNumber": "+1-555-0456",                // Optional
   "streetAddress": "456 Oak St",               // Optional
   "city": "New City",                          // Optional
   "postalCode": "54321",                       // Optional

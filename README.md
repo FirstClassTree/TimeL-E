@@ -38,7 +38,7 @@ Multi-service architecture defined in:
 
 Follow these steps to get the full TimeL - E stack running locally.
 
-## Install from Kaggle and put in Data/
+## Download dataset from Kaggle and put in data/
 https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis
 
 
@@ -82,11 +82,13 @@ docker-compose up --build
 > See [README_BACKEND.md](README_BACKEND.md) for detailed backend documentation.
 
 
-### 🔧 DB Service
+### 🔧 DB Service (Python FastAPI)
 Access the API:
    - API: http://localhost:7000
    - Documentation: http://localhost:7000/docs (Explanation of API endpoints)
    - Health Check: http://localhost:7000/health
+
+> See [README_DB-SERVICE.md](README_DB-SERVICE.md) for detailed DB service documentation.  
 
 ## ⚙️ Production Setup and Run
 
@@ -94,7 +96,8 @@ Access the API:
 docker-compose -f docker-compose.yml up --build
 ```
 
-This excludes pgadmin service.
+This excludes pgadmin service and development-only port mappings,  
+such as exposing postgres on 127.0.0.1:5432 and db-service on ${DB_SERVICE_PORT}.
 
 
 ## Authentication & Password Security Architecture
