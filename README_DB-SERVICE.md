@@ -1,72 +1,141 @@
-# db-service
+# Database Service (db_service)
 
-The **db-service** is a FastAPI microservice that acts as an internal **Database API Gateway**.  
+A comprehensive FastAPI-based database service for the TimeL-E e-commerce platform,  
+providing robust data management, user authentication, order processing, and intelligent notifications systems.  
 It interfaces with a PostgreSQL database and exposes RESTful endpoints that are consumed by the main backend service.  
 The backend sends HTTP requests to this service for database operations (CRUD + query),  
 and the db-service translates them to SQLAlchemy operations.    
 This allows backend to remain DB-agnostic, and enables swapping/replicating DBs via internal services.
 
-In developement access `http://localhost:7000/docs#` or `http://localhost:7000/redoc`  
-for a FastAPI web server that automatically generates and serves interactive API documentation for DB Service.
-
-## Responsibilities
-
-- Connects to the PostgreSQL instance
-- Defines ORM models for PostgreSQL
-- Manages and initializes schemas using SQLAlchemy
-- On initialization, populates the products schema in the database with data from CSV files (on mounted volume).
-- Exposes generic RESTful endpoints to create, retrieve, update, delete, and list entities (users, products, orders)
-- Exposes a `/query` endpoint for advanced queries
-- Provides a `/health` endpoint for health checks
-- Manages scheduler to trigger login and optional email notifications for scheduled prders.
-
-## Directory Structure
-
-```text
-db_service/
-├── app/
-│   ├── main.py                     # FastAPI entrypoint with health check
-│   ├── init_db.py                  # Initializes the PostgreSQL schemas
-│   ├── database_service.py         # Defines API endpoints for DB access
-│   ├── database.py                 # SQLAlchemy engine/session setup
-│   ├── config.py                   # Environment/config loading
-│   ├── populate_from_csv.py        # populate empty db with data from products.csv, aisles.csv, departments.csv
-│   ├── populate_enriched_data.py   # populate db with enriched products data
-│   ├── order_routs.py              # Defines API endpoints for DB access to orders
-│   ├── user_routs.py               # Defines API endpoints for DB access to users
-│   ├── reset_database.py           # drop all schemas with all tables
-│   ├── __init__.py
-│   └── models/                     # SQLAlchemy models
-│       ├── __init__.py
-│       └── base.py
-│       └──orders.py
-│       └──products.py
-│       └──users.py
-├── Dockerfile
-├── .dockerignore
-├── requirements.txt
-└── update_schema.sql
+## Quick Start
+After all services started with Docker,
+```bash
+docker-compose up --build
 ```
+The API will be available at:  
+- **API**: http://localhost:7000  
+- **Interactive API Documentation**: http://localhost:7000/docs (in development mode)  
+    a FastAPI web server that automatically generates and serves interactive API documentation for DB Service.
+- **Health Check**: http://localhost:7000/health (in development mode)  
 
-## How It Works
+**Note**: Ensure the .env file is properly configured with the correct DB credentials.  
 
-The backend service sends requests to this service.  
-These are handled by db-service's internal router and routed to the appropriate model.
+## Table of Contents
+
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Features](#features)
+- [API Endpoints](#api-endpoints)
+- [Database Schema](#database-schema)
+- [Configuration](#configuration)
+- [Dependencies](#dependencies)
+- [Installation & Setup](#installation--setup)
+- [Usage](#usage)
+- [Notification Systems](#notification-systems-1)
+- [Data Loading](#data-loading)
+- [Development](#development)
+- [Production Deployment](#production-deployment)
 
 ## Overview
 
-...
+The Database Service is a critical microservice in the TimeL-E platform that handles all database operations,  
+user management, order processing, and notification systems.  
+Built with FastAPI and SQLAlchemy, it provides a robust, scalable, and secure foundation for the e-commerce platform.
 
-### Dual-ID Architecture Implementation
+### Key Capabilities
 
-**The db_service utilizes a selective dual-ID architecture for optimal performance, scalability, and security:**
+- **User Management**: Complete CRUD operations with secure authentication
+- **Notification Systems**: Notification architecture for order scheduling reminders and order status updates
+- **Order Processing**: Full order lifecycle management with status tracking
+- **Shopping Cart**: Comprehensive cart management with product enrichment
+- **Product Catalog**: Rich product data with department/aisle organization
+- **Data Integration**: Optimized CSV data loading and validation
 
-#### Users: Dual-ID Architecture
-- **Internal IDs**: Numeric primary keys (`BIGSERIAL`) used internally for database operations and foreign key relationships
-- **External IDs**: UUID4 strings exposed to the backend (and from there to the frontend) via API endpoints
-- **Security Enhancement**: Prevents exposure of sequential integer IDs in URLs, eliminating enumeration attacks
+### Service Structure
+
+```
+db_service/
+├── app/
+│   ├── main.py                 # FastAPI application entry point
+│   ├── init_db.py              # Initializes the PostgreSQL schemas
+│   ├── reset_database.py       # Drops all schemas with all tables
+│   ├── database_service.py     # Core database endpoints
+│   ├── users_routers.py        # User management endpoints
+│   ├── carts_routers.py        # Shopping cart endpoints
+│   ├── orders_routers.py       # Order management endpoints
+│   ├── scheduler.py            # Background notification scheduler
+│   ├── notification_service.py # Email notification service
+│   ├── db_core/                # Database models and configuration
+│   │   ├── models/             # SQLAlchemy ORM models
+│   │   ├── database.py         # SQLAlchemy engine/session setup
+│   │   └── config.py           # Configuration settings
+│   └── data_loaders/           # CSV data loading utilities
+├── requirements.txt            # Python dependencies
+└── Dockerfile                  # Container configuration
+```
+
+## Architecture
+
+### Microservice Design
+
+The db_service follows a domain-driven microservice architecture with clear separation of concerns:
+
+- **Database Layer**: Centralized data persistence and database operations for the TimeL-E platform
+- **API-First Design**: RESTful endpoints with comprehensive OpenAPI documentation
+- **Stateless Operations**: Each request is independent, enabling horizontal scaling
+- **Event-Driven Notifications**: Background scheduler for asynchronous notification processing
+
+### Data Architecture Patterns
+
+**Schema Separation**:
+- **users**: User accounts, authentication, and notification preferences
+- **products**: Product catalog, departments, aisles, and enrichment data  
+- **orders**: Orders, order items, carts, cart items, and order status history  
+Note: review current schema.sql dump and ERD at database/
+
+**Relationship Management**:
+- Foreign key constraints ensure referential integrity
+- SQLAlchemy relationships enable efficient lazy loading
+- Optimized joins for complex queries (cart + product enrichment)
+
+**Data Flow Patterns**:
+- **Request → Validation → Database → Response**: Standard CRUD operations
+- **Background Scheduler → Database → Email Service**: Notification processing
+- **CSV Loader → Batch Processing → Database**: Data integration pipeline
+- **Database Triggers → Order Status History**: Automatic audit trail generation
+
+### Transaction Management & Data Consistency
+
+**ACID Compliance**:
+- SQLAlchemy session management ensures transactional integrity
+- Automatic rollback on constraint violations or errors
+- Batch processing with individual error isolation for data loading
+- Foreign key constraints maintain referential integrity across schemas
+
+**Concurrency Handling**:
+- Session-per-request pattern prevents connection leaks
+- Database-level constraints prevent race conditions
+- Optimistic concurrency for cart and order operations
+
+### User Dual-ID System
+
+The service implements a dual-ID architecture for User data for optimal performance, API consistency, and security:
+
+- **Internal IDs**: Numeric BIGSERIAL primary keys used internally for database operations and foreign key relationships
+- **External IDs**: UUID4 strings exposed to backend (and from there to frontend) via API endpoints
+- **Benefits**:  
+  - Fast database operations along with secure, non-sequential external identifiers  
+  - Unlike auto-increment integers, UUIDv4 values are highly resistant to guessing or enumeration,    
+    making the endpoints more secure, even if user IDs are exposed in URLs.  
+  - UUID also enables distributed ID generation across multiple servers without collisions.
+- **UUID validation** performed for user IDs at each endpoint
+- **Migration Strategy**: Deterministic UUID generation from legacy integer IDs (.csv data) for data consistency
 - **URL Parameters**: User endpoints use `{user_id}` in URL paths (UUID4 strings)
 - **Response Fields**: All API responses return `user_id` serialized as UUID4 strings
+- **CSV Loading Logic**:
+  - Existing users load with original CSV IDs as internal IDs, UUID external ID is generated deterministically (UUID5).
+  - Sequence Configuration: Set starting points for new records
+  - New users are assigned sequential internal IDs starting past maximal CSV ID, external UUID is generated as UUID4.
 
 #### Orders & Carts: Simple Integer IDs
 - **Single ID System**: Uses integer primary keys starting from preserved ranges
@@ -75,1110 +144,479 @@ These are handled by db-service's internal router and routed to the appropriate 
 - **URL Parameters**: Order endpoints use `{order_id}` (integer as string)
 - **Response Fields**: All API responses return `order_id` and `cart_id` as integer strings
 
-**Current Architecture:**
-- User endpoints: `/api/users/{user_id}` (UUID4 string)
-- Order endpoints: `/api/orders/{order_id}` (integer string)
-- Cart endpoints: `/api/carts/{user_id}` (UUID4 string for user reference)
-- All response fields: `user_id` (UUID4), `order_id` (integer), `cart_id` (integer)
-- Internal database uses numeric IDs for optimal PostgreSQL performance
+#### User ID Strategy: Legacy Users vs. New Users
 
-#### Overview
-- **Users**: Dual-ID system with internal numeric PK + external UUID4 for security
-- **Orders & Carts**: Simple integer IDs for performance and CSV data preservation
-- UUID validation performed for user IDs at each endpoint
-- Integer validation performed for order/cart IDs at each endpoint
-
-### User ID Strategy: Legacy Users vs. New Users
-
-#### Legacy Records (migrated from `users_demo.csv`)
+##### Legacy Records (migrated from `users_demo.csv`)
 - Internal Database Key: Integer (from original legacy data)
-- API/Public ID (`external_user_id`):
-- Deterministically generated using UUID version 5 (`uuid.uuid5`)
-- Namespace is fixed for the application (e.g., `USER_UUID_NAMESPACE`)
-- Formula:
-```python
-external_user_id = uuid.uuid5(USER_UUID_NAMESPACE, str(legacy_integer_id))
-```
+- API/Public ID (exposed as `user_id`):
+  - Deterministically generated using UUID5 (`uuid.uuid5`)
+  - Namespace is fixed for the application (e.g., `USER_UUID_NAMESPACE`)
+  - Formula:
+    ```python
+    external_user_id = uuid.uuid5(USER_UUID_NAMESPACE, str(legacy_integer_id))
+    ```
 
 This ensures that the same legacy ID always maps to the same UUID, providing stable references for migration and testing.
 
-#### New Records
-- Internal Database Key: Integer (autoincrement)
-- API/Public ID (external_user_id):
-  - Randomly generated using UUID version 4 (`uuid.uuid4()`)
+##### New Records
+- Internal Database Key: Integer (autoincrement starting at 400,000)
+- API/Public ID (exposed as `user_id`):
+  - Randomly generated using UUID4 (`uuid.uuid4()`)
   - Recommended for all new users created after migration
-```python
-external_user_id = uuid.uuid4()
-```
-### Fast UUID Lookup with Database Indexing
+    ```python
+    external_user_id = uuid.uuid4()
+    ```
+    
+#### Fast UUID Lookup with Database Indexing
 - To make user lookups efficient via the public API, the `external_user_id` column is both unique and indexed.
 - This allows instant retrieval by UUID, essential for APIs that never expose or use the internal numeric PK.
 
 
+## Features
 
-### Password generation and hashing
+### User Management
+- **Secure Authentication**: Argon2id password hashing
+- **Dual-ID Architecture**: Internal numeric IDs for performance + external UUID4 for API security
+- **Complete User Lifecycle**: Registration, login, profile retrieval and updates, secure password updates and account deletion
+- **Email Management**: Secure email updates with password verification and duplicate prevention
+- **Profile Management**: Full contact information, delivery addresses, and personal details
+- **Notification Preferences**: Configurable order reminder settings; reminder frequencies (1-365 days), email preferences, and scheduling
+- **Session Management**: Login tracking with timezone-aware timestamps
+- **Initial Security Features**: Password verification for sensitive operations, input validation, constraint checking
+- **Initial Data Privacy**: Sanitized error responses to avoid information leaks
 
-...
+### Order System
+- **Order Creation**: Full order processing with validation
+- **Order History**: View all orders for a user with pagination and enriched product data
+- **Individual Order Details**: Complete order information with full tracking, shipping details, and status update history
+- **Status Tracking**: Comprehensive order status update history with timestamps
+- **Shipping Integration**: Tracking numbers, carriers, and URLs
+- **Invoice Support**: Binary invoice storage and retrieval
+- **Enriched Data**: Complete product details with descriptions and images
 
+### Shopping Cart
+- **Cart Management**: Create, update, and manage shopping carts
+- **Product Enrichment**: Full product details with pricing and images
+- **Quantity Management**: Add, update, and remove items
+- **Checkout Integration**: Convert cart to order seamlessly
 
+### Notification Systems
 
-## Running the Service
+#### 1. Scheduled Order Notifications
+- **Purpose**: Remind users to reorder based on their preferences
+- **Timing**: Configurable intervals (1-365 days) and start date/time for when notifications should begin
+- **Delivery**: Email notifications via Resend API (opt-in feature), also sent with user data (e.g on login)
+- **Scheduling**: Background scheduler with APScheduler
 
-Run the following command to start all services, including db-service:
+#### 2. Order Status Notifications
+- **Purpose**: Notify users of order status updates (shipped, delivered, etc.)
+- **Tracking**: Complete status update history with timestamps
+- **Delivery**: Notifications available at the corresponding endpoint (expected to be requested on login)
+- **History**: Chronological order status updates tracking
+#### 3. Active Cart Notification
+- **Purpose**: Included in login response to indicate whether user has active cart
 
-```bash
-docker-compose up --build
+### Data Integrity & Validation
+- **Time-Aware Storage**: All datetime fields use PostgreSQL TIMESTAMPTZ with UTC storage for consistent timezone handling
+  - Automatic timezone conversion for requests
+  - Proper temporal data integrity for notifications and order tracking
+- **Pydantic Validation**: Comprehensive input validation and serialization with Pydantic models for all API endpoints
+- **Database Constraints**: Foreign key validation, data type constraints, and referential integrity
+
+## API Endpoints
+
+### Core Database Operations
+
+#### Generic Query Interface
+- `POST /query` - Execute parameterized SQL queries with validation (intended to be fully deprecated in production)
+
+#### Product Catalog
+- `GET /products` - Paginated product listing with filtering and enrichment
+
+### User Management (`/users`)
+
+#### Authentication & Profile
+- `POST /users/` - Create new user account
+- `POST /users/login` - User authentication
+- `GET /users/{user_id}` - Get user profile
+- `PUT /users/{user_id}` - Update user profile
+- `DELETE /users/{user_id}` - Delete user account (requires password verification)
+
+#### Security
+- `PUT /users/{user_id}/password` - Update password with verification
+- `PUT /users/{user_id}/email` - Update email with password verification
+
+#### Notification Settings
+- `GET /users/{user_id}/notification-settings` - Get notification preferences
+- `PUT /users/{user_id}/notification-settings` - Update notification preferences
+- `GET /users/{user_id}/order-status-notifications` - Get order status updates
+
+### Order Management (`/orders`)
+
+#### Order Operations
+- `POST /orders/` - Create new order
+- `GET /orders/user/{user_id}` - Get user's order history (paginated)
+- `GET /orders/{order_id}` - Get detailed order information
+- `DELETE /orders/{order_id}` - Delete order
+
+#### Order Items
+- `POST /orders/{order_id}/items` - Add items to existing order
+
+#### Enhanced Order Details
+The detailed order endpoint (`GET /orders/{order_id}`) provides:
+- Complete order metadata (delivery address, tracking info)
+- Enriched product data (descriptions, images, department/aisle info)
+- Full status history (chronological status changes with timestamps)
+- Invoice data (binary storage support)
+- Tracking integration (carrier, tracking number, tracking URL)
+
+### Shopping Cart (`/carts`)
+
+#### Cart Management
+- `GET /carts/{user_id}` - Get user's cart
+- `POST /carts/` - Create new cart
+- `PUT /carts/{user_id}` - Replace entire cart
+- `DELETE /carts/{user_id}` - Delete cart
+
+#### Cart Items
+- `POST /carts/{user_id}/items` - Add item to cart
+- `PUT /carts/{user_id}/items/{product_id}` - Update item quantity
+- `DELETE /carts/{user_id}/items/{product_id}` - Remove item from cart
+- `DELETE /carts/{user_id}/clear` - Clear all cart items
+
+#### Cart Operations
+- `POST /carts/{user_id}/checkout` - Convert cart to order
+
+### Health & Monitoring
+- `GET /` - Service information
+- `GET /health` - Health check with database connectivity
+
+## Database Schema
+
+### Users Schema (`users.users`)
+```sql
+- id (BIGINT, PK) - Internal numeric ID
+- external_user_id (UUID, UNIQUE) - External API identifier
+- first_name, last_name (VARCHAR) - User name
+- email_address (VARCHAR, UNIQUE) - Login email
+- hashed_password (VARCHAR) - Argon2id hash
+- phone_number, street_address, city, postal_code, country - Contact info
+- last_login (TIMESTAMPTZ) - Last login timestamp
+- last_notifications_viewed_at (TIMESTAMPTZ) - Order status notifications tracking
+- days_between_order_notifications (INT) - Scheduled order notification reminder frequency
+- order_notifications_* - Scheduled order notification settings
+- pending_order_notification (BOOLEAN) - Scheduled order notification flag
 ```
 
-Make sure .env is configured correctly with DB credentials.
+### Products Schema
+```sql
+products.departments - Product categories
+products.aisles - Product aisles
+products.products - Main product catalog
+products.product_enriched - Enhanced product data (descriptions, prices, images)
+```
 
-### Healthcheck
-
-Docker Compose healthcheck is defined as:
-
-```dockerfile
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
-      interval: 5s
-      timeout: 3s
-      retries: 5
+### Orders Schema
+```sql
+orders.orders - Order records with delivery and tracking info
+orders.order_items - Order items with pricing
+orders.carts - Shopping carts
+orders.cart_items - Cart items
+orders.order_status_history - Complete status updates audit trail
 ```
 
 ## Configuration
 
-- CSV data population always runs at startup: The service will attempt to populate data from CSV files on each startup.  
-If the tables already contain data, the process is skipped.
-- For enriched products data, the script looks for all matching /data/products_enriched/enriched_products_dept*.csv files  
-and only populates if the table is empty.
-- Database reset is controlled via the environment variable `RESET_DATABASE_ON_STARTUP`:  
-  Set `RESET_DATABASE_ON_STARTUP=true` in the `.env` to drop and fully recreate all schemas/tables on startup,  
-ensuring a fresh state before loading CSV data. If false or unset, the existing database is preserved.
+### Environment Variables
 
-## Testing the API (Example)
+```bash
+# Database Configuration
+DATABASE_URL              # PostgreSQL connection string
+RESET_DATABASE_ON_STARTUP # Whether to reset database on service startup (false by default)
+
+# Service Configuration
+DB_SERVICE_PORT           # Port for the database service to listen on
+NODE_ENV                  # Environment mode (development/production)
+
+# Email Notifications
+RESEND_API_KEY           # API key for Resend email service
+NOTIFICATION_FROM_EMAIL  # Email address for sending notifications
+APP_NAME                 # Application name used in notifications
+
+# Application Metadata
+VERSION                  # Service version identifier
+```
+
+### Configuration Class
+Located in `app/db_core/config.py`, provides centralized configuration management with environment variable support and sensible defaults.
+
+## Dependencies
+
+### Core Dependencies
+- **FastAPI** (0.116.1) - Modern web framework
+- **SQLAlchemy** (2.0.42) - ORM and database toolkit
+- **asyncpg** (0.30.0) - Async PostgreSQL driver
+- **psycopg2-binary** (2.9.10) - PostgreSQL adapter
+- **Pydantic** (2.11.7) - Data validation and serialization
+
+### Security & Authentication
+- **argon2-cffi** (25.1.0) - Password hashing
+- **email-validator** (2.2.0) - Email validation
+
+### Background Processing
+- **APScheduler** (3.11.0) - Task scheduling
+- **httpx** (0.28.1) - HTTP client for notifications
+
+### Data Processing
+- **pandas** (2.3.1) - Data manipulation
+- **numpy** (2.3.2) - Numerical computing
+
+### Server & Deployment
+- **uvicorn** (0.35.0) - ASGI server
+- **python-dateutil** (2.9.0.post0) - Date/time utilities
+
+## Installation & Setup
+
+### Using Docker
+
+The db_service is designed to run as part of the complete TimeL-E application stack using Docker Compose.
+
+```bash
+# Run the complete application stack (from project root)
+docker-compose up --build
+
+# The db_service will be available as part of the stack
+# Individual service builds are handled by docker-compose.yml
+```
+
+## Usage
+
+### Starting the Service
+
+The service automatically:
+1. Initializes database schemas and tables (if not present)
+2. Loads CSV data if not already present
+3. Starts the background notification scheduler
+4. Exposes REST API on configured port
+
+### API Documentation
+
+- **Swagger UI**: `http://localhost:7000/docs`
+- **ReDoc**: `http://localhost:7000/redoc`
+
+### Health Monitoring
+
+```bash
+# Check service health
+curl http://localhost:7000/health
+
+# Response includes database connectivity status
+{
+  "message": "DB service API Gateway is healthy",
+  "data": {
+    "status": "healthy",
+    "version": "1.0.0",
+    "timestamp": "2025-01-08T01:00:00",
+    "service": "database-service",
+    "database": "reachable"
+  }
+}
+```
+
+## Notification Systems
+
+### Scheduled Order Notifications
+
+**Purpose**: Remind users to reorder based on their shopping patterns.
+
+**Configuration**:
+- `days_between_order_notifications`: Interval between reminders (1-365 days)
+- `order_notifications_start_date_time`: When to start sending reminders
+- `order_notifications_via_email`: Enable/disable email notifications
+
+**Processing**:
+- Background scheduler runs hourly to identify users due for notifications
+- Sends email via Resend API (if enabled)
+- Updates next scheduled time
+- Users also receive notification flag with user data (e.g., on login) if notification is pending
+
+### Order Status Notifications
+
+**Purpose**: Notify users of order status updates (shipped, delivered, etc.).
+
+**Features**:
+- Status update tracking with database triggers
+- Complete chronological history
+- Timestamp and attribution tracking
+- Efficient querying with user-specific filtering
+
+**Implementation**:
+- Database triggers capture status changes
+- `OrderStatusHistory` table maintains complete audit trail
+- API endpoint provides notifications since last viewed (when requested)
+- Automatic timestamp updates for tracking
+
+## Data Loading
+
+### CSV Data Integration
+
+The service includes optimized data loading capabilities:
+
+**Supported Data Types**:
+- Users (with authentication and notification settings)
+- Products (with department/aisle organization and enriched data)
+- Orders (with delivery and tracking information)
+- Order Items (with pricing and quantity data)
+- Order Status History (complete status updates tracking)
+
+**Features**:
+- **Batch Processing**: Efficient bulk data loading
+- **Error Handling**: Graceful handling of data inconsistencies
+- **Validation**: Foreign key validation and constraint checking
+- **Progress Reporting**: Detailed loading progress and statistics
+
+**Data Sources**:
+- `/data/users_demo.csv` - User accounts including contact info and timestamps.
+- `/data/orders_demo_enriched.csv` - Order data with enrichment
+- `/data/orders_demo_status_history.csv` - Status updates history
+- `/data/order_items_demo.csv` - Order items
+- `/data/products.csv` - Product catalog
+- `/data/products_enriched/*` - Enriched product data by department
+- `/data/departments.csv` - Departments
+- `/data/departments_enriched.csv` - Departments enriched with images and description
+- `/data/aisles.csv` - Aisles
+
+**Note**:
+- additional products data (description, price, image) is generated by `/data/product_enricher.py` script.
+- all other additional data not present in instacart dataset (user information and timestamps, order tracking and statuses)  
+  is generated by `/data/make_demo_data.py`.
+- all additional data in .csv files was generated ahead of time.
+
+## Development
+
+### Code Structure
+
+**Models** (`app/db_core/models/`):
+- `users.py` - User account and notification models
+- `orders.py` - Order, cart, and status history models
+- `products.py` - Product catalog and enrichment models
+- `base.py` - Base model configuration
+
+**Routers**:
+- `users_routers.py` - User management endpoints
+- `orders_routers.py` - Order processing endpoints
+- `carts_routers.py` - Shopping cart endpoints
+- `database_service.py` - `/query` and `/products` endpoints
+
+**Services**:
+- `scheduler.py` - Background order scheduling notifications processing
+- `notification_service.py` - Email notification delivery
+
+
+### Key Design Patterns
+
+**Dual-ID Architecture for User**:
+- Internal numeric IDs for database performance
+- External UUID4s for API security and consistency
+- Automatic conversion between internal and external representations
+
+**Service Response Pattern**:
+```python
+class ServiceResponse(BaseModel, Generic[T]):
+    success: bool
+    data: List[T] = []
+    error: Optional[str] = None
+    message: Optional[str] = None
+```
+
+**Error Handling**:
+- Comprehensive SQLAlchemy exception handling
+- Graceful degradation for data loading errors
+- Sanitized generic error responses to prevent sensitive information disclosure
+- Detailed error logging with context
+
+### Testing
+
+The service includes comprehensive error handling and validation:
+- Foreign key constraint validation
+- Data type validation with Pydantic
+- Batch processing with individual error isolation
+- Transaction rollback on failures
+
+
+### Testing the API (Example)
 
 Once the `db-service` is running via Docker and port `7000` is mapped,  
 one can test if specific endpoints are exposed using curl.
 
-### Example Request (`POST /users`)
-
-Note: If the `/users` endpoint is not implemented yet in the FastAPI router,
-this request will return `{"detail":"Not Found"}`.
+#### Example Request (`POST /users`)
 
 Run from the **host machine**.
 
-#### Windows CMD (Escape double quotes)
-
-```bash
-curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"first_name\":\"Alice\", \"last_name\":\"Smith\", \"email_address\":\"alice@example.com\", \"password\":\"SecurePass123\"}"
-```
-#### Linux / macOS / Git Bash
+##### Linux / macOS / Git Bash
 
 ```bash
 curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d '{"first_name":"Alice", "last_name":"Smith", "email_address":"alice@example.com", "password":"SecurePass123"}'
 ```
 
-Once the `POST /users` route is implemented in db-service, this command should return a successful response
-(e.g. the created user record or a confirmation message).
-
-
-#### More Windows CMD Examples
+##### Windows CMD (Escape double quotes)
 
 ```bash
-curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products LIMIT 1\", \"params\": []}"
+curl -X POST http://localhost:7000/users -H "Content-Type: application/json" -d "{\"first_name\":\"Alice\", \"last_name\":\"Smith\", \"email_address\":\"alice@example.com\", \"password\":\"SecurePass123\"}"
 ```
 
-```bash
-curl -X POST http://localhost:7000/query -H "Content-Type: application/json" -d "{\"sql\": \"SELECT * FROM products.products WHERE department_id = $1 LIMIT $2\", \"params\": [19, 10]}"
-```
-
-**See test_db-service.py** for more.
-
-## API Endpoints
-
-### Custom Query ```/query```
-
-Accepts parameterized SQL queries in PostgreSQL style (\$1, \$2, ...) with a list of parameters.
-
-Expects ```JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }```
-
-Later should be restricted to `select queries` for `products` schema only.  
-
-### Catalogue ```GET /products```
-
-Returns a paginated list of products from the database with department and aisle names,  
-optionally filtered by department (categories).
-
-Full address for other containers:
-
-`http://db-service:7000/products`
-
-#### Has following query parameters:
-
-* `limit` (default: 25, min: 1, max: 100); How many products to return.
-
-* `offset` (default: 0, min: 0); Where to start (for pagination).
-
-* `categories` (optional, can repeat); Filter by one or more department names (case-insensitive).
-
-#### Example for host in development environment:
-
-`http://localhost:7000/products?categories=Bakery&categories=Dairy`
-
-`http://localhost:7000/products?limit=50&offset=100`
-
-#### Backend example, with params:
-```python
-products_result = await db_service.list_entities(
-    "products",
-    {"limit": 25, "offset": 0, "categories": ["Bakery", "Dairy"]}
-)
-```
-
-```python
-products_result = await db_service.list_entities(
-    "products",
-    {"limit": limit, "offset": offset, "categories": categories}
-)
-```
-
-### ORDER API Endpoints
-
-### Create Order ```POST /orders```
-
-Creates a new order in the database.  
-**User IDs use UUIDv7. (See below).
-
-Full address for other containers:
-
-`http://db-service:7000/orders`
-
-### Request Body (JSON):
-
-```json
-{
-    "user_id": 1,
-    "eval_set": "new",
-    "order_dow": 1,
-    "order_hour_of_day": 14,
-    "days_since_prior_order": 7,
-    "total_items": 3,
-    "status": "pending",
-    "phone_number": "123-456-7890",
-    "street_address": "123 Main St",
-    "city": "Springfield",
-    "postal_code": "62701",
-    "country": "USA",
-    "tracking_number": "TRACK12345",
-    "shipping_carrier": "UPS",
-    "tracking_url": "http://example.com/track",
-    "items": [
-        {
-            "product_id": 101,
-            "quantity": 2,
-            "add_to_cart_order": 1,
-            "reordered": 0
-        },
-        {
-            "product_id": 102,
-            "quantity": 1,
-            "add_to_cart_order": 2,
-            "reordered": 0
-        }
-    ]
-}
-```
-
-Example Request (Backend usage):
-
-```python
-order_request = {
-    "user_id": 1,
-    "eval_set": "new",
-    "order_dow": 1,
-    "order_hour_of_day": 14,
-    "days_since_prior_order": 7,
-    "total_items": 3,
-    "status": "pending",
-    "items": [
-        {"product_id": 101, "quantity": 2},
-        {"product_id": 102, "quantity": 1}
-    ]
-}
-order_result = await db_service.create_order(order_request)
-```
-
-### Add Product to Order ```POST /orders/{order_id}/items```
-
-Adds new products to an existing order.
-
-If the order already contains the product, its quantity will be increased;
-otherwise, a new item row is created.
-
-Full address for other containers:
-
-'http://db-service:7000/orders/{order_id}/items'
-
-### Request Body (JSON):
-
-```json
-[
-  {
-    "product_id": 103,
-    "quantity": 2,
-    "add_to_cart_order": 3,
-    "reordered": 0
-  },
-  {
-    "product_id": 104,
-    "quantity": 1
-  }
-]
-```
-
-#### Response:
-
-```json
-{
-  "message": "Added 2 items to order f9de...53f8",
-  "order_id": "f9de...53f8",
-  "added_items": [
-    {
-      "order_id": "f9de...53f8",
-      "product_id": 103,
-      "quantity": 2,
-      "add_to_cart_order": 3,
-      "reordered": 0,
-      "updated": false
-    },
-    {
-      "order_id": "f9de...53f8",
-      "product_id": 104,
-      "quantity": 1,
-      "add_to_cart_order": 4,
-      "reordered": 0,
-      "updated": false
-    }
-  ],
-  "total_added": 2
-}
-```
-### Example Request (Backend usage):
-
-```python
-order_id = "b2acaa2e-22d6-11ef-803b-63d8b24f7e8b"  # Example order UUID
-items_to_add = [
-    {"product_id": 101, "quantity": 2},
-    {"product_id": 105, "quantity": 1, "reordered": 1}
-]
-
-result = await db_service.create_entity(
-    entity_type=f"orders/{order_id}/items",
-    data=items_to_add  # NOTE: Items are sent as a list, not wrapped in a dict
-)
-```
-
-Note:
-
-* Use create_entity(entity_type=..., data=...) for POST.
-
-* entity_type should be "orders/{order_id}/items", no leading slash.
-
-* data is a list of items, not a dict.
-
-* This method is fully async; call with await.
-
-### User API Endpoints
-
-### Datetime handling and Timezones
-
-Naive datetime (e.g., 2024-07-24T13:00:00)
-* Assumed to be in UTC
-* Automatically converted and marked as UTC (+00:00) internally
-
-Timezone-aware datetime (e.g., 2024-07-24T13:00:00+02:00)
-* Converted to UTC for consistency
-* Stored and returned in UTC
-
-This ensures:
-* Reliable scheduling logic
-* No ambiguity in user input
-* Safer handling of dates regardless of client behavior
-
-### Create User ```POST /users```
-
-Creates new user with unique email address.
-Names do not have to be unique and may be repeated.  
-Password is hashed using bcrypt.
-
-**User IDs use UUIDv7:**  
-UUIDv7 provides sortable, time-ordered, unique identifiers that are efficient for indexing and pagination.  
-Unlike auto-increment integers, UUIDv7 values are highly resistant to guessing or enumeration,  
-making the endpoints more secure, even if user IDs are exposed in URLs.  
-also enables distributed ID generation across multiple servers without collisions, while maintaining chronological order. 
-
-Params:    
-* first_name, last_name, email_address, password, phone_number, street_address, city, postal_code, country  
-
-Returns:  
-* user_id, first_name, last_name, email_address
-
-#### Example Request (Backend usage):
-
-```python
-user = db_service.create_entity(
-    endpoint="/users/",
-    data={
-        "first_name": "Alice",
-        "last_name": "Smith",
-        "email_address": "alice@example.com",
-        "password": "12345678",
-        "phone_number": "555-1234",
-        "street_address": "1 Main St",
-        "city": "Townsville",
-        "postal_code": "00001",
-        "country": "Wonderland"
-    }
-)
-```
-
-### User Login ```POST /users/login```
-
-Logs user in if the email and password are correct. Otherwise returns "Invalid email or password".  
-
-#### Request Body (JSON):
-
-```json
-{
-  "email_address": "alice@example.com",
-  "password": "Password123"
-}
-```
-
-#### Response:  
-```json
-{
-  "user_id": 42,
-  "first_name": "Alice",
-  "last_name": "Smith",
-  "email_address": "alice@example.com",
-  "phone_number": "123-456-7890",
-  "street_address": "1 Main St",
-  "city": "Townsville",
-  "postal_code": "00001",
-  "country": "Wonderland",
-  "days_between_order_notifications": 7,
-  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
-  "order_notifications_next_scheduled_time": "2025-07-31T14:00:00Z",
-  "pending_order_notification": false,
-  "order_notifications_via_email": true,
-  "last_notification_sent_at": "2025-07-23T14:00:00Z"
-}
-```
-
-#### Example Request (Backend usage):
-
-```python
-import requests
-
-LOGIN_URL = "http://localhost:7000/users/login"
-
-payload = {
-    "email_address": "alice@example.com",
-    "password": "Password123"
-}
-
-response = requests.post(LOGIN_URL, json=payload)
-
-if response.status_code == 200:
-    user_data = response.json()
-    print("Login successful!")
-    print(user_data)
-else:
-    print(f"Login failed: {response.status_code}")
-    print(response.json())
-```
-
-### Update Password ```POST /users/{user_id}/password```
-
-Updates the user's password. Requires current password for validation.
-
-#### Example Request (Backend usage):
-
-```python
-db_service.create_entity(
-    endpoint=f"/users/{user_id}/password",
-    data={"current_password": "oldpw", "new_password": "newpw123"}
-)
-```
-
-### Update Email ```POST /users/{user_id}/email```
-
-Updates the user's email address.  
-Requires current password for validation and ensures the new email is unique.
-Returns updated email.
-
-#### Example Request (Backend usage):
-
-```python
-db_service.create_entity(
-    endpoint=f"/users/{user_id}/email",
-    data={"current_password": "pw", "new_email_address": "new@email.com"}
-)
-```
-
-Notes:
-* If the current password is incorrect, the request will fail.
-* The new email must not already exist in the database.
-* For user security, email changes are not allowed via the general update endpoint (PUT /users/{user_id});  
-this dedicated endpoint must be used.
-
-### Fetch details ```GET /users/{user_id}```
-
-Fetches user details by user_id (uuid7). Returns full details.except credentials
-
-#### Example Request (Backend usage):
-
-```python
-user = db_service.get_entity(endpoint=f"/users/{user_id}")
-```
-
-### Update ```PUT /users/{user_id}```
-
-Partially updates user fields. Only the provided fields will be updated.  
-Cannot update email_address or password through this endpoint by default.  
-
-#### Example Request (Backend usage):
-
-```python
-db_service.update_entity(
-    endpoint=f"/users/{user_id}",
-    data={"city": "Newtown", "phone_number": "555-9999"}
-)
-```
-
-### Delete User ```DELETE /users/{user_id}```
-
-Deletes a user. Requires current password for validation to prevent unauthorized deletion.
-
-#### Example Request (Backend usage):
-
-```python
-db_service.delete_entity(
-    endpoint=f"/users/{user_id}",
-    data={"password": "currentpw"}
-)
-```
-
-### Notifications API
-Provides full control over user notification preferences via GET and PUT endpoints. Fully timezone-aware.  
-Backed by a custom scheduler and real email delivery infrastructure for precise order reminders, even during development.    
-
-#### Fields the user controls (via API input)
-* `days_between_order_notifications`:	Frequency (in days) between reminders.
-* `order_notifications_start_date_time`:	When the schedule begins (can be optional or default to now).
-* `order_notifications_via_email`:	Whether user wants to opt in to receive reminders via email.
-
-#### Fields the db_service controls:
-* `order_notifications_next_scheduled_time`:	Calculated: start + (now - order_notifications_next_scheduled_time) // interval + 1
-* `last_notification_sent_at`:	Set by scheduler when a notification is sent.
-* `pending_order_notification`:	Set by scheduler if a notification is due and not sent yet.
-
-
-### Update Notification Settings ```PUT /users/{user_id}/notification-settings```
-
-Update notification settings for the user. Can send partial fields.  
-The `order_notifications_start_date_time` field should be provided in ISO 8601 format with an explicit timezone offset  
-(e.g., Z for UTC or +02:00, -05:00, etc.).
-
-Examples (valid):
-```json
-"order_notifications_start_date_time": "2025-07-24T14:00:00Z"
-"order_notifications_start_date_time": "2025-07-24T09:00:00-05:00"
-```
-* The service expects timezone-aware datetimes.
-* If a datetime is submitted without a timezone, it is assumed to be UTC as a fallback.
-* All datetimes are internally stored and returned as UTC with timezone awareness preserved.
-
-#### Request Body (JSON):
-
-```json
-{
-  "days_between_order_notifications": 7,
-  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
-  "order_notifications_via_email": true
-}
-```
-
-#### Response:  
-```json
-{
-  "message": "Notification settings updated successfully",
-  "user_id": 206110,
-  "days_between_order_notifications": 3,
-  "order_notifications_start_date_time": "2025-07-25T02:56:42.889469+00:00",
-  "order_notifications_next_scheduled_time": "2025-07-28T02:56:42.889469+00:00",
-  "order_notifications_via_email": false,
-  "pending_order_notification": false,
-  "last_notification_sent_at": null
-}
-```
-
-### Get Notification Settings ```GET /users/{user_id}/notification-settings```
-
-Get notification settings for the user. Use to display upcoming schedules or missed reminders clearly.
-
-#### Request Body (JSON):
-n/a
-
-#### Response:  
-```json
-{
-  "user_id": 42,
-  "days_between_order_notifications": 7,
-  "order_notifications_start_date_time": "2025-07-24T14:00:00Z",
-  "order_notifications_next_scheduled_time": "2025-07-31T14:00:00Z",
-  "last_notification_sent_at": "2025-07-23T14:00:00Z",
-  "pending_order_notification": false,
-  "order_notifications_via_email": true
-}
-```
-
-
-### Cart API Endpoints
-
-These endpoints provide full CRUD (create, retrieve, update, delete) operations for user shopping carts.  
-Each cart belongs to a specific user and contains a list of items (products with quantity).  
-All product IDs must be valid (exist in the products table).  
-The backend is responsible for ensuring only authenticated users can access their own carts.    
-
-Note:
-* All endpoints validate that the user exists.  
-* All product IDs in requests are validated for existence.  
-* Cart responses always return enriched product details (product_name, aisle, department, price, etc).  
-* All changes update the cart’s updated_at timestamp (exposed in API, ISO8601 UTC).  
-* All cart responses include `updated_at` timestamp.  
-Clients can display or use this value to track last updates.  
-* All Cart CRUD endpoints respond with the full Cart (including `updated_at`) except for DELETE, which returns a simple message.  
-`updated_at` is always UTC and ISO8601 formatted.
-
-
-### Create Cart ```POST /carts```
-
-Creates a new cart for the given user. Fails if user does not exist or a cart already exists for that user  
-or the new cart contains product_ids that do not exist in the products table.  
-Returns HTTP `409` if cart already exists for the user.  
-
-#### Request Body (JSON):
-
-```json
-{
-  "user_id": 1234,
-  "items": [
-    {
-      "product_id": 42,
-      "quantity": 3
-    },
-    {
-      "product_id": 99,
-      "quantity": 1
-    }
-  ]
-}
-```
-
-#### Response:
-
-```json
-{
-  "user_id": 1234,
-  "items": [
-    {
-      "product_id": 42,
-      "quantity": 3,
-      "product_name": "Banana",
-      "aisle_name": "Fruit",
-      "department_name": "Produce",
-      "description": "Fresh bananas",
-      "price": 0.25,
-      "image_url": "https://img/banana.png"
-    },
-    {
-      "product_id": 99,
-      "quantity": 1,
-      "product_name": "Milk",
-      "aisle_name": "Dairy",
-      "department_name": "Dairy",
-      "description": "Whole milk",
-      "price": 2.99,
-      "image_url": "https://img/milk.png"
-    }
-  ],
-  "total_items": 2,
-  "total_quantity": 4,
-  "updated_at": "2024-07-16T17:20:10.532588+00:00"
-}
-```
-
-#### Example Request (Backend usage):
-
-```python
-from ..models.base import Cart, CartItem
-
-# Build the Cart object in backend
-cart = Cart(
-    user_id=1234,
-    items=[
-        CartItem(product_id=42, quantity=3),
-        CartItem(product_id=99, quantity=1),
-    ]
-)
-# Create the cart for the user
-result = await db_service.create_entity(
-    endpoint="/carts/",
-    data=cart.model_dump()
-)
-```
-
-### Get Cart ```GET /carts/{user_id}```
-
-Fetches the cart for a specific user.  
-If no cart exists, returns empty cart with the current timestamp. 
-
-#### Response:
-
-```json
-{
-  "user_id": 1234,
-  "items": [
-    {
-      "product_id": 42,
-      "quantity": 3,
-      "product_name": "Banana",
-      "aisle_name": "Fruit",
-      "department_name": "Produce",
-      "description": "Fresh bananas",
-      "price": 0.25,
-      "image_url": "https://img/banana.png"
-    }
-  ],
-  "total_items": 1,
-  "total_quantity": 3,
-  "updated_at": "2024-07-16T17:20:10.532588+00:00"
-}
-```
-
-#### Example Request (Backend usage):
-
-```python
-user_id = 1234
-cart = await db_service.get_entity("carts", user_id)
-
-# cart is a dict matching the CartResponse model
-```
-
-#### Example Request (curl):
-
-```bash
-curl -X GET http://localhost:7000/carts/1234
-```
-
-### Update/Replace Cart ```PUT /carts/{user_id}```
-
-Replaces the entire cart for a user (full upsert/replace operation).  
-If a cart does not exist, creates a new one. Returns enriched product details and the latest `updated_at`.  
-
-#### Request Body (JSON):
-
-```json
-{
-  "user_id": 1234,
-  "items": [
-    {
-      "product_id": 42,
-      "quantity": 2
-    }
-  ]
-}
-```
-
-#### Response:  
-same format as "Get Cart" above, with `updated_at`.
-
-#### Example Request (Backend usage):
-
-```python
-from ..models.base import Cart, CartItem
-
-cart = Cart(
-    user_id=1234,
-    items=[
-        CartItem(product_id=42, quantity=2),
-    ]
-)
-result = await db_service.update_entity(
-    "carts", 1234, cart.model_dump()
-)
-```
-
-### Delete Cart ```DELETE /carts/{user_id}```
-Deletes a user's cart.  
-Returns HTTP 404 if the user or the cart do not exist.  
-
-#### Response:
-
-```json
-{ "message": "Cart deleted successfully for user 1234" }
-```
-
-#### Example Request (Backend usage):
-
-```python
-await db_service.delete_entity("carts", user_id)
-```
-
-##########################################################
-
-\# TODO:
-
-add_cart_item(user_id, item) → POST /carts/{user_id}/items – add an item (or increment if exists)
-
-
-update_cart_item(user_id, product_id, qty) → PUT /carts/{user_id}/items/{product_id} – set quantity for item (update/remove)
-
-
-remove_cart_item(user_id, product_id) → DELETE /carts/{user_id}/items/{product_id} – remove item
-
-
-clear_user_cart(user_id) → DELETE /carts/{user_id}} – clear cart
-
-
-checkout_cart(user_id) → POST /carts/{user_id}/checkout – convert cart to order
-
-
-### Create Cart ```POST /carts```
-
-...
-
-#### Request Body (JSON):
-
-```json
-```
-
-#### Response:
-
-```json
-```
-
-#### Example Request (Backend usage):
-
-```python
-```
-
-### Create Cart ```POST /carts```
-
-...
-
-#### Request Body (JSON):
-
-```json
-```
-
-#### Response:
-
-```json
-```
-
-#### Example Request (Backend usage):
-
-```python
-```
-
-### Full Example for Cart API (Backend usage):
-
-```python
-# Create a new cart for user
-cart_data = {
-    "user_id": 1234,
-    "items": [
-        {"product_id": 1, "quantity": 2},
-        {"product_id": 4, "quantity": 1}
-    ]
-}
-resp = await db_service.create_entity(endpoint="/carts/", data=cart_data)
-
-# Get cart
-resp = await db_service.get_entity("carts", user_id)
-
-# Update (replace) cart
-cart_data["items"].append({"product_id": 7, "quantity": 3})
-resp = await db_service.update_entity("carts", user_id, cart_data)
-
-# Delete cart
-await db_service.delete_entity("carts", user_id)
-```
+This command should return a successful response (e.g. the created user record or a confirmation message).
+
+## Production Deployment
+
+### Docker Configuration
+
+**Multi-stage Build**:
+- Optimized dependency installation
+- Non-root user for security
+- Health check integration
+- Minimal production image
+
+**Security Features**:
+- Non-root container execution
+- Environment variable configuration
+- Input validation and sanitization
+- Sanitized generic error responses
+- Secure password hashing (Argon2id)
+- Verification required for high-risk actions (delete user, password and email update)
+- UUID User ID, prevents predictable user enumeration
+- Additional security measures intended for implementation in production deployment
+
+### Monitoring & Health Checks
+
+**Health Endpoint**:
+- Database connectivity verification
+- Service status reporting
+- Version information
+- Timestamp tracking
+
+**Logging** (partially implemented):
+- Structured logging with configurable levels
+- Database operation tracking
+- Error reporting with context
+- Performance monitoring
+
+### Scalability Considerations
+
+**Database Optimization**:
+- Proper indexing on foreign keys and lookup fields
+- Additional indexing for complex query joins (e.g., cart operations with product enrichment)
+- Batch processing for bulk operations
+- Efficient query patterns with relationships
+
+**Background Processing**:
+- Scheduled task management with APScheduler
+- Graceful shutdown handling
+- Error recovery and retry logic
+- Resource cleanup on termination
 
 ---
 
-## Orders API
+## Support
 
-### Get Order Details ```GET /orders/{order_id}```
-
-Get detailed order information with full tracking info, enriched products, and status history.
-
-#### URL Parameters:
-- `order_id` (required): Integer order ID
-
-#### Response:
-
-```json
-{
-  "success": true,
-  "message": "Order 3422001 details retrieved successfully",
-  "data": [
-    {
-      "order_id": "3422001",
-      "user_id": "550e8400-e29b-41d4-a716-446655440000",
-      "order_number": 5,
-      "order_dow": 1,
-      "order_hour_of_day": 14,
-      "days_since_prior_order": 7,
-      "total_items": 3,
-      "total_price": 24.97,
-      "status": "shipped",
-      "delivery_name": "John Doe",
-      "phone_number": "+1-555-1234",
-      "street_address": "123 Main St",
-      "city": "New York",
-      "postal_code": "10001",
-      "country": "US",
-      "tracking_number": "1Z999AA1234567890",
-      "shipping_carrier": "UPS",
-      "tracking_url": "https://www.ups.com/track?tracknum=1Z999AA1234567890",
-      "invoice": null,
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T14:45:00Z",
-      "items": [
-        {
-          "product_id": 123,
-          "product_name": "Organic Milk",
-          "quantity": 2,
-          "add_to_cart_order": 1,
-          "reordered": 0,
-          "price": 4.99,
-          "description": "Fresh organic whole milk from grass-fed cows",
-          "image_url": "https://example.com/images/organic-milk.jpg",
-          "department_name": "Dairy Eggs",
-          "aisle_name": "Milk"
-        }
-      ],
-      "status_history": [
-        {
-          "history_id": 1,
-          "order_id": "3422001",
-          "status": "pending",
-          "changed_at": "2024-01-15T10:30:00Z",
-          "changed_by": null,
-          "note": "Order created"
-        },
-        {
-          "history_id": 2,
-          "order_id": "3422001",
-          "status": "processing",
-          "changed_at": "2024-01-15T12:00:00Z",
-          "changed_by": "system",
-          "note": "Order processing started"
-        },
-        {
-          "history_id": 3,
-          "order_id": "3422001",
-          "status": "shipped",
-          "changed_at": "2024-01-15T14:45:00Z",
-          "changed_by": "fulfillment_center",
-          "note": "Package shipped via UPS"
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### Error Responses:
-- 400: "Invalid order ID format" (for non-integer order IDs)
-- 404: "Order not found"
-- 500: "Database error occurred"
-
-#### Example Request (curl):
-
-```bash
-curl -X GET http://localhost:7000/orders/3422001
-```
-
-#### Example Request (Backend usage):
-
-```python
-# Get detailed order information
-order_result = await db_service.get_entity("orders", "3422001")
-
-if order_result.get("success"):
-    order_data = order_result.get("data", [])[0]
-    print(f"Order {order_data['order_id']} status: {order_data['status']}")
-    print(f"Items: {len(order_data['items'])}")
-    print(f"Status history: {len(order_data['status_history'])} changes")
-```
-
-### Get User Orders ```GET /orders/user/{user_id}```
-
-Get paginated order history for a specific user with enriched item details.
-
-#### URL Parameters:
-- `user_id` (required): UUID4 user ID
-
-#### Query Parameters:
-- `limit` (optional): Number of orders to return (1-100, default: 20)
-- `offset` (optional): Number of orders to skip (default: 0)
-
-#### Response:
-
-```json
-{
-  "success": true,
-  "message": "Found 2 orders for user 550e8400-e29b-41d4-a716-446655440000",
-  "data": [
-    {
-      "order_id": "3422001",
-      "user_id": "550e8400-e29b-41d4-a716-446655440000",
-      "order_number": 5,
-      "total_items": 3,
-      "total_price": 24.97,
-      "status": "pending",
-      "delivery_name": "John Doe",
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z",
-      "items": [
-        {
-          "product_id": 123,
-          "product_name": "Organic Milk",
-          "quantity": 2,
-          "add_to_cart_order": 1,
-          "reordered": 0,
-          "price": 4.99,
-          "description": "Fresh organic whole milk from grass-fed cows",
-          "image_url": "https://example.com/images/organic-milk.jpg",
-          "department_name": "Dairy Eggs",
-          "aisle_name": "Milk"
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### Example Request (curl):
-
-```bash
-curl -X GET "http://localhost:7000/orders/user/550e8400-e29b-41d4-a716-446655440000?limit=10&offset=0"
-```
-
-### Create Order ```POST /orders```
-
-Create a new order with items. Orders are always created with "pending" status.
-
-#### Request Body (JSON):
-
-```json
-{
-  "user_id": "550e8400-e29b-41d4-a716-446655440000",
-  "order_dow": 1,
-  "order_hour_of_day": 14,
-  "days_since_prior_order": 7,
-  "delivery_name": "John Doe",
-  "phone_number": "+1-555-1234",
-  "street_address": "123 Main St",
-  "city": "New York",
-  "postal_code": "10001",
-  "country": "US",
-  "items": [
-    {
-      "product_id": 123,
-      "quantity": 2,
-      "add_to_cart_order": 1,
-      "reordered": 0
-    }
-  ]
-}
-```
-
-#### Response:
-
-```json
-{
-  "success": true,
-  "message": "Order created successfully",
-  "data": [
-    {
-      "order_id": "3422001",
-      "user_id": "550e8400-e29b-41d4-a716-446655440000",
-      "order_number": 1,
-      "status": "pending",
-      "total_items": 1,
-      "delivery_name": "John Doe",
-      "phone_number": "+1-555-1234",
-      "street_address": "123 Main St",
-      "city": "New York",
-      "postal_code": "10001",
-      "country": "US",
-      "created_at": "2025-01-05T17:30:00Z",
-      "updated_at": "2025-01-05T17:30:00Z",
-      "items": [
-        {
-          "product_id": 123,
-          "product_name": "Organic Milk",
-          "quantity": 2,
-          "add_to_cart_order": 1,
-          "reordered": 0,
-          "price": 4.99,
-          "description": "Fresh organic whole milk from grass-fed cows",
-          "image_url": "https://example.com/images/organic-milk.jpg",
-          "department_name": "Dairy Eggs",
-          "aisle_name": "Milk"
-        }
-      ]
-    }
-  ]
-}
-```
-
-#### Example Request (Backend usage):
-
-```python
-# Create a new order
-order_data = {
-    "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    "delivery_name": "John Doe",
-    "phone_number": "+1-555-1234",
-    "street_address": "123 Main St",
-    "city": "New York",
-    "postal_code": "10001",
-    "country": "US",
-    "items": [
-        {
-            "product_id": 123,
-            "quantity": 2,
-            "add_to_cart_order": 1,
-            "reordered": 0
-        }
-    ]
-}
-
-order_result = await db_service.create_entity("orders", order_data)
-```
-
-### Key Features:
-
-- Uses UUID4 for user references, integer IDs for orders
-- Enriched Product Data: Full product details including descriptions, images, department/aisle info
-- Status History: Complete chronological tracking of order status changes
-- Tracking Integration: Support for tracking numbers, carriers, and URLs
-- Invoice Support: Binary invoice data storage and retrieval
-- Delivery Information: Complete shipping address and delivery name support
-- Pagination: Efficient order-level pagination for user order history
+For technical support or questions about the Database Service, please refer to the project documentation or contact the development team.
