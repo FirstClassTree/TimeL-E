@@ -33,4 +33,4 @@ docker exec <postgres_container_id> pg_dump --schema-only --no-owner -U timele_u
 
 * Ensure the database/ directory exists before running the command.
 
-* The schema.sql is useful for understanding DB structure and generating ER diagrams.
+* The schema.sql file is useful for understanding DB structure and generating ER diagrams.

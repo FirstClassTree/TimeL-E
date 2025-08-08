@@ -10,7 +10,6 @@ from .db_core.models import Order, OrderItem, OrderStatus, Product, Department, 
 from .db_core.config import settings
 from pydantic import BaseModel
 from typing import List, Optional
-# Removed UUID imports since we're using integer user_ids and order_ids
 
 router = APIRouter()
 
@@ -33,6 +32,7 @@ async def run_query(request: Request):
     Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }
     Returns format expected by backend: {"success": True/False, "data": [...], "error": "..."}
     """
+    # Switch in production;
     # """
     # Accepts parameterized SQL SELECT queries in PostgreSQL style ($1, $2, ...) with a list of parameters.
     # Expects JSON: { "sql": "SELECT ... WHERE ...", "params": [...] }

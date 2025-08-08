@@ -1,8 +1,8 @@
-## Explanation for Demo Data Selection
+## Demo Data Selection Considerations
 
-In the Instacart dataset (and similar e-commerce ML datasets),
-Every user is either a train or test user.
-Their order history is labeled as follows:
+In the Instacart dataset (and similar e-commerce ML datasets),  
+every user is either a train or test user.  
+Their order history is labeled as follows:  
 
 *    train users: Their last order is a train order (used for model validation).  
 *    test users: Their last order is a test order (used for model evaluation).

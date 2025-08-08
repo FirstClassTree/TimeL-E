@@ -99,7 +99,7 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE orders.cart_items (
-    cart_id integer NOT NULL,
+    cart_id bigint NOT NULL,
     product_id integer NOT NULL,
     add_to_cart_order integer NOT NULL,
     reordered integer NOT NULL,
@@ -115,8 +115,8 @@ CREATE TABLE orders.cart_items (
 --
 
 CREATE TABLE orders.carts (
-    cart_id integer NOT NULL,
-    user_id integer NOT NULL,
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
     total_items integer NOT NULL,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
@@ -125,11 +125,10 @@ CREATE TABLE orders.carts (
 
 
 --
--- Name: carts_cart_id_seq; Type: SEQUENCE; Schema: orders; Owner: -
+-- Name: carts_id_seq; Type: SEQUENCE; Schema: orders; Owner: -
 --
 
-CREATE SEQUENCE orders.carts_cart_id_seq
-    AS integer
+CREATE SEQUENCE orders.carts_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -138,10 +137,10 @@ CREATE SEQUENCE orders.carts_cart_id_seq
 
 
 --
--- Name: carts_cart_id_seq; Type: SEQUENCE OWNED BY; Schema: orders; Owner: -
+-- Name: carts_id_seq; Type: SEQUENCE OWNED BY; Schema: orders; Owner: -
 --
 
-ALTER SEQUENCE orders.carts_cart_id_seq OWNED BY orders.carts.cart_id;
+ALTER SEQUENCE orders.carts_id_seq OWNED BY orders.carts.id;
 
 
 --
@@ -149,12 +148,14 @@ ALTER SEQUENCE orders.carts_cart_id_seq OWNED BY orders.carts.cart_id;
 --
 
 CREATE TABLE orders.order_items (
-    order_id integer NOT NULL,
+    order_id bigint NOT NULL,
     product_id integer NOT NULL,
     add_to_cart_order integer NOT NULL,
     reordered integer NOT NULL,
     quantity integer NOT NULL,
+    price double precision NOT NULL,
     CONSTRAINT ck_orderitem_add_to_cart_order_nonnegative CHECK ((add_to_cart_order >= 0)),
+    CONSTRAINT ck_orderitem_price_nonnegative CHECK ((price >= (0)::double precision)),
     CONSTRAINT ck_orderitem_quantity_positive CHECK ((quantity > 0)),
     CONSTRAINT ck_orderitem_reordered_bool CHECK ((reordered = ANY (ARRAY[0, 1])))
 );
@@ -166,11 +167,11 @@ CREATE TABLE orders.order_items (
 
 CREATE TABLE orders.order_status_history (
     history_id integer NOT NULL,
-    order_id integer NOT NULL,
+    order_id bigint NOT NULL,
     old_status public.order_status_enum,
     new_status public.order_status_enum NOT NULL,
     changed_at timestamp with time zone NOT NULL,
-    changed_by integer,
+    changed_by uuid,
     note text
 );
 
@@ -200,13 +201,14 @@ ALTER SEQUENCE orders.order_status_history_history_id_seq OWNED BY orders.order_
 --
 
 CREATE TABLE orders.orders (
-    order_id integer NOT NULL,
-    user_id integer NOT NULL,
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
     order_number integer NOT NULL,
     order_dow integer NOT NULL,
     order_hour_of_day integer NOT NULL,
     days_since_prior_order integer,
     total_items integer NOT NULL,
+    total_price double precision NOT NULL,
     status public.order_status_enum NOT NULL,
     delivery_name character varying(100),
     phone_number character varying(50),
@@ -220,16 +222,16 @@ CREATE TABLE orders.orders (
     invoice bytea,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
-    CONSTRAINT ck_order_total_items_nonnegative CHECK ((total_items >= 0))
+    CONSTRAINT ck_order_total_items_nonnegative CHECK ((total_items >= 0)),
+    CONSTRAINT ck_order_total_price_nonnegative CHECK ((total_price >= (0)::double precision))
 );
 
 
 --
--- Name: orders_order_id_seq; Type: SEQUENCE; Schema: orders; Owner: -
+-- Name: orders_id_seq; Type: SEQUENCE; Schema: orders; Owner: -
 --
 
-CREATE SEQUENCE orders.orders_order_id_seq
-    AS integer
+CREATE SEQUENCE orders.orders_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -238,10 +240,10 @@ CREATE SEQUENCE orders.orders_order_id_seq
 
 
 --
--- Name: orders_order_id_seq; Type: SEQUENCE OWNED BY; Schema: orders; Owner: -
+-- Name: orders_id_seq; Type: SEQUENCE OWNED BY; Schema: orders; Owner: -
 --
 
-ALTER SEQUENCE orders.orders_order_id_seq OWNED BY orders.orders.order_id;
+ALTER SEQUENCE orders.orders_id_seq OWNED BY orders.orders.id;
 
 
 --
@@ -280,7 +282,10 @@ ALTER SEQUENCE products.aisles_aisle_id_seq OWNED BY products.aisles.aisle_id;
 
 CREATE TABLE products.departments (
     department_id integer NOT NULL,
-    department character varying(100) NOT NULL
+    department character varying(100) NOT NULL,
+    description text,
+    image_url text,
+    parent_id integer
 );
 
 
@@ -353,7 +358,8 @@ ALTER SEQUENCE products.products_product_id_seq OWNED BY products.products.produ
 --
 
 CREATE TABLE users.users (
-    user_id integer NOT NULL,
+    id bigint NOT NULL,
+    external_user_id uuid DEFAULT gen_random_uuid() NOT NULL,
     first_name character varying NOT NULL,
     last_name character varying NOT NULL,
     hashed_password character varying(128) NOT NULL,
@@ -376,11 +382,10 @@ CREATE TABLE users.users (
 
 
 --
--- Name: users_user_id_seq; Type: SEQUENCE; Schema: users; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE; Schema: users; Owner: -
 --
 
-CREATE SEQUENCE users.users_user_id_seq
-    AS integer
+CREATE SEQUENCE users.users_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -389,17 +394,17 @@ CREATE SEQUENCE users.users_user_id_seq
 
 
 --
--- Name: users_user_id_seq; Type: SEQUENCE OWNED BY; Schema: users; Owner: -
+-- Name: users_id_seq; Type: SEQUENCE OWNED BY; Schema: users; Owner: -
 --
 
-ALTER SEQUENCE users.users_user_id_seq OWNED BY users.users.user_id;
+ALTER SEQUENCE users.users_id_seq OWNED BY users.users.id;
 
 
 --
--- Name: carts cart_id; Type: DEFAULT; Schema: orders; Owner: -
+-- Name: carts id; Type: DEFAULT; Schema: orders; Owner: -
 --
 
-ALTER TABLE ONLY orders.carts ALTER COLUMN cart_id SET DEFAULT nextval('orders.carts_cart_id_seq'::regclass);
+ALTER TABLE ONLY orders.carts ALTER COLUMN id SET DEFAULT nextval('orders.carts_id_seq'::regclass);
 
 
 --
@@ -410,10 +415,10 @@ ALTER TABLE ONLY orders.order_status_history ALTER COLUMN history_id SET DEFAULT
 
 
 --
--- Name: orders order_id; Type: DEFAULT; Schema: orders; Owner: -
+-- Name: orders id; Type: DEFAULT; Schema: orders; Owner: -
 --
 
-ALTER TABLE ONLY orders.orders ALTER COLUMN order_id SET DEFAULT nextval('orders.orders_order_id_seq'::regclass);
+ALTER TABLE ONLY orders.orders ALTER COLUMN id SET DEFAULT nextval('orders.orders_id_seq'::regclass);
 
 
 --
@@ -438,10 +443,10 @@ ALTER TABLE ONLY products.products ALTER COLUMN product_id SET DEFAULT nextval('
 
 
 --
--- Name: users user_id; Type: DEFAULT; Schema: users; Owner: -
+-- Name: users id; Type: DEFAULT; Schema: users; Owner: -
 --
 
-ALTER TABLE ONLY users.users ALTER COLUMN user_id SET DEFAULT nextval('users.users_user_id_seq'::regclass);
+ALTER TABLE ONLY users.users ALTER COLUMN id SET DEFAULT nextval('users.users_id_seq'::regclass);
 
 
 --
@@ -457,7 +462,7 @@ ALTER TABLE ONLY orders.cart_items
 --
 
 ALTER TABLE ONLY orders.carts
-    ADD CONSTRAINT carts_pkey PRIMARY KEY (cart_id);
+    ADD CONSTRAINT carts_pkey PRIMARY KEY (id);
 
 
 --
@@ -481,7 +486,7 @@ ALTER TABLE ONLY orders.order_status_history
 --
 
 ALTER TABLE ONLY orders.orders
-    ADD CONSTRAINT orders_pkey PRIMARY KEY (order_id);
+    ADD CONSTRAINT orders_pkey PRIMARY KEY (id);
 
 
 --
@@ -537,7 +542,7 @@ ALTER TABLE ONLY products.products
 --
 
 ALTER TABLE ONLY users.users
-    ADD CONSTRAINT users_pkey PRIMARY KEY (user_id);
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
 
 
 --
@@ -586,7 +591,7 @@ CREATE INDEX ix_orders_orders_user_id ON orders.orders USING btree (user_id);
 -- Name: ix_orders_userid_orderid; Type: INDEX; Schema: orders; Owner: -
 --
 
-CREATE INDEX ix_orders_userid_orderid ON orders.orders USING btree (user_id, order_id);
+CREATE INDEX ix_orders_userid_orderid ON orders.orders USING btree (user_id, id);
 
 
 --
@@ -625,12 +630,17 @@ CREATE UNIQUE INDEX ix_users_users_email_address ON users.users USING btree (ema
 
 
 --
+-- Name: ix_users_users_external_user_id; Type: INDEX; Schema: users; Owner: -
+--
+
+CREATE UNIQUE INDEX ix_users_users_external_user_id ON users.users USING btree (external_user_id);
+
+
+--
 -- Name: orders trg_order_status_change; Type: TRIGGER; Schema: orders; Owner: -
 --
 
 CREATE TRIGGER trg_order_status_change AFTER UPDATE OF status ON orders.orders FOR EACH ROW EXECUTE FUNCTION orders.log_order_status_change();
-
-ALTER TABLE orders.orders DISABLE TRIGGER trg_order_status_change;
 
 
 --
@@ -638,7 +648,7 @@ ALTER TABLE orders.orders DISABLE TRIGGER trg_order_status_change;
 --
 
 ALTER TABLE ONLY orders.cart_items
-    ADD CONSTRAINT cart_items_cart_id_fkey FOREIGN KEY (cart_id) REFERENCES orders.carts(cart_id);
+    ADD CONSTRAINT cart_items_cart_id_fkey FOREIGN KEY (cart_id) REFERENCES orders.carts(id);
 
 
 --
@@ -654,7 +664,7 @@ ALTER TABLE ONLY orders.cart_items
 --
 
 ALTER TABLE ONLY orders.carts
-    ADD CONSTRAINT carts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users.users(user_id);
+    ADD CONSTRAINT carts_user_id_fkey FOREIGN KEY (user_id) REFERENCES users.users(id);
 
 
 --
@@ -662,7 +672,7 @@ ALTER TABLE ONLY orders.carts
 --
 
 ALTER TABLE ONLY orders.order_items
-    ADD CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES orders.orders(order_id);
+    ADD CONSTRAINT order_items_order_id_fkey FOREIGN KEY (order_id) REFERENCES orders.orders(id);
 
 
 --
@@ -678,7 +688,7 @@ ALTER TABLE ONLY orders.order_items
 --
 
 ALTER TABLE ONLY orders.order_status_history
-    ADD CONSTRAINT order_status_history_order_id_fkey FOREIGN KEY (order_id) REFERENCES orders.orders(order_id);
+    ADD CONSTRAINT order_status_history_order_id_fkey FOREIGN KEY (order_id) REFERENCES orders.orders(id);
 
 
 --
@@ -686,7 +696,7 @@ ALTER TABLE ONLY orders.order_status_history
 --
 
 ALTER TABLE ONLY orders.orders
-    ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users.users(user_id);
+    ADD CONSTRAINT orders_user_id_fkey FOREIGN KEY (user_id) REFERENCES users.users(id);
 
 
 --

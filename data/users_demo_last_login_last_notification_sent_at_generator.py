@@ -24,7 +24,7 @@ def random_timedelta(days=0, hours=0, minutes=0, seconds=0):
 
 def generate_users_demo_last_login_and_notification():
     # --- 1. Load CSVs ---
-    df_users = pd.read_csv(USERS_CSV)
+    df_users = pd.read_csv(USERS_CSV, dtype={'postal_code': str})
     df_orders = pd.read_csv(ORDERS_CSV)
     df_status = pd.read_csv(STATUS_CSV)
 
